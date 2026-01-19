@@ -31,7 +31,7 @@ class SendFeeReminders extends Command
             $student->notify(new FeeReminderNotification($installment, $installment->enrollment));
             
             $courseName = $installment->enrollment->batch->course->name . ' - ' . $installment->enrollment->batch->course->level;
-            $this->line("✉ Reminder sent to {$student->name} for {$courseName} - €{$installment->amount}");
+            $this->line("✉ Reminder sent to {$student->name} for {$courseName} - " . currency_format($installment->amount));
         }
 
         $this->info("✅ Fee reminders sent successfully!");

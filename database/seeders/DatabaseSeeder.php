@@ -19,6 +19,8 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
+        // Seed Settings first
+        $this->call(SettingsSeeder::class);
         // Create Admin User
         $admin = User::create([
             'name' => 'System Administrator',

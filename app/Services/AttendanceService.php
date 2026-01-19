@@ -19,7 +19,7 @@ class AttendanceService
 
         foreach ($attendanceData as $studentAttendance) {
             $studentId = $studentAttendance['student_id'];
-            $status = $studentAttendance['status']; // present, absent, late, excused
+            $status = $studentAttendance['status'];
             $checkInTime = $studentAttendance['check_in_time'] ?? null;
             $notes = $studentAttendance['notes'] ?? null;
 

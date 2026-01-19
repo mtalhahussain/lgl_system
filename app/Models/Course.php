@@ -58,7 +58,7 @@ class Course extends Model
     // Helper methods
     public function getFormattedFeeAttribute()
     {
-        return number_format($this->total_fee, 0);
+        return currency_format($this->total_fee);
     }
 
     public function getTotalSessionsAttribute()

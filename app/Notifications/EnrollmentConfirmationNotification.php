@@ -36,7 +36,7 @@ class EnrollmentConfirmationNotification extends Notification
                     ->line('Batch: ' . $batchName)
                     ->line('Start Date: ' . $startDate)
                     ->line('Teacher: ' . $this->enrollment->batch->teacher->name)
-                    ->line('Total Fee: €' . number_format($this->enrollment->total_fee, 0))
+                    ->line('Total Fee: ' . currency_format($this->enrollment->total_fee))
                     ->line('Your learning journey begins soon. We are excited to help you master the German language!')
                     ->action('View Course Details', url('/dashboard'))
                     ->line('For any questions, please contact us.')

@@ -25,13 +25,22 @@ class EnrollmentController extends Controller
         $query = Enrollment::with(['student', 'batch.course']);
         
         // Filter by status
-        if ($request->has('status')) {
+        if ($request->has('status') && $request->status !== '') {
             $query->where('status', $request->status);
         }
         
         // Filter by batch
-        if ($request->has('batch_id')) {
+        if ($request->has('batch_id') && $request->batch_id !== '') {
             $query->where('batch_id', $request->batch_id);
+        }
+        
+        // Search functionality
+        if ($request->has('search') && $request->search !== '') {
+            $searchTerm = $request->search;
+            $query->whereHas('student', function ($q) use ($searchTerm) {
+                $q->where('name', 'like', "%{$searchTerm}%")
+                  ->orWhere('email', 'like', "%{$searchTerm}%");
+            });
         }
         
         // Filter by student (for student role)
@@ -46,7 +55,10 @@ class EnrollmentController extends Controller
             });
         }
         
-        $enrollments = $query->paginate(15);
+        // Order by latest first
+        $query->orderBy('created_at', 'desc');
+        
+        $enrollments = $query->paginate(10);
         
         // Add payment progress to each enrollment
         $enrollments->getCollection()->transform(function ($enrollment) {
@@ -55,7 +67,36 @@ class EnrollmentController extends Controller
             return $enrollment;
         });
         
-        return response()->json($enrollments);
+        return view('admin.enrollments.index', compact('enrollments'));
+    }
+
+    public function create(Request $request)
+    {
+        $this->authorize('create', Enrollment::class);
+        
+        // Get available students (users with student role who are not already enrolled in the batch)
+        $students = \App\Models\User::where('role', 'student')
+            ->when($request->batch_id, function ($query) use ($request) {
+                // Exclude students already enrolled in this batch
+                $query->whereDoesntHave('enrollments', function ($q) use ($request) {
+                    $q->where('batch_id', $request->batch_id)
+                      ->where('status', 'active');
+                });
+            })
+            ->get();
+
+        // Get available batches
+        $batches = \App\Models\Batch::with('course')
+            ->whereIn('status', ['upcoming', 'ongoing'])
+            ->get();
+
+        // Pre-select batch if batch_id is provided
+        $selectedBatch = null;
+        if ($request->batch_id) {
+            $selectedBatch = \App\Models\Batch::with('course')->find($request->batch_id);
+        }
+
+        return view('admin.enrollments.create', compact('students', 'batches', 'selectedBatch'));
     }
 
     public function show(Enrollment $enrollment)
@@ -72,7 +113,7 @@ class EnrollmentController extends Controller
         $enrollment->remaining_fee = $enrollment->remaining_fee;
         $enrollment->payment_progress = $enrollment->payment_progress_percentage;
         
-        return response()->json($enrollment);
+        return view('admin.enrollments.show', compact('enrollment'));
     }
 
     public function store(Request $request)
@@ -94,12 +135,13 @@ class EnrollmentController extends Controller
                 $validated['installments'] ?? 1
             );
             
-            return response()->json($enrollment, 201);
+            return redirect()->route('enrollments.index')
+                ->with('success', 'Student enrolled successfully!');
             
         } catch (\Exception $e) {
-            return response()->json([
-                'message' => $e->getMessage()
-            ], 422);
+            return redirect()->back()
+                ->withInput()
+                ->withErrors(['error' => $e->getMessage()]);
         }
     }
 

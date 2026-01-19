@@ -53,7 +53,7 @@ class Batch extends Model
         return $this->enrollments()->where('status', 'active');
     }
 
-    public function classeSessions()
+    public function classSessions()
     {
         return $this->hasMany(ClassSession::class);
     }
@@ -71,6 +71,11 @@ class Batch extends Model
     public function certificates()
     {
         return $this->hasMany(Certificate::class);
+    }
+
+    public function feeInstallments()
+    {
+        return $this->hasManyThrough(FeeInstallment::class, Enrollment::class);
     }
 
     // Scopes

@@ -35,7 +35,7 @@ class FeeReminderNotification extends Notification
                     ->greeting('Dear ' . $notifiable->name . ',')
                     ->line('This is a friendly reminder about your upcoming fee payment.')
                     ->line('Course: ' . $courseName)
-                    ->line('Amount Due: €' . $amount)
+                    ->line('Amount Due: ' . currency_format($amount))
                     ->line('Due Date: ' . $dueDate)
                     ->line('Please make your payment to avoid any inconvenience.')
                     ->action('Pay Now', url('/payments/' . $this->installment->id))

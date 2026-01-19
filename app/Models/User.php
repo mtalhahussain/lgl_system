@@ -26,6 +26,11 @@ class User extends Authenticatable
         'address',
         'emergency_contact',
         'hourly_rate',
+        'per_student_rate',
+        'qualification',
+        'experience_years',
+        'specialization',
+        'employee_id',
         'is_active',
         'password',
     ];
@@ -51,6 +56,8 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'date_of_birth' => 'date',
             'hourly_rate' => 'decimal:2',
+            'per_student_rate' => 'decimal:2',
+            'experience_years' => 'integer',
             'is_active' => 'boolean',
             'password' => 'hashed',
         ];
@@ -58,6 +65,11 @@ class User extends Authenticatable
 
     // Relationships
     public function teachingBatches()
+    {
+        return $this->hasMany(Batch::class, 'teacher_id');
+    }
+
+    public function taughtBatches()
     {
         return $this->hasMany(Batch::class, 'teacher_id');
     }
@@ -90,6 +102,11 @@ class User extends Authenticatable
     public function certificates()
     {
         return $this->hasMany(Certificate::class, 'student_id');
+    }
+
+    public function feeInstallments()
+    {
+        return $this->hasManyThrough(FeeInstallment::class, Enrollment::class, 'student_id', 'enrollment_id');
     }
 
     // Scopes

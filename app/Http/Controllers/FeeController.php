@@ -144,13 +144,13 @@ class FeeController extends Controller
         $student->load(['enrollments.feeInstallments', 'enrollments.batch.course']);
         
         $feeStats = [
-            'total_fees' => $student->feeInstallments()->sum('amount'),
-            'paid_fees' => $student->feeInstallments()->where('status', 'paid')->sum('amount'),
-            'pending_fees' => $student->feeInstallments()->where('status', 'pending')->sum('amount'),
+            'total_fees' => $student->feeInstallments()->sum('fee_installments.amount'),
+            'paid_fees' => $student->feeInstallments()->where('fee_installments.status', 'paid')->sum('fee_installments.amount'),
+            'pending_fees' => $student->feeInstallments()->where('fee_installments.status', 'pending')->sum('fee_installments.amount'),
             'overdue_fees' => $student->feeInstallments()
-                ->where('status', 'pending')
-                ->where('due_date', '<', now())
-                ->sum('amount')
+                ->where('fee_installments.status', 'pending')
+                ->where('fee_installments.due_date', '<', now())
+                ->sum('fee_installments.amount')
         ];
 
         return view('admin.fees.student', compact('student', 'feeStats'));

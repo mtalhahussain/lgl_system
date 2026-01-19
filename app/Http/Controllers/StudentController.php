@@ -144,8 +144,8 @@ class StudentController extends Controller
         ]);
 
         $stats = [
-            'total_paid' => $student->feeInstallments()->where('status', 'paid')->sum('amount'),
-            'pending_fees' => $student->feeInstallments()->where('status', 'pending')->sum('amount'),
+            'total_paid' => $student->feeInstallments()->where('fee_installments.status', 'paid')->sum('amount'),
+            'pending_fees' => $student->feeInstallments()->where('fee_installments.status', 'pending')->sum('amount'),
             'attendance_rate' => $this->calculateAttendanceRate($student),
             'courses_completed' => $student->enrollments()->where('status', 'completed')->count()
         ];
@@ -206,8 +206,8 @@ class StudentController extends Controller
 
         $stats = [
             'active_enrollments' => $student->enrollments()->where('status', 'active')->count(),
-            'total_paid' => $student->feeInstallments()->where('status', 'paid')->sum('amount'),
-            'pending_fees' => $student->feeInstallments()->where('status', 'pending')->sum('amount'),
+            'total_paid' => $student->feeInstallments()->where('fee_installments.status', 'paid')->sum('amount'),
+            'pending_fees' => $student->feeInstallments()->where('fee_installments.status', 'pending')->sum('amount'),
             'attendance_rate' => $this->calculateAttendanceRate($student),
             'certificates_earned' => $student->certificates()->count()
         ];

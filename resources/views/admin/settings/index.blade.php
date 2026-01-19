@@ -110,102 +110,6 @@
                 </div>
                 @endif
 
-                <!-- Fee Settings -->
-                @if($settingGroups->has('fees'))
-                <div class="card dashboard-card mb-4">
-                    <div class="card-header">
-                        <h5 class="mb-0">
-                            <i class="fas fa-credit-card me-2"></i>Fee Settings
-                        </h5>
-                    </div>
-                    <div class="card-body">
-                        <div class="row">
-                            @foreach($settingGroups['fees'] as $setting)
-                                <div class="col-md-6 mb-3">
-                                    <label for="{{ $setting->key }}" class="form-label">{{ $setting->label }}</label>
-                                    @if($setting->description)
-                                        <small class="text-muted d-block">{{ $setting->description }}</small>
-                                    @endif
-                                    <input type="number" class="form-control" id="{{ $setting->key }}" name="{{ $setting->key }}" value="{{ $setting->value }}" min="0" step="0.01">
-                                </div>
-                            @endforeach
-                        </div>
-                    </div>
-                </div>
-                @endif
-
-                <!-- System Settings -->
-                @if($settingGroups->has('system'))
-                <div class="card dashboard-card mb-4">
-                    <div class="card-header">
-                        <h5 class="mb-0">
-                            <i class="fas fa-server me-2"></i>System Settings
-                        </h5>
-                    </div>
-                    <div class="card-body">
-                        <div class="row">
-                            @foreach($settingGroups['system'] as $setting)
-                                <div class="col-md-6 mb-3">
-                                    <label for="{{ $setting->key }}" class="form-label">{{ $setting->label }}</label>
-                                    @if($setting->description)
-                                        <small class="text-muted d-block">{{ $setting->description }}</small>
-                                    @endif
-                                    
-                                    @if($setting->type === 'boolean')
-                                        <div class="form-check form-switch">
-                                            <input type="checkbox" class="form-check-input" id="{{ $setting->key }}" name="{{ $setting->key }}" value="1" {{ $setting->value ? 'checked' : '' }}>
-                                            <label class="form-check-label" for="{{ $setting->key }}">
-                                                {{ $setting->label }}
-                                            </label>
-                                        </div>
-                                    @elseif($setting->type === 'select' && $setting->options)
-                                        <select class="form-select" id="{{ $setting->key }}" name="{{ $setting->key }}">
-                                            @foreach($setting->options as $value => $label)
-                                                <option value="{{ $value }}" {{ $setting->value === $value ? 'selected' : '' }}>
-                                                    {{ $label }}
-                                                </option>
-                                            @endforeach
-                                        </select>
-                                    @else
-                                        <input type="text" class="form-control" id="{{ $setting->key }}" name="{{ $setting->key }}" value="{{ $setting->value }}">
-                                    @endif
-                                </div>
-                            @endforeach
-                        </div>
-                    </div>
-                </div>
-                @endif
-
-                <!-- Appearance Settings -->
-                @if($settingGroups->has('appearance'))
-                <div class="card dashboard-card mb-4">
-                    <div class="card-header">
-                        <h5 class="mb-0">
-                            <i class="fas fa-palette me-2"></i>Appearance Settings
-                        </h5>
-                    </div>
-                    <div class="card-body">
-                        <div class="row">
-                            @foreach($settingGroups['appearance'] as $setting)
-                                <div class="col-md-6 mb-3">
-                                    <label for="{{ $setting->key }}" class="form-label">{{ $setting->label }}</label>
-                                    @if($setting->description)
-                                        <small class="text-muted d-block">{{ $setting->description }}</small>
-                                    @endif
-                                    
-                                    @if($setting->type === 'color')
-                                        <input type="color" class="form-control form-control-color" id="{{ $setting->key }}" name="{{ $setting->key }}" value="{{ $setting->value }}">
-                                    @elseif($setting->type === 'number')
-                                        <input type="number" class="form-control" id="{{ $setting->key }}" name="{{ $setting->key }}" value="{{ $setting->value }}" min="5" max="50">
-                                    @else
-                                        <input type="text" class="form-control" id="{{ $setting->key }}" name="{{ $setting->key }}" value="{{ $setting->value }}">
-                                    @endif
-                                </div>
-                            @endforeach
-                        </div>
-                    </div>
-                </div>
-                @endif
             </div>
             
             <!-- Sidebar -->
@@ -261,6 +165,28 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    // Currency mapping
+    const currencySymbols = {
+        'PKR': 'Rs.',
+        'USD': '$',
+        'EUR': '€',
+        'GBP': '£'
+    };
+    
+    // Auto-update currency symbol based on currency code selection
+    const currencyCodeSelect = document.getElementById('currency_code');
+    const currencySymbolInput = document.getElementById('currency_symbol');
+    
+    if (currencyCodeSelect && currencySymbolInput) {
+        currencyCodeSelect.addEventListener('change', function() {
+            const selectedCode = this.value;
+            if (currencySymbols[selectedCode]) {
+                currencySymbolInput.value = currencySymbols[selectedCode];
+                updateCurrencyPreview();
+            }
+        });
+    }
+    
     // Currency preview update
     function updateCurrencyPreview() {
         const symbol = document.getElementById('currency_symbol')?.value || '$';
@@ -281,6 +207,9 @@ document.addEventListener('DOMContentLoaded', function() {
             element.addEventListener('input', updateCurrencyPreview);
         }
     });
+    
+    // Initial preview update
+    updateCurrencyPreview();
 });
 </script>
 @endsection

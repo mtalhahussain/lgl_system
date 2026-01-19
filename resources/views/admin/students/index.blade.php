@@ -231,7 +231,7 @@
                 <div>
                     Showing {{ $students->firstItem() }} to {{ $students->lastItem() }} of {{ $students->total() }} results
                 </div>
-                {{ $students->links() }}
+                {{ $students->appends(request()->query())->links() }}
             </div>
         @else
             <div class="text-center py-5">

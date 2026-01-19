@@ -208,9 +208,17 @@
                         @if(auth()->user()->isAdmin() || auth()->user()->isAccountant())
                         <!-- Fee Management -->
                         <li class="nav-item">
-                            <a class="nav-link {{ request()->is('fees*') ? 'active' : '' }}" 
+                            <a class="nav-link {{ request()->is('fees*') && !request()->is('fees/reports') ? 'active' : '' }}" 
                                href="{{ url('/fees') }}">
                                 <i class="fas fa-money-bill me-2"></i>Fee Management
+                            </a>
+                        </li>
+                        
+                        <!-- Fee Installments -->
+                        <li class="nav-item">
+                            <a class="nav-link {{ request()->is('installments*') ? 'active' : '' }}" 
+                               href="{{ route('installments.create') }}">
+                                <i class="fas fa-calculator me-2"></i>Create Installments
                             </a>
                         </li>
                         @endif

@@ -88,6 +88,14 @@ Route::middleware('auth')->group(function () {
     Route::get('/fees/batch/{batch}', [App\Http\Controllers\FeeController::class, 'batchFees'])
         ->name('fees.batch')->middleware('role:admin,accountant');
     
+    // Installment Management Routes
+    Route::get('/installments/create', [App\Http\Controllers\InstallmentController::class, 'create'])
+        ->name('installments.create')->middleware('role:admin,accountant');
+    Route::post('/installments', [App\Http\Controllers\InstallmentController::class, 'store'])
+        ->name('installments.store')->middleware('role:admin,accountant');
+    Route::get('/enrollments/{enrollment}/details', [App\Http\Controllers\InstallmentController::class, 'getEnrollmentDetails'])
+        ->name('enrollments.details')->middleware('role:admin,accountant');
+    
     // Attendance Routes
     Route::get('/attendance', [App\Http\Controllers\AttendanceController::class, 'index'])
         ->name('attendance.index')->middleware('role:admin,teacher');

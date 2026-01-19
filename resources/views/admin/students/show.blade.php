@@ -212,7 +212,7 @@
                                                     </span>
                                                 </td>
                                                 <td>
-                                                    {{ $installment->paid_at ? $installment->paid_at->format('d M Y') : '-' }}
+                                                    {{ $installment->paid_date ? \Carbon\Carbon::parse($installment->paid_date)->format('d M Y') : '-' }}
                                                 </td>
                                             </tr>
                                         @endforeach

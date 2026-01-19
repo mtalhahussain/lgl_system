@@ -62,8 +62,8 @@ class FeeController extends Controller
             'overdue_amount' => FeeInstallment::where('status', 'pending')
                 ->where('due_date', '<', now())->sum('amount'),
             'monthly_collection' => FeeInstallment::where('status', 'paid')
-                ->whereMonth('paid_at', now()->month)
-                ->whereYear('paid_at', now()->year)
+                ->whereMonth('paid_date', now()->month)
+                ->whereYear('paid_date', now()->year)
                 ->sum('amount')
         ];
 
@@ -73,8 +73,8 @@ class FeeController extends Controller
     public function pay(Request $request, FeeInstallment $installment)
     {
         $request->validate([
-            'amount_paid' => 'required|numeric|min:0|max:' . $installment->amount,
-            'payment_method' => 'required|in:cash,bank_transfer,card,online',
+            'payment_method' => 'required|in:cash,bank,card,online',
+            'transaction_reference' => 'nullable|string|max:255',
             'notes' => 'nullable|string|max:500'
         ]);
 
@@ -82,27 +82,15 @@ class FeeController extends Controller
         try {
             $installment->update([
                 'status' => 'paid',
-                'amount_paid' => $request->amount_paid,
-                'paid_at' => now(),
+                'paid_date' => now(),
                 'payment_method' => $request->payment_method,
+                'transaction_reference' => $request->transaction_reference,
                 'notes' => $request->notes
             ]);
 
-            // Create partial installment if not fully paid
-            if ($request->amount_paid < $installment->amount) {
-                $remainingAmount = $installment->amount - $request->amount_paid;
-                FeeInstallment::create([
-                    'enrollment_id' => $installment->enrollment_id,
-                    'installment_number' => $installment->installment_number + 0.1,
-                    'amount' => $remainingAmount,
-                    'due_date' => now()->addDays(7), // 1 week grace period
-                    'status' => 'pending'
-                ]);
-            }
-
             DB::commit();
             
-            return back()->with('success', 'Payment recorded successfully!');
+            return back()->with('success', 'Payment recorded successfully! Installment paid: ' . currency_format($installment->amount));
         } catch (\Exception $e) {
             DB::rollBack();
             return back()->withErrors(['error' => 'Failed to record payment: ' . $e->getMessage()]);
@@ -116,32 +104,32 @@ class FeeController extends Controller
         
         // Fee collection report
         $dailyCollection = FeeInstallment::where('status', 'paid')
-            ->whereBetween('paid_at', [$startDate, $endDate])
-            ->selectRaw('DATE(paid_at) as date, SUM(amount_paid) as total')
+            ->whereBetween('paid_date', [$startDate, $endDate])
+            ->selectRaw('DATE(paid_date) as date, SUM(amount) as total')
             ->groupBy('date')
             ->orderBy('date')
             ->get();
 
         // Course-wise collection
-        $courseCollection = FeeInstallment::where('status', 'paid')
-            ->whereBetween('paid_at', [$startDate, $endDate])
+        $courseCollection = FeeInstallment::where('fee_installments.status', 'paid')
+            ->whereBetween('paid_date', [$startDate, $endDate])
             ->join('enrollments', 'fee_installments.enrollment_id', '=', 'enrollments.id')
             ->join('batches', 'enrollments.batch_id', '=', 'batches.id')
             ->join('courses', 'batches.course_id', '=', 'courses.id')
-            ->selectRaw('courses.name as course_name, courses.level, SUM(fee_installments.amount_paid) as total')
+            ->selectRaw('courses.name as course_name, courses.level, SUM(fee_installments.amount) as total')
             ->groupBy('courses.id', 'courses.name', 'courses.level')
             ->get();
 
         // Outstanding dues
-        $outstandingDues = FeeInstallment::where('status', 'pending')
+        $outstandingDues = FeeInstallment::where('fee_installments.status', 'pending')
             ->with(['enrollment.student', 'enrollment.batch.course'])
             ->orderBy('due_date')
             ->get();
 
         // Monthly trends
         $monthlyTrends = FeeInstallment::where('status', 'paid')
-            ->whereYear('paid_at', $request->get('year', now()->year))
-            ->selectRaw('MONTH(paid_at) as month, SUM(amount_paid) as total')
+            ->whereYear('paid_date', $request->get('year', now()->year))
+            ->selectRaw('MONTH(paid_date) as month, SUM(amount) as total')
             ->groupBy('month')
             ->orderBy('month')
             ->get();
@@ -157,7 +145,7 @@ class FeeController extends Controller
         
         $feeStats = [
             'total_fees' => $student->feeInstallments()->sum('amount'),
-            'paid_fees' => $student->feeInstallments()->where('status', 'paid')->sum('amount_paid'),
+            'paid_fees' => $student->feeInstallments()->where('status', 'paid')->sum('amount'),
             'pending_fees' => $student->feeInstallments()->where('status', 'pending')->sum('amount'),
             'overdue_fees' => $student->feeInstallments()
                 ->where('status', 'pending')
@@ -177,7 +165,7 @@ class FeeController extends Controller
                 return $enrollment->feeInstallments->sum('amount');
             }),
             'total_collected' => $batch->enrollments->sum(function($enrollment) {
-                return $enrollment->feeInstallments->where('status', 'paid')->sum('amount_paid');
+                return $enrollment->feeInstallments->where('status', 'paid')->sum('amount');
             }),
             'total_pending' => $batch->enrollments->sum(function($enrollment) {
                 return $enrollment->feeInstallments->where('status', 'pending')->sum('amount');

@@ -224,7 +224,7 @@
                                             @if($enrollment->feeInstallments->isNotEmpty())
                                                 @php
                                                     $totalFees = $enrollment->feeInstallments->sum('amount');
-                                                    $paidFees = $enrollment->feeInstallments->where('status', 'paid')->sum('amount_paid');
+                                                    $paidFees = $enrollment->feeInstallments->where('status', 'paid')->sum('amount');
                                                     $pendingFees = $enrollment->feeInstallments->where('status', 'pending')->sum('amount');
                                                 @endphp
                                                 @if($pendingFees > 0)

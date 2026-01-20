@@ -65,37 +65,68 @@ class TeacherController extends Controller
 
     public function store(Request $request)
     {
-        $request->validate([
+        $rules = [
             'name' => 'required|string|max:255',
             'email' => 'required|string|email|max:255|unique:users',
             'phone' => 'required|string|max:20',
             'address' => 'required|string|max:500',
             'date_of_birth' => 'required|date',
-            'qualification' => 'required|string|max:255',
+            'qualification' => 'nullable|string|max:255',
             'experience_years' => 'required|integer|min:0',
-            'specialization' => 'required|string|max:255',
-            'hourly_rate' => 'required|numeric|min:0',
-            'per_student_rate' => 'required|numeric|min:0'
-        ]);
+            'specialization' => 'nullable|string|max:255',
+            'emergency_contact' => 'nullable|string|max:20',
+            'hire_date' => 'required|date',
+            'password' => 'required|string|min:6',
+            'bio' => 'nullable|string',
+            'salary_type' => 'required|in:monthly,per_batch,per_student',
+        ];
 
-        $teacher = User::create([
-            'name' => $request->name,
-            'email' => $request->email,
-            'password' => Hash::make('teacher123'),
-            'role' => 'teacher',
-            'phone' => $request->phone,
-            'address' => $request->address,
-            'date_of_birth' => $request->date_of_birth,
-            'qualification' => $request->qualification,
-            'experience_years' => $request->experience_years,
-            'specialization' => $request->specialization,
-            'hourly_rate' => $request->hourly_rate,
-            'per_student_rate' => $request->per_student_rate,
-            'employee_id' => 'TCH' . str_pad(User::where('role', 'teacher')->count() + 1, 4, '0', STR_PAD_LEFT)
-        ]);
+        // Add conditional salary validation based on salary type
+        if ($request->salary_type === 'monthly') {
+            $rules['monthly_salary'] = 'required|numeric|min:0';
+        } elseif ($request->salary_type === 'per_batch') {
+            $rules['per_batch_amount'] = 'required|numeric|min:0';
+        } elseif ($request->salary_type === 'per_student') {
+            $rules['per_student_amount'] = 'required|numeric|min:0';
+        }
 
-        return redirect()->route('teachers.index')
-            ->with('success', 'Teacher created successfully!');
+        $request->validate($rules);
+
+        DB::beginTransaction();
+        try {
+            $teacher = User::create([
+                'name' => $request->name,
+                'email' => $request->email,
+                'password' => Hash::make($request->password),
+                'role' => 'teacher',
+                'phone' => $request->phone,
+                'address' => $request->address,
+                'date_of_birth' => $request->date_of_birth,
+                'qualification' => $request->qualification,
+                'experience_years' => $request->experience_years,
+                'specialization' => $request->specialization,
+                'emergency_contact' => $request->emergency_contact,
+                'hire_date' => $request->hire_date,
+                'bio' => $request->bio,
+                'is_active' => $request->has('is_active'),
+                'salary_type' => $request->salary_type,
+                'monthly_salary' => $request->salary_type === 'monthly' ? $request->monthly_salary : null,
+                'per_batch_amount' => $request->salary_type === 'per_batch' ? $request->per_batch_amount : null,
+                'per_student_amount' => $request->salary_type === 'per_student' ? $request->per_student_amount : null,
+                'employee_id' => 'TCH' . str_pad(User::where('role', 'teacher')->count() + 1, 4, '0', STR_PAD_LEFT)
+            ]);
+
+            DB::commit();
+            
+            return redirect()->route('teachers.index')
+                ->with('success', 'Teacher created successfully with salary configuration!');
+                
+        } catch (\Exception $e) {
+            DB::rollback();
+            return redirect()->back()
+                ->withErrors(['error' => 'Failed to create teacher: ' . $e->getMessage()])
+                ->withInput();
+        }
     }
 
     public function show(User $teacher)

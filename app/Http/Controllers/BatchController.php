@@ -13,12 +13,18 @@ class BatchController extends Controller
     public function __construct()
     {
         $this->middleware('auth');
-        $this->middleware('role:admin')->except(['apiIndex', 'apiShow']);
+        $this->middleware('role:admin,teacher')->only(['index', 'show']);
+        $this->middleware('role:admin')->except(['apiIndex', 'apiShow', 'index', 'show']);
     }
 
     public function index(Request $request)
     {
         $query = Batch::with(['course', 'teacher', 'enrollments']);
+        
+        // Filter by teacher for teacher role
+        if (auth()->user()->role === 'teacher') {
+            $query->where('teacher_id', auth()->id());
+        }
         
         if ($request->filled('course_id')) {
             $query->where('course_id', $request->course_id);
@@ -37,12 +43,22 @@ class BatchController extends Controller
         $courses = Course::all();
         $teachers = User::where('role', 'teacher')->get();
         
-        $stats = [
-            'total' => Batch::count(),
-            'active' => Batch::where('status', 'ongoing')->count(),
-            'completed' => Batch::where('status', 'completed')->count(),
-            'upcoming' => Batch::where('status', 'upcoming')->count()
-        ];
+        // Adjust stats for teacher view
+        if (auth()->user()->role === 'teacher') {
+            $stats = [
+                'total' => Batch::where('teacher_id', auth()->id())->count(),
+                'active' => Batch::where('teacher_id', auth()->id())->where('status', 'ongoing')->count(),
+                'completed' => Batch::where('teacher_id', auth()->id())->where('status', 'completed')->count(),
+                'upcoming' => Batch::where('teacher_id', auth()->id())->where('status', 'upcoming')->count()
+            ];
+        } else {
+            $stats = [
+                'total' => Batch::count(),
+                'active' => Batch::where('status', 'ongoing')->count(),
+                'completed' => Batch::where('status', 'completed')->count(),
+                'upcoming' => Batch::where('status', 'upcoming')->count()
+            ];
+        }
 
         return view('admin.batches.index', compact('batches', 'courses', 'teachers', 'stats'));
     }
@@ -86,6 +102,13 @@ class BatchController extends Controller
 
     public function show(Batch $batch)
     {
+        // Check if teacher can view this batch (only their assigned batches)
+        if (auth()->user()->role === 'teacher') {
+            if ($batch->teacher_id !== auth()->id()) {
+                abort(403, 'You can only view your assigned batches.');
+            }
+        }
+
         $batch->load(['course', 'teacher', 'enrollments.student', 'enrollments.feeInstallments', 'classSessions']);
         
         $stats = [

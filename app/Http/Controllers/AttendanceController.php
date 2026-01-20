@@ -18,7 +18,7 @@ class AttendanceController extends Controller
     public function __construct(AttendanceService $attendanceService)
     {
         $this->middleware('auth');
-        $this->middleware('role:admin,teacher')->except(['studentAttendance']);
+        $this->middleware('role:admin,teacher')->except(['myAttendance', 'studentAttendance']);
         $this->attendanceService = $attendanceService;
     }
 
@@ -497,5 +497,69 @@ class AttendanceController extends Controller
         $result = $biometricService->markAbsentStudents($request->session_id);
 
         return response()->json($result);
+    }
+
+    public function myAttendance(Request $request)
+    {
+        $student = auth()->user();
+        
+        // Get student's attendance records with pagination
+        $query = $student->attendances()
+            ->with(['classSession.batch.course', 'classSession.batch'])
+            ->orderBy('created_at', 'desc');
+
+        // Filter by course if requested
+        if ($request->filled('course_id')) {
+            $query->whereHas('classSession.batch', function($q) use ($request) {
+                $q->where('course_id', $request->course_id);
+            });
+        }
+
+        // Filter by month if requested
+        if ($request->filled('month')) {
+            $query->whereMonth('created_at', $request->month);
+        }
+
+        // Filter by year if requested
+        if ($request->filled('year')) {
+            $query->whereYear('created_at', $request->year);
+        }
+
+        $attendances = $query->paginate(20);
+
+        // Get available courses for filtering
+        $courses = $student->enrollments()
+            ->with('batch.course')
+            ->get()
+            ->pluck('batch.course')
+            ->unique('id')
+            ->values();
+
+        // Calculate detailed statistics
+        $stats = [
+            'total_classes' => $student->attendances()->count(),
+            'present_classes' => $student->attendances()->where('status', 'present')->count(),
+            'late_classes' => $student->attendances()->where('status', 'late')->count(),
+            'absent_classes' => $student->attendances()->where('status', 'absent')->count(),
+            'excused_classes' => $student->attendances()->where('status', 'excused')->count(),
+        ];
+
+        $stats['attendance_rate'] = $stats['total_classes'] > 0 
+            ? round((($stats['present_classes'] + $stats['late_classes']) / $stats['total_classes']) * 100, 1)
+            : 0;
+
+        // Monthly attendance breakdown
+        $monthlyStats = $student->attendances()
+            ->selectRaw('YEAR(created_at) as year, MONTH(created_at) as month, 
+                        COUNT(*) as total,
+                        SUM(CASE WHEN status = "present" THEN 1 ELSE 0 END) as present,
+                        SUM(CASE WHEN status = "late" THEN 1 ELSE 0 END) as late,
+                        SUM(CASE WHEN status = "absent" THEN 1 ELSE 0 END) as absent')
+            ->groupByRaw('YEAR(created_at), MONTH(created_at)')
+            ->orderByRaw('YEAR(created_at) DESC, MONTH(created_at) DESC')
+            ->take(6)
+            ->get();
+
+        return view('student.attendance', compact('attendances', 'courses', 'stats', 'monthlyStats'));
     }
 }

@@ -272,97 +272,9 @@
                         Batch not found or you don't have permission to access it.
                     </div>
                 @endif
-                
-                {{-- Debug Information --}}
-                <div class="mt-3">
-                    <details class="bg-light p-3 rounded">
-                        <summary class="fw-bold mb-2 text-primary">🔍 System Debug Information (Click to expand)</summary>
-                        <div class="small">
-                            <strong>User Information:</strong><br>
-                            - Role: {{ auth()->user()->role }}<br>
-                            - User ID: {{ auth()->user()->id }}<br>
-                            - Name: {{ auth()->user()->name }}<br>
-                            <br>
-                            
-                            <strong>Batch Query Results:</strong><br>
-                            - Available Batches: {{ $batches->count() }}<br>
-                            @if($batches->count() == 0)
-                                <span class="text-danger">❌ No batches found!</span><br>
-                                
-                                @php
-                                    // Let's check what batches exist in total
-                                    $allBatches = \App\Models\Batch::with('course', 'teacher')->get();
-                                    $activeBatches = \App\Models\Batch::where('status', 'active')->get();
-                                @endphp
-                                
-                                <br><strong>Database Debug:</strong><br>
-                                - Total Batches in DB: {{ $allBatches->count() }}<br>
-                                - Active Batches in DB: {{ $activeBatches->count() }}<br>
-                                
-                                @if(auth()->user()->role === 'teacher')
-                                    @php
-                                        $teacherBatches = \App\Models\Batch::where('teacher_id', auth()->id())->get();
-                                        $teacherActiveBatches = \App\Models\Batch::where('teacher_id', auth()->id())->where('status', 'active')->get();
-                                    @endphp
-                                    - Your Total Batches: {{ $teacherBatches->count() }}<br>
-                                    - Your Active Batches: {{ $teacherActiveBatches->count() }}<br>
-                                @endif
-                                
-                                @if($allBatches->count() > 0)
-                                    <br><strong>All Batches in Database:</strong><br>
-                                    @foreach($allBatches as $batch)
-                                        - {{ $batch->name }} ({{ $batch->course->name ?? 'No Course' }}, 
-                                          Status: {{ $batch->status }}, 
-                                          Teacher: {{ $batch->teacher->name ?? 'None' }})<br>
-                                    @endforeach
-                                @else
-                                    <span class="text-danger">❌ Database is empty - no batches exist!</span>
-                                @endif
-                            @else
-                                @foreach($batches as $batch)
-                                    - {{ $batch->name }} ({{ $batch->course->name }}, Teacher: {{ $batch->teacher->name ?? 'None' }})<br>
-                                @endforeach
-                            @endif
-                            
-                            @if(request('batch_id'))
-                                <br><strong>Selected Batch Info:</strong><br>
-                                - Batch ID: {{ request('batch_id') }}<br>
-                                - Date: {{ $date }}<br>
-                                
-                                @if($selectedBatch)
-                                    - Name: {{ $selectedBatch->name }}<br>
-                                    - Teacher: {{ $selectedBatch->teacher->name ?? 'None' }}<br>
-                                    - Status: {{ $selectedBatch->status }}<br>
-                                    - Course: {{ $selectedBatch->course->name }}<br>
-                                    <br>
-                                    
-                                    <strong>Enrollment Data:</strong><br>
-                                    @php
-                                        $allEnrollments = $selectedBatch->enrollments;
-                                        $activeEnrollments = $selectedBatch->enrollments->where('status', 'active');
-                                    @endphp
-                                    - Total Enrollments: {{ $allEnrollments->count() }}<br>
-                                    - Active Enrollments: {{ $activeEnrollments->count() }}<br>
-                                    
-                                    @if($allEnrollments->count() > 0)
-                                        <br><strong>All Enrollments:</strong><br>
-                                        @foreach($allEnrollments as $enrollment)
-                                            - Student: {{ $enrollment->student->name ?? 'N/A' }} (Status: {{ $enrollment->status }})<br>
-                                        @endforeach
-                                    @else
-                                        <span class="text-danger">❌ No enrollments found in this batch!</span>
-                                    @endif
-                                @else
-                                    <strong class="text-danger">❌ Selected batch not found or no access</strong>
-                                @endif
-                            @endif
-                        </div>
-                    </details>
-                </div>
             </div>
         </div>
     </div>
-
     <div class="col-md-4">
         @if($selectedBatch)
             <div class="card">

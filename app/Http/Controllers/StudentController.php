@@ -25,7 +25,7 @@ class StudentController extends Controller
         FeeCalculatorService $feeCalculatorService
     ) {
         $this->middleware('auth');
-        $this->middleware('role:admin,accountant')->except(['show', 'dashboard']);
+        $this->middleware('role:admin,accountant,teacher')->only(['index', 'create', 'store', 'edit', 'update', 'destroy', 'enroll', 'enrollFingerprint', 'removeFingerprint']);
         $this->enrollmentService = $enrollmentService;
         $this->feeCalculatorService = $feeCalculatorService;
     }
@@ -35,6 +35,13 @@ class StudentController extends Controller
         $query = User::where('role', 'student')
             ->with(['enrollments.batch.course', 'feeInstallments'])
             ->orderBy('created_at', 'desc');
+
+        // Filter by teacher's batches for teacher role
+        if (auth()->user()->role === 'teacher') {
+            $query->whereHas('enrollments.batch', function($q) {
+                $q->where('teacher_id', auth()->id());
+            });
+        }
 
         // Search functionality
         if ($request->filled('search')) {
@@ -136,6 +143,19 @@ class StudentController extends Controller
             abort(403);
         }
 
+        // Check if teacher can view this student (only their assigned students)
+        if (auth()->user()->role === 'teacher') {
+            $hasAccess = $student->enrollments()
+                ->whereHas('batch', function($q) {
+                    $q->where('teacher_id', auth()->id());
+                })
+                ->exists();
+            
+            if (!$hasAccess) {
+                abort(403, 'You can only view students from your assigned batches.');
+            }
+        }
+
         $student->load([
             'enrollments.batch.course',
             'enrollments.feeInstallments',
@@ -199,33 +219,102 @@ class StudentController extends Controller
         $student = auth()->user();
         $student->load([
             'enrollments.batch.course',
+            'enrollments.batch.classSessions',
             'enrollments.feeInstallments',
-            'attendances.classSession',
+            'attendances.classSession.batch',
             'certificates'
         ]);
 
+        // Calculate comprehensive stats
         $stats = [
             'active_enrollments' => $student->enrollments()->where('status', 'active')->count(),
             'total_paid' => $student->feeInstallments()->where('fee_installments.status', 'paid')->sum('amount'),
             'pending_fees' => $student->feeInstallments()->where('fee_installments.status', 'pending')->sum('amount'),
             'attendance_rate' => $this->calculateAttendanceRate($student),
-            'certificates_earned' => $student->certificates()->count()
+            'certificates_earned' => $student->certificates()->count(),
+            'classes_attended' => $student->attendances()->where('status', 'present')->count(),
+            'total_classes' => $student->attendances()->count(),
+            'overdue_fees' => $student->feeInstallments()
+                ->where('fee_installments.status', 'pending')
+                ->where('fee_installments.due_date', '<', now())
+                ->sum('amount')
         ];
 
+        // Recent attendance with detailed information
         $recentAttendances = $student->attendances()
-            ->with('classSession.batch.course')
+            ->with(['classSession.batch.course', 'classSession.batch'])
             ->orderBy('created_at', 'desc')
             ->take(5)
             ->get();
 
+        // Upcoming fee installments
         $upcomingInstallments = $student->feeInstallments()
-            ->where('status', 'pending')
-            ->where('due_date', '>=', now())
-            ->orderBy('due_date')
+            ->where('fee_installments.status', 'pending')
+            ->where('fee_installments.due_date', '>=', now())
+            ->orderBy('fee_installments.due_date')
             ->take(3)
             ->get();
 
-        return view('student.dashboard', compact('student', 'stats', 'recentAttendances', 'upcomingInstallments'));
+        // Today's and upcoming classes
+        $todayClasses = collect();
+        $upcomingClasses = collect();
+        
+        foreach ($student->enrollments->where('status', 'active') as $enrollment) {
+            // Get today's classes
+            $todayClassSessions = $enrollment->batch->classSessions()
+                ->whereDate('session_date', now())
+                ->where('status', '!=', 'cancelled')
+                ->with(['batch.course', 'attendances' => function($q) use ($student) {
+                    $q->where('student_id', $student->id);
+                }])
+                ->get();
+            $todayClasses = $todayClasses->merge($todayClassSessions);
+
+            // Get upcoming classes (next 7 days)
+            $upcomingClassSessions = $enrollment->batch->classSessions()
+                ->where('session_date', '>', now())
+                ->where('session_date', '<=', now()->addDays(7))
+                ->where('status', '!=', 'cancelled')
+                ->with('batch.course')
+                ->orderBy('session_date')
+                ->take(5)
+                ->get();
+            $upcomingClasses = $upcomingClasses->merge($upcomingClassSessions);
+        }
+
+        // Sort collections
+        $todayClasses = $todayClasses->sortBy('start_time');
+        $upcomingClasses = $upcomingClasses->sortBy('session_date');
+
+        // Attendance summary by course
+        $attendanceSummary = [];
+        foreach ($student->enrollments->where('status', 'active') as $enrollment) {
+            $totalSessions = $enrollment->batch->classSessions()->where('status', 'completed')->count();
+            $attendedSessions = $student->attendances()
+                ->whereHas('classSession.batch', function($q) use ($enrollment) {
+                    $q->where('id', $enrollment->batch_id);
+                })
+                ->where('status', 'present')
+                ->count();
+            
+            $attendanceSummary[] = [
+                'course' => $enrollment->batch->course->name,
+                'batch' => $enrollment->batch->name,
+                'total_sessions' => $totalSessions,
+                'attended_sessions' => $attendedSessions,
+                'attendance_rate' => $totalSessions > 0 ? round(($attendedSessions / $totalSessions) * 100, 1) : 0
+            ];
+        }
+
+        return view('student.dashboard', compact(
+            'student', 
+            'stats', 
+            'recentAttendances', 
+            'upcomingInstallments',
+            'todayClasses',
+            'upcomingClasses',
+            'attendanceSummary'
+        ));
     }
 
     public function enroll(Request $request, User $student)

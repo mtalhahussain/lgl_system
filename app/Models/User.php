@@ -33,6 +33,12 @@ class User extends Authenticatable
         'employee_id',
         'is_active',
         'password',
+        'hire_date',
+        'bio',
+        'salary_type',
+        'monthly_salary',
+        'per_batch_amount',
+        'per_student_amount',
     ];
 
     /**
@@ -65,6 +71,11 @@ class User extends Authenticatable
 
     // Relationships
     public function teachingBatches()
+    {
+        return $this->hasMany(Batch::class, 'teacher_id');
+    }
+
+    public function batches()
     {
         return $this->hasMany(Batch::class, 'teacher_id');
     }

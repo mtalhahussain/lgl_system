@@ -41,16 +41,17 @@ Route::middleware('auth')->group(function () {
     Route::get('/teacher/dashboard', [App\Http\Controllers\TeacherController::class, 'dashboard'])
         ->name('teacher.dashboard')->middleware('role:teacher');
     
-    Route::get('/student/dashboard', [App\Http\Controllers\StudentController::class, 'dashboard'])
-        ->name('student.dashboard')->middleware('role:student');
-    
     Route::get('/accountant/dashboard', function () {
         return view('accountant.dashboard');
     })->name('accountant.dashboard')->middleware('role:accountant');
     
     // Student Management Routes
     Route::resource('students', App\Http\Controllers\StudentController::class)
-        ->middleware('role:admin,accountant');
+        ->middleware('role:admin,accountant')->except(['index', 'show']);
+    Route::get('/students', [App\Http\Controllers\StudentController::class, 'index'])
+        ->name('students.index')->middleware('role:admin,accountant,teacher');
+    Route::get('/students/{student}', [App\Http\Controllers\StudentController::class, 'show'])
+        ->name('students.show')->middleware('role:admin,accountant,teacher,student');
     Route::post('/students/{student}/enroll', [App\Http\Controllers\StudentController::class, 'enroll'])
         ->name('students.enroll')->middleware('role:admin,accountant');
     
@@ -60,13 +61,33 @@ Route::middleware('auth')->group(function () {
     
     // Course Management Routes
     Route::resource('courses', App\Http\Controllers\CourseController::class)
-        ->middleware('role:admin');
+        ->middleware('role:admin')->except(['index', 'show']);
+    Route::get('/courses', [App\Http\Controllers\CourseController::class, 'index'])
+        ->name('courses.index')->middleware('role:admin,teacher');
+    Route::get('/courses/{course}', [App\Http\Controllers\CourseController::class, 'show'])
+        ->name('courses.show')->middleware('role:admin,teacher');
     Route::post('/courses/{course}/toggle-status', [App\Http\Controllers\CourseController::class, 'toggleStatus'])
         ->name('courses.toggle-status')->middleware('role:admin');
     
     // Batch Management Routes
     Route::resource('batches', App\Http\Controllers\BatchController::class)
-        ->middleware('role:admin');
+        ->middleware('role:admin')->except(['index', 'show']);
+    Route::get('/batches', [App\Http\Controllers\BatchController::class, 'index'])
+        ->name('batches.index')->middleware('role:admin,teacher');
+    Route::get('/batches/{batch}', [App\Http\Controllers\BatchController::class, 'show'])
+        ->name('batches.show')->middleware('role:admin,teacher');
+    
+    // Class Session Management Routes
+    Route::resource('class-sessions', App\Http\Controllers\ClassSessionController::class)
+        ->middleware('role:admin,teacher');
+    Route::post('/class-sessions/{classSession}/start', [App\Http\Controllers\ClassSessionController::class, 'start'])
+        ->name('class-sessions.start')->middleware('role:admin,teacher');
+    Route::post('/class-sessions/{classSession}/end', [App\Http\Controllers\ClassSessionController::class, 'end'])
+        ->name('class-sessions.end')->middleware('role:admin,teacher');
+    Route::get('/class-sessions/{classSession}/attendance', [App\Http\Controllers\ClassSessionController::class, 'markAttendance'])
+        ->name('class-sessions.attendance')->middleware('role:admin,teacher');
+    Route::post('/class-sessions/{classSession}/attendance', [App\Http\Controllers\ClassSessionController::class, 'storeAttendance'])
+        ->name('class-sessions.attendance.store')->middleware('role:admin,teacher');
     
     // Enrollment Management Routes
     Route::resource('enrollments', App\Http\Controllers\EnrollmentController::class)
@@ -84,7 +105,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/fees/reports', [App\Http\Controllers\FeeController::class, 'reports'])
         ->name('fees.reports')->middleware('role:admin,accountant');
     Route::get('/fees/student/{student}', [App\Http\Controllers\FeeController::class, 'studentFees'])
-        ->name('fees.student')->middleware('role:admin,accountant');
+        ->name('fees.student')->middleware('role:admin,accountant,student');
     Route::get('/fees/batch/{batch}', [App\Http\Controllers\FeeController::class, 'batchFees'])
         ->name('fees.batch')->middleware('role:admin,accountant');
     
@@ -110,7 +131,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/attendance/reports', [App\Http\Controllers\AttendanceController::class, 'reports'])
         ->name('attendance.reports')->middleware('role:admin,teacher');
     Route::get('/attendance/student/{student}', [App\Http\Controllers\AttendanceController::class, 'studentAttendance'])
-        ->name('attendance.student');
+        ->name('attendance.student')->middleware('role:admin,teacher,student');
     
     // Biometric Attendance Routes
     Route::post('/attendance/biometric/start', [App\Http\Controllers\AttendanceController::class, 'startBiometric'])
@@ -141,4 +162,12 @@ Route::middleware('auth')->group(function () {
         ->name('settings.index')->middleware('role:admin');
     Route::put('/settings', [App\Http\Controllers\SettingController::class, 'update'])
         ->name('settings.update')->middleware('role:admin');
+        
+    // Student Routes (accessible only to students)
+    Route::middleware('role:student')->group(function () {
+        Route::get('/student/dashboard', [App\Http\Controllers\StudentController::class, 'dashboard'])
+            ->name('student.dashboard');
+        Route::get('/student/attendance', [App\Http\Controllers\AttendanceController::class, 'myAttendance'])
+            ->name('student.attendance');
+    });
 });

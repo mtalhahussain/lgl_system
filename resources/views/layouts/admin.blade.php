@@ -165,6 +165,31 @@
                                     <i class="fas fa-tachometer-alt me-2"></i>Dashboard
                                 </a>
                             </li>
+                        @elseif(auth()->user()->isStudent())
+                            <li class="nav-item">
+                                <a class="nav-link {{ request()->routeIs('student.dashboard') ? 'active' : '' }}" 
+                                   href="{{ route('student.dashboard') }}">
+                                    <i class="fas fa-tachometer-alt me-2"></i>Dashboard
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link {{ request()->routeIs('student.attendance') ? 'active' : '' }}" 
+                                   href="{{ route('student.attendance') }}">
+                                    <i class="fas fa-clipboard-check me-2"></i>My Attendance
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link {{ request()->is('students/' . auth()->id()) ? 'active' : '' }}" 
+                                   href="{{ route('students.show', auth()->user()) }}">
+                                    <i class="fas fa-user me-2"></i>My Profile
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link {{ request()->is('fees/student/' . auth()->id()) ? 'active' : '' }}" 
+                                   href="{{ route('fees.student', auth()->user()) }}">
+                                    <i class="fas fa-money-bill-wave me-2"></i>My Fees
+                                </a>
+                            </li>
                         @endif
                         
                         @if(auth()->user()->isAdmin() || auth()->user()->isTeacher())
@@ -192,7 +217,7 @@
                         <li class="nav-item">
                             <a class="nav-link {{ request()->is('courses*') ? 'active' : '' }}" 
                                href="{{ url('/courses') }}">
-                                <i class="fas fa-book me-2"></i>Courses
+                                <i class="fas fa-book me-2"></i>{{ auth()->user()->isTeacher() ? 'View Courses' : 'Courses' }}
                             </a>
                         </li>
                         
@@ -200,7 +225,7 @@
                         <li class="nav-item">
                             <a class="nav-link {{ request()->is('batches*') ? 'active' : '' }}" 
                                href="{{ url('/batches') }}">
-                                <i class="fas fa-calendar-alt me-2"></i>Batches
+                                <i class="fas fa-layer-group me-2"></i>{{ auth()->user()->isTeacher() ? 'My Batches' : 'Batches' }}
                             </a>
                         </li>
                         @endif

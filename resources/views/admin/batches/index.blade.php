@@ -5,13 +5,15 @@
 @section('content')
 <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
     <h1 class="h2">
-        <i class="fas fa-calendar-alt me-2"></i>Batches Management
+        <i class="fas fa-calendar-alt me-2"></i>{{ auth()->user()->isTeacher() ? 'My Batches' : 'Batches Management' }}
     </h1>
+    @if(!auth()->user()->isTeacher())
     <div class="btn-toolbar mb-2 mb-md-0">
         <a href="{{ route('batches.create') }}" class="btn btn-primary">
             <i class="fas fa-plus me-1"></i>Add New Batch
         </a>
     </div>
+    @endif
 </div>
 
 <!-- Statistics Cards -->

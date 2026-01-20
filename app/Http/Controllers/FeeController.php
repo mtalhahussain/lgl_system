@@ -18,7 +18,7 @@ class FeeController extends Controller
     public function __construct(FeeCalculatorService $feeCalculatorService)
     {
         $this->middleware('auth');
-        $this->middleware('role:admin,accountant');
+        $this->middleware('role:admin,accountant')->except(['studentFees']);
         $this->feeCalculatorService = $feeCalculatorService;
     }
 
@@ -141,19 +141,43 @@ class FeeController extends Controller
 
     public function studentFees(User $student)
     {
+        // Check if user is student and can only view their own fees
+        if (auth()->user()->role === 'student' && auth()->id() !== $student->id) {
+            abort(403, 'You can only view your own fees.');
+        }
+        
         $student->load(['enrollments.feeInstallments', 'enrollments.batch.course']);
         
+        // Calculate fee stats correctly
+        $totalFees = 0;
+        $paidFees = 0;
+        $pendingFees = 0;
+        $overdueFees = 0;
+        
+        foreach($student->enrollments as $enrollment) {
+            foreach($enrollment->feeInstallments as $installment) {
+                $totalFees += $installment->amount;
+                if($installment->status === 'paid') {
+                    $paidFees += $installment->amount;
+                } else {
+                    $pendingFees += $installment->amount;
+                    if($installment->due_date < now()) {
+                        $overdueFees += $installment->amount;
+                    }
+                }
+            }
+        }
+        
         $feeStats = [
-            'total_fees' => $student->feeInstallments()->sum('fee_installments.amount'),
-            'paid_fees' => $student->feeInstallments()->where('fee_installments.status', 'paid')->sum('fee_installments.amount'),
-            'pending_fees' => $student->feeInstallments()->where('fee_installments.status', 'pending')->sum('fee_installments.amount'),
-            'overdue_fees' => $student->feeInstallments()
-                ->where('fee_installments.status', 'pending')
-                ->where('fee_installments.due_date', '<', now())
-                ->sum('fee_installments.amount')
+            'total_fees' => $totalFees,
+            'paid_fees' => $paidFees,
+            'pending_fees' => $pendingFees,
+            'overdue_fees' => $overdueFees
         ];
 
-        return view('admin.fees.student', compact('student', 'feeStats'));
+        // Return different views based on user role
+        $view = auth()->user()->role === 'student' ? 'student.fees' : 'admin.fees.student';
+        return view($view, compact('student', 'feeStats'));
     }
 
     public function batchFees(Batch $batch)

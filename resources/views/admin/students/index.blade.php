@@ -5,13 +5,15 @@
 @section('content')
 <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
     <h1 class="h2">
-        <i class="fas fa-users me-2"></i>Students Management
+        <i class="fas fa-users me-2"></i>{{ auth()->user()->isTeacher() ? 'My Students' : 'Students Management' }}
     </h1>
+    @if(!auth()->user()->isTeacher())
     <div class="btn-toolbar mb-2 mb-md-0">
         <a href="{{ route('students.create') }}" class="btn btn-primary">
             <i class="fas fa-plus me-1"></i>Add New Student
         </a>
     </div>
+    @endif
 </div>
 
 <!-- Statistics Cards -->
@@ -228,10 +230,16 @@
             
             <!-- Pagination -->
             <div class="d-flex justify-content-between align-items-center mt-3">
-                <div>
-                    Showing {{ $students->firstItem() }} to {{ $students->lastItem() }} of {{ $students->total() }} results
+                <div class="text-muted">
+                    @if($students->hasPages())
+                        Showing {{ $students->firstItem() }} to {{ $students->lastItem() }} of {{ $students->total() }} results
+                    @else
+                        Showing all {{ $students->total() }} results
+                    @endif
                 </div>
-                {{ $students->appends(request()->query())->links() }}
+                <div class="pagination-wrapper">
+                    {{ $students->appends(request()->query())->links('pagination::bootstrap-4') }}
+                </div>
             </div>
         @else
             <div class="text-center py-5">
@@ -422,6 +430,57 @@ document.addEventListener('DOMContentLoaded', function() {
     padding: 0.125rem 0.25rem;
     font-size: 0.75rem;
     border-radius: 0.25rem;
+}
+
+/* Pagination Styling */
+.pagination-wrapper {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.pagination {
+    margin: 0;
+}
+
+.pagination .page-link {
+    color: #495057;
+    border: 1px solid #dee2e6;
+    padding: 0.5rem 0.75rem;
+    margin: 0 0.125rem;
+    border-radius: 0.25rem;
+    transition: all 0.2s ease;
+}
+
+.pagination .page-link:hover {
+    color: #0056b3;
+    background-color: #e9ecef;
+    border-color: #adb5bd;
+}
+
+.pagination .page-item.active .page-link {
+    background-color: #007bff;
+    border-color: #007bff;
+    color: white;
+}
+
+.pagination .page-item.disabled .page-link {
+    color: #6c757d;
+    background-color: white;
+    border-color: #dee2e6;
+    cursor: not-allowed;
+}
+
+@media (max-width: 768px) {
+    .pagination {
+        flex-wrap: wrap;
+        justify-content: center;
+    }
+    
+    .pagination .page-link {
+        padding: 0.375rem 0.5rem;
+        font-size: 0.875rem;
+    }
 }
 </style>
 @endsection

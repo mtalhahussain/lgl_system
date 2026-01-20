@@ -47,7 +47,7 @@
                                     <option value="{{ $enrollment->id }}" 
                                             data-student="{{ $student->name }}"
                                             data-course="{{ $enrollment->batch->course->name }}"
-                                            data-fees="{{ $enrollment->batch->course->fees }}"
+                                            data-fees="{{ $enrollment->batch->course->total_fee }}"
                                             {{ old('enrollment_id') == $enrollment->id ? 'selected' : '' }}>
                                         {{ $student->name }} - {{ $enrollment->batch->course->name }} ({{ $enrollment->batch->name }})
                                     </option>

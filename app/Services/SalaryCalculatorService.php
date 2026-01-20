@@ -2,237 +2,276 @@
 
 namespace App\Services;
 
+use App\Models\User;
 use App\Models\Batch;
+use App\Models\Enrollment;
 use App\Models\TeacherEarning;
-use App\Models\TeacherLeave;
 use Carbon\Carbon;
 
 class SalaryCalculatorService
 {
     /**
-     * Calculate teacher earnings for a specific batch and month
+     * Calculate teacher salary based on their salary type
+     *
+     * @param User $teacher
+     * @param Carbon $month
+     * @return array
      */
-    public function calculateBatchEarnings($teacherId, $batchId, $year, $month)
+    public function calculateTeacherSalary(User $teacher, Carbon $month = null): array
     {
-        $batch = Batch::with('course', 'activeEnrollments')->find($batchId);
-        
-        if (!$batch || $batch->teacher_id != $teacherId) {
-            throw new \Exception('Invalid batch or teacher mismatch');
+        if (!$month) {
+            $month = Carbon::now();
         }
 
-        // Get active enrollments for the specified month
-        $studentsCount = $batch->activeEnrollments()
-            ->where(function ($query) use ($year, $month) {
-                $query->whereYear('enrollment_date', '<', $year)
-                      ->orWhere(function ($q) use ($year, $month) {
-                          $q->whereYear('enrollment_date', '=', $year)
-                            ->whereMonth('enrollment_date', '<=', $month);
-                      });
-            })
-            ->where(function ($query) use ($year, $month) {
-                // Exclude dropped students who left before this month
-                $query->whereNull('dropout_date')
-                      ->orWhere(function ($q) use ($year, $month) {
-                          $q->whereYear('dropout_date', '>', $year)
-                            ->orWhere(function ($sq) use ($year, $month) {
-                                $sq->whereYear('dropout_date', '=', $year)
-                                   ->whereMonth('dropout_date', '>', $month);
-                            });
-                      });
-            })
-            ->count();
-
-        $perStudentAmount = $batch->course->teacher_per_student_amount;
-        
-        // Calculate unpaid leave deductions
-        $unpaidLeaveDays = $this->getUnpaidLeaveDays($teacherId, $year, $month);
-        $deductionRate = $unpaidLeaveDays > 0 ? $this->calculateDeductionRate($unpaidLeaveDays) : 0;
-        
-        $grossEarning = $studentsCount * $perStudentAmount;
-        $deductionAmount = $grossEarning * ($deductionRate / 100);
-        $totalEarning = $grossEarning - $deductionAmount;
-
-        return [
-            'teacher_id' => $teacherId,
-            'batch_id' => $batchId,
-            'year' => $year,
-            'month' => $month,
-            'students_count' => $studentsCount,
-            'per_student_amount' => $perStudentAmount,
-            'gross_earning' => $grossEarning,
-            'unpaid_leave_days' => $unpaidLeaveDays,
-            'deduction_amount' => $deductionAmount,
-            'total_earning' => $totalEarning,
-        ];
-    }
-
-    /**
-     * Calculate total monthly earnings for a teacher across all batches
-     */
-    public function calculateMonthlyEarnings($teacherId, $year, $month)
-    {
-        $teacher = \App\Models\User::teachers()->findOrFail($teacherId);
-        $batches = $teacher->teachingBatches()
-            ->where('status', 'ongoing')
-            ->whereDate('start_date', '<=', Carbon::create($year, $month)->endOfMonth())
-            ->get();
-
-        $totalEarnings = [];
-        $grandTotal = 0;
-        $totalStudents = 0;
-
-        foreach ($batches as $batch) {
-            $earnings = $this->calculateBatchEarnings($teacherId, $batch->id, $year, $month);
-            $totalEarnings[] = $earnings;
-            $grandTotal += $earnings['total_earning'];
-            $totalStudents += $earnings['students_count'];
-        }
-
-        return [
-            'teacher_id' => $teacherId,
+        $result = [
+            'teacher_id' => $teacher->id,
             'teacher_name' => $teacher->name,
-            'year' => $year,
-            'month' => $month,
-            'batch_earnings' => $totalEarnings,
-            'total_students' => $totalStudents,
-            'grand_total' => $grandTotal,
-            'unpaid_leave_days' => $this->getUnpaidLeaveDays($teacherId, $year, $month),
+            'salary_type' => $teacher->salary_type,
+            'month' => $month->format('Y-m'),
+            'base_amount' => 0,
+            'bonus' => 0,
+            'deductions' => 0,
+            'total_amount' => 0,
+            'details' => [],
+            'batches_info' => []
         ];
+
+        switch ($teacher->salary_type) {
+            case 'monthly':
+                $result = $this->calculateMonthlySalary($teacher, $month, $result);
+                break;
+                
+            case 'per_batch':
+                $result = $this->calculatePerBatchSalary($teacher, $month, $result);
+                break;
+                
+            case 'per_student':
+                $result = $this->calculatePerStudentSalary($teacher, $month, $result);
+                break;
+                
+            default:
+                throw new \InvalidArgumentException('Invalid salary type: ' . $teacher->salary_type);
+        }
+
+        $result['total_amount'] = $result['base_amount'] + $result['bonus'] - $result['deductions'];
+
+        return $result;
     }
 
     /**
-     * Generate or update teacher earnings records
+     * Calculate monthly fixed salary
      */
-    public function generateEarningsRecord($teacherId, $batchId, $year, $month)
+    private function calculateMonthlySalary(User $teacher, Carbon $month, array $result): array
     {
-        $calculations = $this->calculateBatchEarnings($teacherId, $batchId, $year, $month);
+        $result['base_amount'] = $teacher->monthly_salary ?? 0;
+        $result['details'][] = [
+            'type' => 'monthly_salary',
+            'description' => 'Fixed monthly salary',
+            'amount' => $result['base_amount']
+        ];
 
-        return TeacherEarning::updateOrCreate(
-            [
-                'teacher_id' => $teacherId,
-                'batch_id' => $batchId,
-                'year' => $year,
-                'month' => $month,
-            ],
-            [
-                'students_count' => $calculations['students_count'],
-                'per_student_amount' => $calculations['per_student_amount'],
-                'total_earning' => $calculations['total_earning'],
-                'status' => 'pending',
-            ]
-        );
-    }
-
-    /**
-     * Process monthly payroll for all teachers
-     */
-    public function processMonthlyPayroll($year, $month)
-    {
-        $teachers = \App\Models\User::teachers()->active()->get();
-        $processedTeachers = [];
-
-        foreach ($teachers as $teacher) {
-            $batches = $teacher->teachingBatches()
-                ->where('status', 'ongoing')
-                ->whereDate('start_date', '<=', Carbon::create($year, $month)->endOfMonth())
+        // Get active batches for information (if teachingBatches relationship exists)
+        if (method_exists($teacher, 'teachingBatches')) {
+            $activeBatches = $teacher->teachingBatches()
+                ->where('status', 'active')
+                ->with(['course', 'enrollments' => function($q) {
+                    $q->where('status', 'active');
+                }])
                 ->get();
 
-            $teacherTotal = 0;
-            $batchEarnings = [];
-
-            foreach ($batches as $batch) {
-                $earning = $this->generateEarningsRecord($teacher->id, $batch->id, $year, $month);
-                $batchEarnings[] = $earning;
-                $teacherTotal += $earning->total_earning;
-            }
-
-            if ($teacherTotal > 0) {
-                $processedTeachers[] = [
-                    'teacher' => $teacher,
-                    'total_earning' => $teacherTotal,
-                    'batch_earnings' => $batchEarnings,
+            foreach ($activeBatches as $batch) {
+                $result['batches_info'][] = [
+                    'batch_id' => $batch->id,
+                    'course_name' => $batch->course->name,
+                    'student_count' => $batch->enrollments->count(),
+                    'contribution' => 'Fixed monthly salary - not batch dependent'
                 ];
             }
         }
 
-        return $processedTeachers;
+        return $result;
     }
 
     /**
-     * Calculate unpaid leave days for a teacher in a specific month
+     * Calculate per batch salary
      */
-    private function getUnpaidLeaveDays($teacherId, $year, $month)
+    private function calculatePerBatchSalary(User $teacher, Carbon $month, array $result): array
     {
-        $startOfMonth = Carbon::create($year, $month, 1);
-        $endOfMonth = $startOfMonth->copy()->endOfMonth();
+        $totalAmount = 0;
+        
+        // Get batches completed in this month (if teachingBatches relationship exists)
+        if (method_exists($teacher, 'teachingBatches')) {
+            $completedBatches = $teacher->teachingBatches()
+                ->where('status', 'completed')
+                ->whereYear('end_date', $month->year)
+                ->whereMonth('end_date', $month->month)
+                ->with(['course', 'enrollments'])
+                ->get();
 
-        $unpaidLeaves = TeacherLeave::where('teacher_id', $teacherId)
-            ->where('status', 'approved')
-            ->where('type', 'unpaid')
-            ->where(function ($query) use ($startOfMonth, $endOfMonth) {
-                $query->whereBetween('start_date', [$startOfMonth, $endOfMonth])
-                      ->orWhereBetween('end_date', [$startOfMonth, $endOfMonth])
-                      ->orWhere(function ($q) use ($startOfMonth, $endOfMonth) {
-                          $q->where('start_date', '<=', $startOfMonth)
-                            ->where('end_date', '>=', $endOfMonth);
-                      });
-            })
-            ->get();
+            foreach ($completedBatches as $batch) {
+                $batchAmount = $teacher->per_batch_amount ?? 0;
+                $totalAmount += $batchAmount;
 
-        $totalUnpaidDays = 0;
+                $result['details'][] = [
+                    'type' => 'batch_completion',
+                    'description' => 'Completed batch: ' . $batch->course->name,
+                    'amount' => $batchAmount,
+                    'batch_id' => $batch->id
+                ];
 
-        foreach ($unpaidLeaves as $leave) {
-            $leaveStart = Carbon::parse($leave->start_date)->max($startOfMonth);
-            $leaveEnd = Carbon::parse($leave->end_date)->min($endOfMonth);
-            $totalUnpaidDays += $leaveStart->diffInDays($leaveEnd) + 1;
+                $result['batches_info'][] = [
+                    'batch_id' => $batch->id,
+                    'course_name' => $batch->course->name,
+                    'student_count' => $batch->enrollments->count(),
+                    'contribution' => "Rs. " . number_format($batchAmount, 2)
+                ];
+            }
         }
 
-        return $totalUnpaidDays;
+        $result['base_amount'] = $totalAmount;
+
+        return $result;
     }
 
     /**
-     * Calculate deduction rate based on unpaid leave days
+     * Calculate per student salary
      */
-    private function calculateDeductionRate($unpaidDays)
+    private function calculatePerStudentSalary(User $teacher, Carbon $month, array $result): array
     {
-        // Assuming 30 days per month, calculate proportional deduction
-        $workingDaysInMonth = 30;
-        return min(($unpaidDays / $workingDaysInMonth) * 100, 100);
+        $totalAmount = 0;
+        $totalStudents = 0;
+
+        // Get active batches in this month (if teachingBatches relationship exists)
+        if (method_exists($teacher, 'teachingBatches')) {
+            $activeBatches = $teacher->teachingBatches()
+                ->where('status', 'active')
+                ->with(['course', 'enrollments' => function($q) {
+                    $q->where('status', 'active');
+                }])
+                ->get();
+
+            foreach ($activeBatches as $batch) {
+                $activeStudents = $batch->enrollments->count();
+                $batchAmount = $activeStudents * ($teacher->per_student_amount ?? 0);
+                $totalAmount += $batchAmount;
+                $totalStudents += $activeStudents;
+
+                $result['details'][] = [
+                    'type' => 'per_student',
+                    'description' => $batch->course->name . ' (' . $activeStudents . ' students)',
+                    'amount' => $batchAmount,
+                    'batch_id' => $batch->id,
+                    'student_count' => $activeStudents
+                ];
+
+                $result['batches_info'][] = [
+                    'batch_id' => $batch->id,
+                    'course_name' => $batch->course->name,
+                    'student_count' => $activeStudents,
+                    'contribution' => "Rs. " . number_format($batchAmount, 2) . " ({$activeStudents} × " . number_format($teacher->per_student_amount, 2) . ")"
+                ];
+            }
+        }
+
+        $result['base_amount'] = $totalAmount;
+        $result['total_students'] = $totalStudents;
+
+        return $result;
     }
 
     /**
-     * Get teacher earnings summary for a period
+     * Generate teacher earning record
      */
-    public function getEarningsSummary($teacherId, $startYear, $startMonth, $endYear = null, $endMonth = null)
+    public function generateTeacherEarning(User $teacher, Carbon $month = null): ?TeacherEarning
     {
-        $endYear = $endYear ?? $startYear;
-        $endMonth = $endMonth ?? $startMonth;
+        $calculation = $this->calculateTeacherSalary($teacher, $month);
 
-        $earnings = TeacherEarning::where('teacher_id', $teacherId)
-            ->where(function ($query) use ($startYear, $startMonth, $endYear, $endMonth) {
-                $query->where('year', '>', $startYear)
-                      ->orWhere(function ($q) use ($startYear, $startMonth) {
-                          $q->where('year', '=', $startYear)
-                            ->where('month', '>=', $startMonth);
-                      });
-            })
-            ->where(function ($query) use ($endYear, $endMonth) {
-                $query->where('year', '<', $endYear)
-                      ->orWhere(function ($q) use ($endYear, $endMonth) {
-                          $q->where('year', '=', $endYear)
-                            ->where('month', '<=', $endMonth);
-                      });
-            })
-            ->with('batch.course')
+        // Only create earning record if there's a base amount
+        if ($calculation['base_amount'] > 0) {
+            return TeacherEarning::create([
+                'user_id' => $teacher->id,
+                'month' => $calculation['month'],
+                'base_salary' => $calculation['base_amount'],
+                'bonus' => $calculation['bonus'],
+                'deductions' => $calculation['deductions'],
+                'total_earning' => $calculation['total_amount'],
+                'calculation_details' => json_encode($calculation)
+            ]);
+        }
+
+        return null;
+    }
+
+    /**
+     * Get salary preview for UI
+     */
+    public function getSalaryPreview(string $salaryType, float $amount, array $batchData = []): array
+    {
+        switch ($salaryType) {
+            case 'monthly':
+                return [
+                    'type' => 'Monthly Fixed',
+                    'amount' => number_format($amount, 2),
+                    'description' => 'Fixed amount paid monthly',
+                    'example' => "Teacher will receive Rs. " . number_format($amount, 2) . " every month"
+                ];
+
+            case 'per_batch':
+                $exampleBatches = count($batchData) > 0 ? count($batchData) : 2;
+                return [
+                    'type' => 'Per Batch',
+                    'amount' => number_format($amount, 2),
+                    'description' => 'Amount paid per completed batch',
+                    'example' => "If {$exampleBatches} batches completed in a month: Rs. " . 
+                               number_format($amount * $exampleBatches, 2)
+                ];
+
+            case 'per_student':
+                $exampleStudents = 0;
+                if (count($batchData) > 0) {
+                    foreach ($batchData as $batch) {
+                        $exampleStudents += $batch['student_count'] ?? 0;
+                    }
+                } else {
+                    $exampleStudents = 15; // Default example
+                }
+                
+                return [
+                    'type' => 'Per Student',
+                    'amount' => number_format($amount, 2),
+                    'description' => 'Amount paid per student per month',
+                    'example' => "With {$exampleStudents} total students: Rs. " . 
+                               number_format($amount * $exampleStudents, 2) . " per month"
+                ];
+
+            default:
+                return [
+                    'type' => 'Unknown',
+                    'amount' => '0.00',
+                    'description' => 'Invalid salary type',
+                    'example' => 'Please select a valid salary type'
+                ];
+        }
+    }
+
+    /**
+     * Calculate all teachers salaries for a month
+     */
+    public function calculateAllTeachersSalary(Carbon $month = null): array
+    {
+        if (!$month) {
+            $month = Carbon::now();
+        }
+
+        $teachers = User::where('role', 'teacher')
+            ->where('is_active', true)
             ->get();
 
-        return [
-            'total_earning' => $earnings->sum('total_earning'),
-            'total_paid' => $earnings->sum('paid_amount'),
-            'total_pending' => $earnings->sum('total_earning') - $earnings->sum('paid_amount'),
-            'earnings_by_month' => $earnings->groupBy(function ($item) {
-                return $item->year . '-' . str_pad($item->month, 2, '0', STR_PAD_LEFT);
-            }),
-        ];
+        $results = [];
+        foreach ($teachers as $teacher) {
+            $results[] = $this->calculateTeacherSalary($teacher, $month);
+        }
+
+        return $results;
     }
 }

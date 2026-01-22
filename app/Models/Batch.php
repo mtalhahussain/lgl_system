@@ -9,6 +9,17 @@ class Batch extends Model
 {
     use HasFactory;
 
+    public function teacherPayments()
+    {
+        return $this->hasManyThrough(\App\Models\TeacherPayment::class, \App\Models\BatchTeacherEarning::class, 'batch_id', 'batch_teacher_earning_id');
+    }
+
+    public function batchTeacherEarnings()
+    {
+        return $this->hasMany(\App\Models\BatchTeacherEarning::class);
+    }
+    use HasFactory;
+
     protected $fillable = [
         'course_id',
         'teacher_id',

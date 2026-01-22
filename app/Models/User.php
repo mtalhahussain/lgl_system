@@ -9,6 +9,17 @@ use Illuminate\Notifications\Notifiable;
 
 class User extends Authenticatable
 {
+    use HasFactory, Notifiable;
+
+    public function teacherPayments()
+    {
+        return $this->hasManyThrough(\App\Models\TeacherPayment::class, \App\Models\BatchTeacherEarning::class, 'teacher_id', 'batch_teacher_earning_id');
+    }
+
+    public function batchTeacherEarnings()
+    {
+        return $this->hasMany(\App\Models\BatchTeacherEarning::class, 'teacher_id');
+    }
     /** @use HasFactory<\Database\Factories\UserFactory> */
     use HasFactory, Notifiable;
 

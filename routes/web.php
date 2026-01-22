@@ -14,6 +14,11 @@ Route::middleware('guest')->group(function () {
 
 // Authenticated Routes
 Route::middleware('auth')->group(function () {
+
+        // Teacher Payment Management Routes
+        Route::get('/teacher-payments', [App\Http\Controllers\TeacherPaymentController::class, 'index'])->name('teacher_payments.index')->middleware('role:admin');
+        Route::get('/teacher-payments/create', [App\Http\Controllers\TeacherPaymentController::class, 'create'])->name('teacher_payments.create')->middleware('role:admin');
+        Route::post('/teacher-payments', [App\Http\Controllers\TeacherPaymentController::class, 'store'])->name('teacher_payments.store')->middleware('role:admin');
     Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
     
     // Dashboard Routes based on role

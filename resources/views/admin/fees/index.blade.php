@@ -267,7 +267,8 @@
                     <div class="mb-3">
                         <label class="form-label">Transaction Reference</label>
                         <input type="text" name="transaction_reference" class="form-control" 
-                               placeholder="Receipt number, transaction ID, etc.">
+                               placeholder="Auto-generated" value="{{ uniqid('TXN') }}" readonly>
+                        <small class="text-muted">This will be auto-generated and unique.</small>
                     </div>
                     
                     <div class="mb-3">

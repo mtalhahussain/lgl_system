@@ -96,6 +96,25 @@ class BatchController extends Controller
             'status' => Carbon::parse($request->start_date)->isFuture() ? 'upcoming' : 'ongoing'
         ]);
 
+        // Snapshot teacher's salary info for this batch
+        $teacher = User::find($request->teacher_id);
+        $salaryType = $teacher->salary_type;
+        if ($salaryType === 'monthly') {
+            $salaryAmount = $teacher->monthly_salary;
+        } elseif ($salaryType === 'per_batch') {
+            $salaryAmount = $teacher->per_batch_amount;
+        } elseif ($salaryType === 'per_student') {
+            $salaryAmount = $teacher->per_student_amount;
+        } else {
+            $salaryAmount = 0;
+        }
+        \App\Models\BatchTeacherEarning::create([
+            'batch_id' => $batch->id,
+            'teacher_id' => $teacher->id,
+            'salary_type' => $salaryType,
+            'salary_amount' => $salaryAmount,
+        ]);
+
         return redirect()->route('batches.index')
             ->with('success', 'Batch created successfully!');
     }

@@ -288,6 +288,53 @@
             </div>
 
             <!-- Fee Summary -->
+                    <!-- Teacher Payment Summary -->
+                    <div class="card dashboard-card mt-4">
+                        <div class="card-header">
+                            <h5 class="mb-0">
+                                <i class="fas fa-money-check-alt me-2"></i>Teacher Payment
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            @php
+                                $batchEarning = $batch->batchTeacherEarnings->first();
+                                $payments = $batchEarning ? $batchEarning->teacherPayments : collect();
+                                $totalPaid = $payments->sum('amount');
+                            @endphp
+                            <div class="mb-2">
+                                <strong>Teacher:</strong> {{ $batchEarning->teacher->name ?? $batch->teacher->name ?? '-' }}<br>
+                                <strong>Salary Type:</strong> {{ ucfirst($batchEarning->salary_type ?? $batch->teacher->salary_type ?? '-') }}<br>
+                                <strong>Salary Amount:</strong> {{ isset($batchEarning) ? number_format($batchEarning->salary_amount, 2) : '-' }}
+                            </div>
+                            <div class="mb-2">
+                                <strong>Total Paid:</strong> <span class="text-success">{{ number_format($totalPaid, 2) }}</span>
+                            </div>
+                            <a href="{{ route('teacher_payments.create') }}?batch_id={{ $batch->id }}" class="btn btn-sm btn-primary mb-2">Record Payment</a>
+                            <h6>Payment History</h6>
+                            <table class="table table-sm table-bordered">
+                                <thead>
+                                    <tr>
+                                        <th>Date</th>
+                                        <th>Amount</th>
+                                        <th>Reference</th>
+                                        <th>Notes</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @forelse($payments as $payment)
+                                        <tr>
+                                            <td>{{ $payment->payment_date }}</td>
+                                            <td>{{ number_format($payment->amount, 2) }}</td>
+                                            <td>{{ $payment->reference }}</td>
+                                            <td>{{ $payment->notes }}</td>
+                                        </tr>
+                                    @empty
+                                        <tr><td colspan="4" class="text-center">No payments recorded.</td></tr>
+                                    @endforelse
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
             <div class="card dashboard-card">
                 <div class="card-header">
                     <h5 class="mb-0">

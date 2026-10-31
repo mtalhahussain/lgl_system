@@ -22,6 +22,7 @@ class Enrollment extends Model
         'transfer_date',
         'dropout_date',
         'dropout_reason',
+        'transferred_from_enrollment_id',
     ];
 
     protected function casts(): array
@@ -57,6 +58,11 @@ class Enrollment extends Model
         return $this->hasMany(FeeInstallment::class);
     }
 
+    public function payments()
+    {
+        return $this->hasMany(Payment::class);
+    }
+
     // Scopes
     public function scopeActive($query)
     {
@@ -76,13 +82,17 @@ class Enrollment extends Model
     // Helper methods
     public function getRemainingFeeAttribute()
     {
-        return $this->total_fee - $this->paid_amount - $this->discount_amount;
+        if ($this->status === 'transferred') {
+            return '0.00';
+        }
+        return \App\Support\Money::decimal(max(0, \App\Support\Money::minor($this->total_fee)
+            - \App\Support\Money::minor($this->paid_amount) - \App\Support\Money::minor($this->discount_amount)));
     }
 
     public function getPaymentProgressPercentageAttribute()
     {
-        if ($this->total_fee == 0) return 100;
-        return ($this->paid_amount / $this->total_fee) * 100;
+        $net = \App\Support\Money::minor($this->total_fee) - \App\Support\Money::minor($this->discount_amount);
+        return $net > 0 ? (\App\Support\Money::minor($this->paid_amount) / $net) * 100 : 100;
     }
 
     public function isFullyPaid()

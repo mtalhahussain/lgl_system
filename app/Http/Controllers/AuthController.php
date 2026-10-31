@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Validation\ValidationException;
 
 class AuthController extends Controller
@@ -22,8 +23,14 @@ class AuthController extends Controller
 
         $credentials = $request->only('email', 'password');
         $remember = $request->boolean('remember');
+        $throttleKey = 'login:'.hash('sha256', strtolower(trim($request->string('email'))).'|'.$request->ip());
+        if (RateLimiter::tooManyAttempts($throttleKey, 5)) {
+            throw ValidationException::withMessages([
+                'email' => 'Too many login attempts. Try again in '.RateLimiter::availableIn($throttleKey).' seconds.',
+            ]);
+        }
 
-        if (Auth::attempt($credentials, $remember)) {
+        if (Auth::attemptWhen($credentials, fn ($user) => in_array($user->role, \App\Models\User::ROLES, true), $remember)) {
             $request->session()->regenerate();
             
             $user = Auth::user();
@@ -31,10 +38,15 @@ class AuthController extends Controller
             // Check if user is active
             if (!$user->is_active) {
                 Auth::logout();
+                $request->session()->invalidate();
+                $request->session()->regenerateToken();
+                RateLimiter::hit($throttleKey, 60);
                 return back()->withErrors([
                     'email' => 'Your account is not active. Please contact administration.',
                 ]);
             }
+
+            RateLimiter::clear($throttleKey);
 
             // Redirect based on user role
             switch ($user->role) {
@@ -44,13 +56,12 @@ class AuthController extends Controller
                     return redirect()->intended('/teacher/dashboard');
                 case 'student':
                     return redirect()->intended('/student/dashboard');
-                case 'accountant':
-                    return redirect()->intended('/accountant/dashboard');
                 default:
                     return redirect()->intended('/dashboard');
             }
         }
 
+        RateLimiter::hit($throttleKey, 60);
         throw ValidationException::withMessages([
             'email' => __('The provided credentials do not match our records.'),
         ]);

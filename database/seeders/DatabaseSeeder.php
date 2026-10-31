@@ -19,45 +19,39 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
+        if (!app()->environment(['local', 'testing'])) {
+            throw new \RuntimeException('Demo seeding is allowed only in local or testing environments.');
+        }
         // Seed Settings first
         $this->call(SettingsSeeder::class);
         // Create Admin User
         $admin = User::create([
             'name' => 'System Administrator',
-            'email' => 'admin@germanlanguage.de',
-            'password' => Hash::make('admin123'),
+            'email' => 'admin@admin.com',
+            'password' => Hash::make('password'),
             'role' => 'admin',
-            'phone' => '+49 123 456 7890',
+            'phone' => '+92 123 456 7890',
             'is_active' => true,
         ]);
 
-        // Create Accountant
-        $accountant = User::create([
-            'name' => 'Finance Manager',
-            'email' => 'accounts@germanlanguage.de',
-            'password' => Hash::make('accounts123'),
-            'role' => 'accountant',
-            'phone' => '+49 123 456 7891',
-            'is_active' => true,
-        ]);
 
         // Create Teachers
         $teacher1 = User::create([
             'name' => 'Hans Mueller',
-            'email' => 'hans.mueller@germanlanguage.de',
-            'password' => Hash::make('teacher123'),
+            'email' => 'teacher@lgl.com',
+            'password' => Hash::make('password'),
             'role' => 'teacher',
-            'phone' => '+49 123 456 7892',
+            'phone' => '+92 123 456 7892',
             'hourly_rate' => 50.00,
             'is_active' => true,
         ]);
 
         $teacher2 = User::create([
             'name' => 'Anna Schmidt',
-            'email' => 'anna.schmidt@germanlanguage.de',
-            'password' => Hash::make('teacher123'),
+            'email' => 'teacher1@lgl.com',
+            'password' => Hash::make('password'),
             'role' => 'teacher',
-            'phone' => '+49 123 456 7893',
+            'phone' => '+92 123 456 7893',
             'hourly_rate' => 55.00,
             'is_active' => true,
         ]);
@@ -66,13 +60,13 @@ class DatabaseSeeder extends Seeder
         for ($i = 1; $i <= 20; $i++) {
             User::create([
                 'name' => 'Student ' . $i,
-                'email' => "student{$i}@example.com",
-                'password' => Hash::make('student123'),
+                'email' => "student{$i}@lgl.com",
+                'password' => Hash::make('password'),
                 'role' => 'student',
-                'phone' => '+49 123 456 ' . (8000 + $i),
+                'phone' => '+92 123 456 ' . (8000 + $i),
                 'date_of_birth' => now()->subYears(rand(18, 45))->format('Y-m-d'),
                 'address' => 'Student Address ' . $i . ', Berlin, Germany',
-                'emergency_contact' => '+49 123 999 ' . (1000 + $i),
+                'emergency_contact' => '+92 123 999 ' . (1000 + $i),
                 'is_active' => true,
             ]);
         }
@@ -172,35 +166,18 @@ class DatabaseSeeder extends Seeder
             foreach ($students as $student) {
                 // Check if student is already enrolled in this batch
                 if (!$batch->activeEnrollments()->where('student_id', $student->id)->exists()) {
-                    $enrollment = Enrollment::create([
-                        'batch_id' => $batch->id,
-                        'student_id' => $student->id,
-                        'enrollment_date' => now()->subDays(rand(1, 20)),
-                        'status' => 'active',
-                        'total_fee' => $course->total_fee,
-                        'discount_amount' => rand(0, 1) ? rand(1000, 3000) : 0,
-                        'paid_amount' => rand(5000, $course->total_fee * 0.7),
-                    ]);
-
-                    // Create installments for this enrollment
-                    $remainingAmount = $enrollment->total_fee - $enrollment->discount_amount - $enrollment->paid_amount;
-                    if ($remainingAmount > 0) {
-                        \App\Models\FeeInstallment::create([
-                            'enrollment_id' => $enrollment->id,
-                            'amount' => $remainingAmount,
-                            'due_date' => now()->addDays(rand(7, 30)),
-                            'status' => 'pending',
-                        ]);
-                    }
+                    $enrollment = app(\App\Services\EnrollmentService::class)->enrollStudent(
+                        $student->id, $batch->id, rand(0, 1) ? 10 : 0, 3
+                    );
+                    $net = \App\Support\Money::minor($enrollment->total_fee) - \App\Support\Money::minor($enrollment->discount_amount);
+                    app(\App\Services\PaymentService::class)->pay(
+                        $enrollment->id, \App\Support\Money::decimal(intdiv($net, 2)), 'cash',
+                        (string) \Illuminate\Support\Str::uuid(), $admin, 'Demo seed payment'
+                    );
                 }
             }
         }
 
-        echo "✅ Database seeded successfully!\n";
-        echo "Admin: admin@germanlanguage.de / admin123\n";
-        echo "Accountant: accounts@germanlanguage.de / accounts123\n";
-        echo "Teacher 1: hans.mueller@germanlanguage.de / teacher123\n";
-        echo "Teacher 2: anna.schmidt@germanlanguage.de / teacher123\n";
-        echo "Students: student1@example.com to student20@example.com / student123\n";
+        $this->command?->info('Demo data seeded: Admin, Teacher and Student accounts');
     }
 }

@@ -12,7 +12,7 @@ class FeeInstallmentPolicy
      */
     public function viewAny(User $user): bool
     {
-        return in_array($user->role, ['admin', 'accountant']);
+        return in_array($user->role, ['admin']);
     }
 
     /**
@@ -20,8 +20,8 @@ class FeeInstallmentPolicy
      */
     public function view(User $user, FeeInstallment $installment): bool
     {
-        // Admin and accountant can view all installments
-        if (in_array($user->role, ['admin', 'accountant'])) {
+        // Admin can view all installments
+        if (in_array($user->role, ['admin'])) {
             return true;
         }
 
@@ -38,7 +38,7 @@ class FeeInstallmentPolicy
      */
     public function create(User $user): bool
     {
-        return in_array($user->role, ['admin', 'accountant']);
+        return in_array($user->role, ['admin']);
     }
 
     /**
@@ -46,7 +46,7 @@ class FeeInstallmentPolicy
      */
     public function update(User $user, FeeInstallment $installment): bool
     {
-        return in_array($user->role, ['admin', 'accountant']);
+        return in_array($user->role, ['admin']);
     }
 
     /**
@@ -62,7 +62,7 @@ class FeeInstallmentPolicy
      */
     public function processPayment(User $user, FeeInstallment $installment): bool
     {
-        return in_array($user->role, ['admin', 'accountant']);
+        return in_array($user->role, ['admin']);
     }
 
     /**
@@ -70,7 +70,7 @@ class FeeInstallmentPolicy
      */
     public function markPaid(User $user, FeeInstallment $installment): bool
     {
-        return in_array($user->role, ['admin', 'accountant']);
+        return in_array($user->role, ['admin']);
     }
 
     /**
@@ -78,7 +78,7 @@ class FeeInstallmentPolicy
      */
     public function cancel(User $user, FeeInstallment $installment): bool
     {
-        return in_array($user->role, ['admin', 'accountant']);
+        return in_array($user->role, ['admin']);
     }
 
     /**
@@ -94,6 +94,6 @@ class FeeInstallmentPolicy
      */
     public function generateReminders(User $user): bool
     {
-        return in_array($user->role, ['admin', 'accountant']);
+        return in_array($user->role, ['admin']);
     }
 }

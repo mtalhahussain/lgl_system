@@ -9,6 +9,8 @@ class ClassSession extends Model
 {
     use HasFactory;
 
+    protected $attributes = ['auto_absent_enabled' => false];
+
     protected $fillable = [
         'batch_id',
         'session_date',
@@ -44,6 +46,33 @@ class ClassSession extends Model
         return $this->hasMany(Attendance::class);
     }
 
+    public function validateAttendanceStudents(array $studentIds): void
+    {
+        if ($this->status === 'cancelled' || $this->batch->status === 'cancelled') {
+            throw \Illuminate\Validation\ValidationException::withMessages(['attendance' => 'Cancelled sessions or batches cannot receive attendance.']);
+        }
+        $eligibleIds = $this->eligibleEnrollments()->pluck('student_id')->map(fn ($id) => (string) $id)->all();
+        $submittedIds = array_map('strval', $studentIds);
+
+        if (array_diff($submittedIds, $eligibleIds) || count($submittedIds) !== count(array_unique($submittedIds))) {
+            throw \Illuminate\Validation\ValidationException::withMessages([
+                'attendance' => 'Attendance must contain distinct students enrolled in this batch on the session date.',
+            ]);
+        }
+    }
+
+    public function eligibleEnrollments()
+    {
+        return $this->batch->enrollments()
+            ->where(function ($query) {
+                $query->whereIn('status', ['active', 'completed'])
+                    ->orWhere(fn ($query) => $query->where('status', 'transferred')->whereDate('transfer_date', '>=', $this->session_date))
+                    ->orWhere(fn ($query) => $query->where('status', 'dropped')->whereDate('dropout_date', '>=', $this->session_date));
+            })
+            ->whereDate('enrollment_date', '<=', $this->session_date)
+            ->whereHas('student', fn ($query) => $query->where('role', 'student'));
+    }
+
     // Scopes
     public function scopeToday($query)
     {
@@ -53,7 +82,7 @@ class ClassSession extends Model
     public function scopeUpcoming($query)
     {
         return $query->where('session_date', '>=', now()->toDateString())
-                    ->where('status', 'scheduled');
+            ->where('status', 'scheduled');
     }
 
     public function scopeCompleted($query)
@@ -65,21 +94,20 @@ class ClassSession extends Model
     public function getAttendanceRate()
     {
         $totalStudents = $this->batch->activeEnrollments()->count();
-        if ($totalStudents == 0) return 0;
+        if ($totalStudents == 0) {
+            return 0;
+        }
 
         $presentCount = $this->attendances()->where('status', 'present')->count();
+
         return ($presentCount / $totalStudents) * 100;
     }
 
     public function markAttendance($studentId, $status, $checkInTime = null)
     {
-        return $this->attendances()->updateOrCreate(
-            ['student_id' => $studentId],
-            [
-                'status' => $status,
-                'check_in_time' => $checkInTime ?? ($status === 'present' ? now()->format('H:i:s') : null),
-            ]
-        );
+        app(\App\Services\AttendanceService::class)->markBulkAttendance($this->id, [['student_id' => $studentId, 'status' => $status]]);
+
+        return $this->attendances()->where('student_id', $studentId)->sole();
     }
 
     public function isOnline()

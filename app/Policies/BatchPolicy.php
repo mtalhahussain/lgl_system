@@ -12,7 +12,7 @@ class BatchPolicy
      */
     public function viewAny(User $user): bool
     {
-        return in_array($user->role, ['admin', 'teacher', 'accountant']);
+        return in_array($user->role, ['admin', 'teacher']);
     }
 
     /**
@@ -20,8 +20,8 @@ class BatchPolicy
      */
     public function view(User $user, Batch $batch): bool
     {
-        // Admin and accountant can view all batches
-        if (in_array($user->role, ['admin', 'accountant'])) {
+        // Admin can view all batches
+        if (in_array($user->role, ['admin'])) {
             return true;
         }
 
@@ -79,7 +79,7 @@ class BatchPolicy
      */
     public function manageEnrollments(User $user, Batch $batch): bool
     {
-        return in_array($user->role, ['admin', 'accountant']);
+        return in_array($user->role, ['admin']);
     }
 
     /**
@@ -87,7 +87,7 @@ class BatchPolicy
      */
     public function viewFinancials(User $user, Batch $batch): bool
     {
-        return in_array($user->role, ['admin', 'accountant']);
+        return in_array($user->role, ['admin']);
     }
 
     /**

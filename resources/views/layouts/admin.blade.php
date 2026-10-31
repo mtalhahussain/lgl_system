@@ -6,121 +6,33 @@
     <title>@yield('title') - {{ institute_name() }}</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-    <style>
-        body {
-            background-color: #f8f9fa;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        }
-        .navbar {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        }
-        .sidebar {
-            background: white;
-            min-height: calc(100vh - 56px);
-            box-shadow: 0 0 10px rgba(0,0,0,0.1);
-        }
-        .sidebar .nav-link {
-            color: #333;
-            padding: 12px 20px;
-            border-radius: 8px;
-            margin: 2px 10px;
-            transition: all 0.3s ease;
-        }
-        .sidebar .nav-link:hover {
-            background-color: #f8f9fa;
-            color: #667eea;
-            transform: translateX(5px);
-        }
-        .sidebar .nav-link.active {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-        }
-        .dashboard-card {
-            background: white;
-            border-radius: 15px;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.08);
-            border: none;
-            transition: transform 0.3s ease;
-        }
-        .dashboard-card:hover {
-            transform: translateY(-2px);
-        }
-        .stat-card {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-        }
-        .stat-card-success {
-            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
-            color: white;
-        }
-        .stat-card-warning {
-            background: linear-gradient(135deg, #ffc107 0%, #fd7e14 100%);
-            color: white;
-        }
-        .stat-card-info {
-            background: linear-gradient(135deg, #17a2b8 0%, #6f42c1 100%);
-            color: white;
-        }
-        .stat-card-danger {
-            background: linear-gradient(135deg, #dc3545 0%, #e91e63 100%);
-            color: white;
-        }
-        .content-wrapper {
-            min-height: calc(100vh - 56px);
-        }
-        .btn-primary {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            border: none;
-        }
-        .btn-primary:hover {
-            background: linear-gradient(135deg, #5a6fd8 0%, #6b4190 100%);
-            transform: translateY(-1px);
-        }
-        .table th {
-            border-top: none;
-            font-weight: 600;
-            color: #495057;
-        }
-        .badge {
-            font-size: 0.75em;
-        }
-        .form-control:focus, .form-select:focus {
-            border-color: #667eea;
-            box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
-        }
-        .alert {
-            border-radius: 10px;
-        }
-        .pagination .page-link {
-            color: #667eea;
-        }
-        .pagination .page-item.active .page-link {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            border-color: #667eea;
-        }
-    </style>
+    @vite(['resources/css/app.css', 'resources/js/app.js'])
     @stack('styles')
 </head>
-<body>
+<body class="app-body">
+    <a class="skip-link" href="#mainContent">Skip to content</a>
     <!-- Navigation -->
-    <nav class="navbar navbar-expand-lg navbar-dark">
+    <nav class="navbar navbar-expand-md navbar-light app-topbar">
         <div class="container-fluid">
-            <a class="navbar-brand" href="{{ route('admin.dashboard') }}">
-                <i class="fas fa-graduation-cap me-2"></i>
+            <a class="navbar-brand" href="{{ route('dashboard') }}" title="{{ institute_name() }}">
+                <span class="brand-mark"><i class="fas fa-graduation-cap" aria-hidden="true"></i></span>
                 {{ institute_name() }}
             </a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
-                <span class="navbar-toggler-icon"></span>
+            <button class="navbar-toggler d-md-none" type="button" data-bs-toggle="collapse" data-bs-target="#appSidebar" aria-controls="appSidebar" aria-expanded="false" aria-label="Toggle navigation menu">
+                <i class="fas fa-bars" aria-hidden="true"></i>
+            </button>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle account menu">
+                <i class="fas fa-user-circle" aria-hidden="true"></i>
             </button>
             <div class="collapse navbar-collapse" id="navbarNav">
                 <div class="navbar-nav ms-auto">
                     <div class="nav-item dropdown">
                         <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
-                            <i class="fas fa-user-circle me-2"></i>{{ auth()->user()->name }}
+                            <span class="user-avatar">{{ mb_substr(auth()->user()->name, 0, 1) }}</span><span class="account-label">{{ auth()->user()->name }}<small>{{ ucfirst(auth()->user()->role) }} workspace</small></span>
                         </a>
-                        <ul class="dropdown-menu">
-                            <li><a class="dropdown-item" href="#"><i class="fas fa-user me-2"></i>Profile</a></li>
-                            <li><a class="dropdown-item" href="#"><i class="fas fa-cog me-2"></i>Settings</a></li>
+                        <ul class="dropdown-menu dropdown-menu-end">
+                            <li><a class="dropdown-item" href="{{ route('profile.edit') }}"><i class="fas fa-user me-2"></i>Profile</a></li>
+                            @if(auth()->user()->isAdmin())<li><a class="dropdown-item" href="{{ route('settings.index') }}"><i class="fas fa-cog me-2"></i>Settings</a></li>@endif
                             <li><hr class="dropdown-divider"></li>
                             <li>
                                 <form method="POST" action="{{ route('logout') }}" style="display: inline;">
@@ -140,8 +52,8 @@
     <div class="container-fluid">
         <div class="row">
             <!-- Sidebar -->
-            <nav class="col-md-3 col-lg-2 d-md-block sidebar collapse content-wrapper">
-                <div class="position-sticky pt-3">
+            <nav id="appSidebar" class="col-md-3 col-lg-2 d-md-block sidebar collapse content-wrapper" aria-label="Main navigation">
+                <div class="position-sticky pt-3"><div class="sidebar-heading">WORKSPACE</div>
                     <ul class="nav flex-column">
                         <!-- Dashboard Links -->
                         @if(auth()->user()->isAdmin())
@@ -155,13 +67,6 @@
                             <li class="nav-item">
                                 <a class="nav-link {{ request()->is('teacher/dashboard') ? 'active' : '' }}" 
                                    href="{{ url('/teacher/dashboard') }}">
-                                    <i class="fas fa-tachometer-alt me-2"></i>Dashboard
-                                </a>
-                            </li>
-                        @elseif(auth()->user()->isAccountant())
-                            <li class="nav-item">
-                                <a class="nav-link {{ request()->is('accountant/dashboard') ? 'active' : '' }}" 
-                                   href="{{ url('/accountant/dashboard') }}">
                                     <i class="fas fa-tachometer-alt me-2"></i>Dashboard
                                 </a>
                             </li>
@@ -203,6 +108,7 @@
                         @endif
                         
                         @if(auth()->user()->isAdmin())
+                        <li class="nav-item"><a class="nav-link {{ request()->is('accounts*') ? 'active' : '' }}" href="{{ route('accounts.index') }}"><i class="fas fa-user-shield me-2" aria-hidden="true"></i>Account Access</a></li>
                         <!-- Teacher Management -->
                         <li class="nav-item">
                             <a class="nav-link {{ request()->is('teachers*') ? 'active' : '' }}" 
@@ -213,6 +119,7 @@
                         @endif
                         
                         @if(auth()->user()->isAdmin() || auth()->user()->isTeacher())
+                        <li class="nav-item"><a class="nav-link {{ request()->is('class-sessions*') ? 'active' : '' }}" href="{{ route('class-sessions.index') }}"><i class="fas fa-calendar-alt me-2" aria-hidden="true"></i>Class Sessions</a></li>
                         <!-- Course Management -->
                         <li class="nav-item">
                             <a class="nav-link {{ request()->is('courses*') ? 'active' : '' }}" 
@@ -230,7 +137,7 @@
                         </li>
                         @endif
                         
-                        @if(auth()->user()->isAdmin() || auth()->user()->isAccountant())
+                        @if(auth()->user()->isAdmin())
                         <!-- Fee Management -->
                         <li class="nav-item">
                             <a class="nav-link {{ request()->is('fees*') && !request()->is('fees/reports') ? 'active' : '' }}" 
@@ -239,13 +146,6 @@
                             </a>
                         </li>
                         
-                        <!-- Fee Installments -->
-                        <li class="nav-item">
-                            <a class="nav-link {{ request()->is('installments*') ? 'active' : '' }}" 
-                               href="{{ route('installments.create') }}">
-                                <i class="fas fa-calculator me-2"></i>Create Installments
-                            </a>
-                        </li>
                         @endif
                         
                         @if(auth()->user()->isAdmin() || auth()->user()->isTeacher())
@@ -258,7 +158,7 @@
                         </li>
                         @endif
                         
-                        @if(auth()->user()->isAdmin() || auth()->user()->isAccountant())
+                        @if(auth()->user()->isAdmin())
                         <!-- Reports & Analytics -->
                         <li class="nav-item">
                             <a class="nav-link {{ request()->is('reports*') ? 'active' : '' }}" 
@@ -268,7 +168,7 @@
                         </li>
                         @endif
                         
-                        <hr class="my-2">
+                        <li class="sidebar-heading">MANAGEMENT</li>
                         
                         @if(auth()->user()->isAdmin())
                         <!-- Settings -->
@@ -280,18 +180,12 @@
                         </li>
                         @endif
                         
-                        <!-- Help & Support -->
-                        <li class="nav-item">
-                            <a class="nav-link" href="javascript:void(0);" onclick="alert('Help & Support page coming soon!')">
-                                <i class="fas fa-question-circle me-2"></i>Help & Support
-                            </a>
-                        </li>
-                    </ul>
+                    </ul><div class="sidebar-footer"><span class="workspace-dot"></span> {{ ucfirst(auth()->user()->role) }} portal<small>{{ now()->format('l, d M Y') }}</small></div>
                 </div>
             </nav>
 
             <!-- Main content -->
-            <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4 content-wrapper">
+            <main id="mainContent" tabindex="-1" class="col-md-9 ms-sm-auto col-lg-10 px-md-4 content-wrapper">
                 <!-- Flash Messages -->
                 @if(session('success'))
                     <div class="alert alert-success alert-dismissible fade show mt-3" role="alert">

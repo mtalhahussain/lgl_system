@@ -35,6 +35,32 @@ class FeeInstallment extends Model
         return $this->belongsTo(Enrollment::class);
     }
 
+    public function allocations()
+    {
+        return $this->hasMany(PaymentAllocation::class);
+    }
+
+    public function scopeOutstanding($query)
+    {
+        return $query->whereRaw('fee_installments.amount > (SELECT COALESCE(SUM(payment_allocations.amount), 0)
+            FROM payment_allocations JOIN payments ON payments.id = payment_allocations.payment_id
+            LEFT JOIN payment_reversals ON payment_reversals.payment_id = payments.id
+            WHERE payment_allocations.fee_installment_id = fee_installments.id AND payment_reversals.id IS NULL)');
+    }
+
+    public function getOutstandingAmountAttribute(): string
+    {
+        if ($this->relationLoaded('allocations')) {
+            $paidMinor = $this->allocations->filter(fn ($row) => $row->payment->reversal === null)
+                ->sum(fn ($row) => \App\Support\Money::minor($row->amount));
+        } else {
+            $paidMinor = $this->allocations()->whereHas('payment', fn ($query) => $query->posted())->pluck('amount')
+                ->sum(fn ($amount) => \App\Support\Money::minor($amount));
+        }
+
+        return \App\Support\Money::decimal(max(0, \App\Support\Money::minor($this->amount) - $paidMinor));
+    }
+
     // Scopes
     public function scopePending($query)
     {
@@ -71,14 +97,6 @@ class FeeInstallment extends Model
 
     public function markAsPaid($paymentMethod = null, $transactionRef = null)
     {
-        $this->update([
-            'status' => 'paid',
-            'paid_date' => now(),
-            'payment_method' => $paymentMethod,
-            'transaction_reference' => $transactionRef,
-        ]);
-
-        // Update enrollment paid amount
-        $this->enrollment->increment('paid_amount', $this->amount);
+        throw new \LogicException('Use PaymentService with a submission key to record payments.');
     }
 }

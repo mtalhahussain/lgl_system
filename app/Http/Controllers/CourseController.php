@@ -17,8 +17,15 @@ class CourseController extends Controller
 
     public function index()
     {
+        if (auth()->user()->isTeacher()) {
+            $courses = Course::select('id', 'name', 'level', 'duration_weeks')
+                ->whereHas('batches', fn ($query) => $query->where('teacher_id', auth()->id()))
+                ->orderBy('level')->get();
+
+            return view('academic.courses', compact('courses'));
+        }
         $courses = Course::withCount(['batches', 'batches as active_batches_count' => function($q) {
-            $q->where('status', 'active');
+            $q->where('status', 'ongoing');
         }])->orderBy('level')->get();
 
         $stats = [
@@ -33,24 +40,24 @@ class CourseController extends Controller
 
     public function create()
     {
-        return view('admin.courses.create');
+        return view('admin.courses.form', ['course' => null]);
     }
 
     public function store(Request $request)
     {
         $request->validate([
-            'name' => 'required|string|max:255',
+            'name' => ['required', 'string', 'max:255', \Illuminate\Validation\Rule::unique('courses', 'name')->where('level', $request->input('level'))],
             'description' => 'required|string|max:1000',
             'level' => 'required|in:A1,A2,B1,B2,C1,C2',
             'duration_weeks' => 'required|integer|min:1|max:52',
-            'total_fee' => 'required|numeric|min:0',
-            'max_students' => 'required|integer|min:1|max:50',
-            'teacher_per_student_amount' => 'required|numeric|min:0',
+            'total_fee' => 'required|decimal:0,2|min:0|max:99999999.99',
+            'teacher_per_student_amount' => 'nullable|numeric|min:0',
             'sessions_per_week' => 'required|integer|min:1|max:7',
             'session_duration_minutes' => 'required|integer|min:30|max:300'
         ]);
 
-        Course::create($request->all());
+        Course::create(array_merge($request->only(['name', 'description', 'level', 'duration_weeks', 'total_fee',
+            'sessions_per_week', 'session_duration_minutes']), ['teacher_per_student_amount' => $request->input('teacher_per_student_amount') ?? 0]));
 
         return redirect()->route('courses.index')
             ->with('success', 'Course created successfully!');
@@ -58,6 +65,14 @@ class CourseController extends Controller
 
     public function show(Course $course)
     {
+        if (auth()->user()->isTeacher()) {
+            abort_unless($course->batches()->where('teacher_id', auth()->id())->exists(), 403);
+            $course = Course::select('id', 'name', 'level', 'description', 'duration_weeks')->findOrFail($course->id);
+            $batches = $course->batches()->select('id', 'name', 'course_id', 'start_date', 'status', 'max_students')
+                ->where('teacher_id', auth()->id())->withCount('activeEnrollments')->paginate(15);
+
+            return view('academic.batches', compact('course', 'batches'));
+        }
         $course->load(['batches.enrollments.student', 'batches.teacher']);
         
         $stats = [
@@ -67,29 +82,29 @@ class CourseController extends Controller
             'average_batch_size' => $course->batches()->withCount('enrollments')->get()->avg('enrollments_count')
         ];
 
-        return view('admin.courses.show', compact('course', 'stats'));
+        return view('admin.courses.details', compact('course'));
     }
 
     public function edit(Course $course)
     {
-        return view('admin.courses.edit', compact('course'));
+        return view('admin.courses.form', compact('course'));
     }
 
     public function update(Request $request, Course $course)
     {
         $request->validate([
-            'name' => 'required|string|max:255',
+            'name' => ['required', 'string', 'max:255', \Illuminate\Validation\Rule::unique('courses', 'name')->where('level', $request->input('level'))->ignore($course->id)],
             'description' => 'required|string|max:1000',
             'level' => 'required|in:A1,A2,B1,B2,C1,C2',
             'duration_weeks' => 'required|integer|min:1|max:52',
-            'total_fee' => 'required|numeric|min:0',
-            'max_students' => 'required|integer|min:1|max:50',
-            'teacher_per_student_amount' => 'required|numeric|min:0',
+            'total_fee' => 'required|decimal:0,2|min:0|max:99999999.99',
+            'teacher_per_student_amount' => 'nullable|numeric|min:0',
             'sessions_per_week' => 'required|integer|min:1|max:7',
             'session_duration_minutes' => 'required|integer|min:30|max:300'
         ]);
 
-        $course->update($request->all());
+        $course->update($request->only(['name', 'description', 'level', 'duration_weeks', 'total_fee',
+            'sessions_per_week', 'session_duration_minutes']));
 
         return redirect()->route('courses.show', $course)
             ->with('success', 'Course updated successfully!');
@@ -97,13 +112,9 @@ class CourseController extends Controller
 
     public function destroy(Course $course)
     {
-        if ($course->batches()->where('status', 'ongoing')->exists()) {
-            return back()->withErrors(['error' => 'Cannot delete course with active batches.']);
-        }
-
-        $course->delete();
+        $course->update(['is_active' => false]);
         return redirect()->route('courses.index')
-            ->with('success', 'Course deleted successfully!');
+            ->with('success', 'Course deactivated. Existing batches and history preserved.');
     }
 
     public function toggleStatus(Course $course)

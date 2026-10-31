@@ -3,10 +3,9 @@
 namespace App\Services;
 
 use App\Models\Batch;
+use App\Models\Course;
 use App\Models\Enrollment;
 use App\Models\User;
-use App\Models\Course;
-use App\Models\ClassSession;
 use Carbon\Carbon;
 
 class EnrollmentService
@@ -21,48 +20,37 @@ class EnrollmentService
     /**
      * Enroll a student in a batch
      */
-    public function enrollStudent($studentId, $batchId, $discountPercentage = 0, $installments = 1)
+    public function enrollStudent($studentId, $batchId, $discountPercentage = 0, $installments = 1, ?array $schedule = null)
     {
-        $batch = Batch::with('course')->findOrFail($batchId);
-        $student = User::students()->findOrFail($studentId);
+        return \Illuminate\Support\Facades\DB::transaction(function () use ($studentId, $batchId, $discountPercentage, $installments, $schedule) {
+            $batch = Batch::with('course')->lockForUpdate()->findOrFail($batchId);
+            $student = User::students()->where('is_active', true)->findOrFail($studentId);
+            if (! in_array($batch->status, ['upcoming', 'ongoing'], true) || ! $batch->course->is_active) {
+                throw new \InvalidArgumentException('Batch or course is not open for enrollment.');
+            }
+            if (! $batch->hasCapacity()) {
+                throw new \InvalidArgumentException('Batch is full. No available spots.');
+            }
+            if (Enrollment::where('batch_id', $batch->id)->where('student_id', $student->id)->exists()) {
+                throw new \InvalidArgumentException('Student already has an enrollment in this batch.');
+            }
+            $structure = $this->feeCalculator->calculateFeeStructure($batch->course_id, $discountPercentage, $schedule === null ? $installments : count($schedule));
+            $enrollment = Enrollment::create([
+                'batch_id' => $batch->id, 'student_id' => $student->id, 'enrollment_date' => now(),
+                'status' => 'active', 'total_fee' => $structure['original_fee'],
+                'discount_amount' => $structure['discount_amount'], 'paid_amount' => 0,
+            ]);
+            if ($schedule === null) {
+                $this->feeCalculator->createInstallments($enrollment->id, $installments);
+            } else {
+                $this->feeCalculator->createCustomInstallments($enrollment->id, $schedule);
+            }
+            \App\Models\AuditLog::create(['actor_id' => auth()->id(), 'action' => 'enrollment.created',
+                'subject_type' => 'enrollment', 'subject_id' => $enrollment->id,
+                'changes' => ['batch_id' => $batch->id, 'total_fee' => $enrollment->total_fee, 'discount_amount' => $enrollment->discount_amount]]);
 
-        // Check if batch has capacity
-        if (!$batch->hasCapacity()) {
-            throw new \Exception('Batch is full. No available spots.');
-        }
-
-        // Check if student is already enrolled in this batch
-        $existingEnrollment = Enrollment::where('batch_id', $batchId)
-            ->where('student_id', $studentId)
-            ->whereIn('status', ['active', 'transferred'])
-            ->first();
-
-        if ($existingEnrollment) {
-            throw new \Exception('Student is already enrolled in this batch.');
-        }
-
-        // Calculate fee structure
-        $feeStructure = $this->feeCalculator->calculateFeeStructure(
-            $batch->course_id, 
-            $discountPercentage, 
-            $installments
-        );
-
-        // Create enrollment
-        $enrollment = Enrollment::create([
-            'batch_id' => $batchId,
-            'student_id' => $studentId,
-            'enrollment_date' => now(),
-            'status' => 'active',
-            'total_fee' => $feeStructure['original_fee'],
-            'discount_amount' => $feeStructure['discount_amount'],
-            'paid_amount' => 0,
-        ]);
-
-        // Create installment schedule
-        $this->feeCalculator->createInstallments($enrollment->id, $installments);
-
-        return $enrollment->load(['student', 'batch.course', 'feeInstallments']);
+            return $enrollment->load(['student', 'batch.course', 'feeInstallments']);
+        });
     }
 
     /**
@@ -70,57 +58,35 @@ class EnrollmentService
      */
     public function transferStudent($enrollmentId, $newBatchId, $transferDate = null)
     {
-        $enrollment = Enrollment::with(['batch', 'student', 'feeInstallments'])
-            ->findOrFail($enrollmentId);
-        
-        $newBatch = Batch::findOrFail($newBatchId);
-        $transferDate = $transferDate ? Carbon::parse($transferDate) : now();
+        return \Illuminate\Support\Facades\DB::transaction(function () use ($enrollmentId, $newBatchId, $transferDate) {
+            $sourceBatch = Enrollment::findOrFail($enrollmentId)->batch_id;
+            $lockedBatches = Batch::whereIn('id', [$sourceBatch, $newBatchId])->orderBy('id')->lockForUpdate()->get()->keyBy('id');
+            $source = Enrollment::lockForUpdate()->findOrFail($enrollmentId);
+            $target = $lockedBatches->get($newBatchId);
+            if (! $target || $source->batch_id === $target->id || $source->status !== 'active'
+                || $source->batch->course_id !== $target->course_id || ! in_array($target->status, ['upcoming', 'ongoing'], true)
+                || ! $target->hasCapacity() || Enrollment::where('batch_id', $target->id)->where('student_id', $source->student_id)->exists()) {
+                throw new \InvalidArgumentException('Transfer requires an active enrollment, available same-course batch and no prior target enrollment.');
+            }
+            if (\App\Support\Money::minor($source->paid_amount) !== 0 || $source->payments()->exists()
+                || $source->feeInstallments()->whereIn('status', ['paid', 'cancelled'])->exists()) {
+                throw new \InvalidArgumentException('Transfers with financial activity are not supported.');
+            }
+            app(PaymentService::class)->assertReconciled($source);
+            $date = $transferDate ? Carbon::parse($transferDate)->startOfDay() : today();
+            if ($date->lt($source->enrollment_date) || $date->gt(today())) {
+                throw new \InvalidArgumentException('Transfer date must be between admission date and today.');
+            }
+            $new = Enrollment::create(['student_id' => $source->student_id, 'batch_id' => $target->id,
+                'enrollment_date' => $date, 'status' => 'active', 'total_fee' => $source->total_fee,
+                'discount_amount' => $source->discount_amount, 'paid_amount' => 0, 'transferred_from_enrollment_id' => $source->id]);
+            $source->feeInstallments()->update(['enrollment_id' => $new->id]);
+            $source->update(['status' => 'transferred', 'transfer_date' => $date, 'transferred_to_batch_id' => $target->id]);
+            \App\Models\AuditLog::create(['actor_id' => auth()->id(), 'action' => 'enrollment.transferred',
+                'subject_type' => 'enrollment', 'subject_id' => $source->id, 'changes' => ['target_enrollment_id' => $new->id]]);
 
-        // Validate transfer
-        if ($enrollment->status !== 'active') {
-            throw new \Exception('Can only transfer active enrollments.');
-        }
-
-        if (!$newBatch->hasCapacity()) {
-            throw new \Exception('Target batch is full.');
-        }
-
-        if ($enrollment->batch->course_id !== $newBatch->course_id) {
-            throw new \Exception('Cannot transfer to a different course.');
-        }
-
-        // Update current enrollment
-        $enrollment->update([
-            'status' => 'transferred',
-            'transferred_to_batch_id' => $newBatchId,
-            'transfer_date' => $transferDate,
-        ]);
-
-        // Create new enrollment in target batch
-        $newEnrollment = Enrollment::create([
-            'batch_id' => $newBatchId,
-            'student_id' => $enrollment->student_id,
-            'enrollment_date' => $transferDate,
-            'status' => 'active',
-            'total_fee' => $enrollment->total_fee,
-            'discount_amount' => $enrollment->discount_amount,
-            'paid_amount' => $enrollment->paid_amount,
-            'notes' => "Transferred from batch: {$enrollment->batch->name}",
-        ]);
-
-        // Transfer pending installments to new enrollment
-        $pendingInstallments = $enrollment->feeInstallments()
-            ->where('status', 'pending')
-            ->get();
-
-        foreach ($pendingInstallments as $installment) {
-            $installment->update([
-                'enrollment_id' => $newEnrollment->id,
-                'due_date' => max($installment->due_date, $transferDate->toDateString()),
-            ]);
-        }
-
-        return $newEnrollment->load(['student', 'batch.course', 'feeInstallments']);
+            return $new;
+        }, 3);
     }
 
     /**
@@ -128,33 +94,21 @@ class EnrollmentService
      */
     public function dropStudent($enrollmentId, $dropDate = null, $reason = null, $refundAmount = 0)
     {
-        $enrollment = Enrollment::with(['feeInstallments'])->findOrFail($enrollmentId);
-        $dropDate = $dropDate ? Carbon::parse($dropDate) : now();
+        return \Illuminate\Support\Facades\DB::transaction(function () use ($enrollmentId, $dropDate, $reason, $refundAmount) {
+            $enrollment = Enrollment::lockForUpdate()->findOrFail($enrollmentId);
+            $date = $dropDate ? Carbon::parse($dropDate)->startOfDay() : today();
+            if ($enrollment->status !== 'active' || $date->lt($enrollment->enrollment_date) || $date->gt(today())) {
+                throw new \InvalidArgumentException('Withdrawal requires an active enrollment and a date between admission and today.');
+            }
+            if ($refundAmount > 0 || strlen(trim((string) $reason)) < 5) {
+                throw new \InvalidArgumentException('Provide a withdrawal reason. Automated refunds are not supported.');
+            }
+            $enrollment->update(['status' => 'dropped', 'dropout_date' => $date, 'dropout_reason' => trim($reason)]);
+            \App\Models\AuditLog::create(['actor_id' => auth()->id(), 'action' => 'enrollment.withdrawn',
+                'subject_type' => 'enrollment', 'subject_id' => $enrollment->id, 'reason' => trim($reason)]);
 
-        if ($enrollment->status !== 'active') {
-            throw new \Exception('Can only drop active enrollments.');
-        }
-
-        // Cancel pending installments
-        $enrollment->feeInstallments()
-            ->where('status', 'pending')
-            ->where('due_date', '>', $dropDate->toDateString())
-            ->update(['status' => 'cancelled']);
-
-        // Process refund if applicable
-        if ($refundAmount > 0) {
-            $enrollment->decrement('paid_amount', $refundAmount);
-        }
-
-        // Update enrollment status
-        $enrollment->update([
-            'status' => 'dropped',
-            'dropout_date' => $dropDate,
-            'dropout_reason' => $reason,
-            'notes' => $enrollment->notes . "\nDropped on {$dropDate->format('Y-m-d')}. Reason: {$reason}",
-        ]);
-
-        return $enrollment;
+            return $enrollment;
+        });
     }
 
     /**
@@ -177,7 +131,7 @@ class EnrollmentService
 
         $enrollment->update([
             'status' => 'completed',
-            'notes' => $enrollment->notes . "\nCompleted on {$completionDate->format('Y-m-d')}",
+            'notes' => $enrollment->notes."\nCompleted on {$completionDate->format('Y-m-d')}",
         ]);
 
         return $enrollment;
@@ -215,9 +169,9 @@ class EnrollmentService
                 return $enrollment->remaining_fee;
             }),
             'average_fee_per_enrollment' => $enrollments->avg('total_fee'),
-            'completion_rate' => $enrollments->count() > 0 ? 
+            'completion_rate' => $enrollments->count() > 0 ?
                 ($enrollments->where('status', 'completed')->count() / $enrollments->count()) * 100 : 0,
-            'dropout_rate' => $enrollments->count() > 0 ? 
+            'dropout_rate' => $enrollments->count() > 0 ?
                 ($enrollments->where('status', 'dropped')->count() / $enrollments->count()) * 100 : 0,
         ];
     }
@@ -248,7 +202,7 @@ class EnrollmentService
             $report[] = [
                 'batch_id' => $batch->id,
                 'batch_name' => $batch->name,
-                'course' => $batch->course->name . ' - ' . $batch->course->level,
+                'course' => $batch->course->name.' - '.$batch->course->level,
                 'teacher' => $batch->teacher->name,
                 'max_capacity' => $batch->max_students,
                 'current_enrollments' => $currentEnrollments,
@@ -264,7 +218,7 @@ class EnrollmentService
             'batches' => $report,
             'summary' => [
                 'total_batches' => count($report),
-                'average_utilization' => count($report) > 0 ? 
+                'average_utilization' => count($report) > 0 ?
                     array_sum(array_column($report, 'utilization_rate')) / count($report) : 0,
                 'fully_utilized_batches' => count(array_filter($report, function ($batch) {
                     return $batch['utilization_rate'] >= 100;
@@ -282,23 +236,23 @@ class EnrollmentService
     public function getStudentAttendanceReport($studentId, $batchId = null)
     {
         $enrollmentsQuery = Enrollment::where('student_id', $studentId);
-        
+
         if ($batchId) {
             $enrollmentsQuery->where('batch_id', $batchId);
         }
-        
+
         $enrollments = $enrollmentsQuery->with(['batch.course', 'batch.classeSessions.attendances'])
             ->get();
-        
+
         $report = [];
-        
+
         foreach ($enrollments as $enrollment) {
             $attendanceStats = \App\Models\Attendance::getAttendanceStats($studentId, $enrollment->batch_id);
-            
+
             $report[] = [
                 'enrollment_id' => $enrollment->id,
                 'batch_name' => $enrollment->batch->name,
-                'course' => $enrollment->batch->course->name . ' - ' . $enrollment->batch->course->level,
+                'course' => $enrollment->batch->course->name.' - '.$enrollment->batch->course->level,
                 'enrollment_status' => $enrollment->status,
                 'attendance_stats' => $attendanceStats,
                 'sessions_held' => $enrollment->batch->classeSessions()->where('status', 'completed')->count(),
@@ -310,7 +264,7 @@ class EnrollmentService
                 ],
             ];
         }
-        
+
         return $report;
     }
 }

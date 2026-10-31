@@ -113,18 +113,28 @@ class EnrollmentController extends Controller
         $enrollment->remaining_fee = $enrollment->remaining_fee;
         $enrollment->payment_progress = $enrollment->payment_progress_percentage;
         
-        return view('admin.enrollments.show', compact('enrollment'));
+        $transferBatches = \App\Models\Batch::where('course_id', $enrollment->batch->course_id)
+            ->where('id', '!=', $enrollment->batch_id)->whereIn('status', ['upcoming', 'ongoing'])->get(['id', 'name']);
+        return view('admin.enrollments.show', compact('enrollment', 'transferBatches'));
     }
 
     public function store(Request $request)
     {
         $this->authorize('create', Enrollment::class);
+        if (is_array($request->input('schedule'))) {
+            $request->merge(['schedule' => array_values(array_filter($request->input('schedule'), fn ($row) =>
+                !is_array($row) || (($row['amount'] ?? '') !== '' && ($row['amount'] ?? null) !== null)
+                || (($row['due_date'] ?? '') !== '' && ($row['due_date'] ?? null) !== null)))]);
+        }
         
         $validated = $request->validate([
             'student_id' => 'required|exists:users,id',
             'batch_id' => 'required|exists:batches,id',
-            'discount_percentage' => 'numeric|min:0|max:100',
+            'discount_percentage' => 'nullable|decimal:0,2|min:0|max:100',
             'installments' => 'integer|min:1|max:12',
+            'schedule' => 'nullable|array|min:1|max:12',
+            'schedule.*.amount' => 'required|decimal:0,2|min:0|max:99999999.99',
+            'schedule.*.due_date' => 'required|date_format:Y-m-d',
         ]);
         
         try {
@@ -132,7 +142,8 @@ class EnrollmentController extends Controller
                 $validated['student_id'],
                 $validated['batch_id'],
                 $validated['discount_percentage'] ?? 0,
-                $validated['installments'] ?? 1
+                $validated['installments'] ?? 1,
+                $validated['schedule'] ?? null
             );
             
             return redirect()->route('enrollments.index')
@@ -160,6 +171,9 @@ class EnrollmentController extends Controller
                 $validated['new_batch_id'],
                 $validated['transfer_date'] ?? null
             );
+            if (!$request->expectsJson()) {
+                return redirect()->route('enrollments.show', $newEnrollment)->with('success', 'Student transferred. Fee schedule preserved.');
+            }
             
             return response()->json([
                 'message' => 'Student transferred successfully',
@@ -167,6 +181,9 @@ class EnrollmentController extends Controller
             ]);
             
         } catch (\Exception $e) {
+            if (!$request->expectsJson()) {
+                return back()->withErrors(['transfer' => $e->getMessage()]);
+            }
             return response()->json([
                 'message' => $e->getMessage()
             ], 422);
@@ -190,12 +207,18 @@ class EnrollmentController extends Controller
                 $validated['dropout_reason'],
                 $validated['refund_amount'] ?? 0
             );
+            if (!$request->expectsJson()) {
+                return redirect()->route('enrollments.show', $enrollment)->with('success', 'Enrollment withdrawn. Existing debt and payment history preserved.');
+            }
             
             return response()->json([
                 'message' => 'Student dropped successfully'
             ]);
             
         } catch (\Exception $e) {
+            if (!$request->expectsJson()) {
+                return back()->withErrors(['withdrawal' => $e->getMessage()]);
+            }
             return response()->json([
                 'message' => $e->getMessage()
             ], 422);

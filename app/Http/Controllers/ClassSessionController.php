@@ -2,13 +2,9 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\ClassSession;
 use App\Models\Batch;
-use App\Models\User;
-use App\Models\Attendance;
+use App\Models\ClassSession;
 use Illuminate\Http\Request;
-use Carbon\Carbon;
-use Illuminate\Support\Facades\DB;
 
 class ClassSessionController extends Controller
 {
@@ -21,43 +17,43 @@ class ClassSessionController extends Controller
     public function index(Request $request)
     {
         $query = ClassSession::with(['batch.course', 'batch.teacher']);
-        
+
         // Filter by teacher for teacher role
         if (auth()->user()->role === 'teacher') {
-            $query->whereHas('batch', function($q) {
+            $query->whereHas('batch', function ($q) {
                 $q->where('teacher_id', auth()->id());
             });
         }
-        
+
         // Filter by batch
         if ($request->filled('batch_id')) {
             $query->where('batch_id', $request->batch_id);
         }
-        
+
         // Filter by date
         if ($request->filled('date')) {
             $query->whereDate('session_date', $request->date);
         }
-        
+
         // Filter by status
         if ($request->filled('status')) {
             $query->where('status', $request->status);
         }
 
         $sessions = $query->orderBy('session_date', 'desc')
-                          ->orderBy('start_time', 'desc')
-                          ->paginate(15);
-        
+            ->orderBy('start_time', 'desc')
+            ->paginate(15);
+
         // Get available batches based on role
         if (auth()->user()->role === 'teacher') {
             $batches = Batch::where('teacher_id', auth()->id())
-                           ->with('course')
-                           ->orderBy('name')
-                           ->get();
+                ->with('course')
+                ->orderBy('name')
+                ->get();
         } else {
             $batches = Batch::with('course')
-                           ->orderBy('name')
-                           ->get();
+                ->orderBy('name')
+                ->get();
         }
 
         return view('admin.class-sessions.index', compact('sessions', 'batches'));
@@ -68,18 +64,18 @@ class ClassSessionController extends Controller
         // Get available batches based on role
         if (auth()->user()->role === 'teacher') {
             $batches = Batch::where('teacher_id', auth()->id())
-                           ->with('course')
-                           ->where('status', 'active')
-                           ->orderBy('name')
-                           ->get();
+                ->with('course')
+                ->where('status', 'ongoing')
+                ->orderBy('name')
+                ->get();
         } else {
             $batches = Batch::with('course')
-                           ->where('status', 'active')
-                           ->orderBy('name')
-                           ->get();
+                ->where('status', 'ongoing')
+                ->orderBy('name')
+                ->get();
         }
 
-        return view('admin.class-sessions.create', compact('batches'));
+        return view('admin.class-sessions.form', ['batches' => $batches, 'classSession' => null]);
     }
 
     public function store(Request $request)
@@ -91,14 +87,13 @@ class ClassSessionController extends Controller
             'end_time' => 'required|date_format:H:i|after:start_time',
             'topic' => 'required|string|max:255',
             'description' => 'nullable|string',
-            'is_online' => 'required|boolean',
-            'meeting_link' => 'required_if:is_online,1|nullable|url',
+            'meeting_link' => 'nullable|url:http,https|max:2000',
             'meeting_id' => 'nullable|string|max:100',
             'meeting_password' => 'nullable|string|max:100',
         ]);
 
         $batch = Batch::findOrFail($request->batch_id);
-        
+
         // Check if teacher can create session for this batch
         if (auth()->user()->role === 'teacher' && $batch->teacher_id !== auth()->id()) {
             abort(403, 'You can only create sessions for your assigned batches.');
@@ -120,7 +115,7 @@ class ClassSessionController extends Controller
         ]);
 
         return redirect()->route('class-sessions.index')
-                        ->with('success', 'Class session created successfully!');
+            ->with('success', 'Class session created successfully!');
     }
 
     public function show(ClassSession $classSession)
@@ -130,7 +125,7 @@ class ClassSessionController extends Controller
             abort(403, 'You can only view sessions for your assigned batches.');
         }
 
-        $classSession->load(['batch.course', 'batch.teacher', 'attendances.student']);
+        $classSession->load(['batch.course:id,name,level', 'batch.teacher:id,name', 'attendances.student:id,name']);
 
         return view('admin.class-sessions.show', compact('classSession'));
     }
@@ -145,18 +140,18 @@ class ClassSessionController extends Controller
         // Get available batches based on role
         if (auth()->user()->role === 'teacher') {
             $batches = Batch::where('teacher_id', auth()->id())
-                           ->with('course')
-                           ->where('status', 'active')
-                           ->orderBy('name')
-                           ->get();
+                ->with('course')
+                ->where('status', 'ongoing')
+                ->orderBy('name')
+                ->get();
         } else {
             $batches = Batch::with('course')
-                           ->where('status', 'active')
-                           ->orderBy('name')
-                           ->get();
+                ->where('status', 'ongoing')
+                ->orderBy('name')
+                ->get();
         }
 
-        return view('admin.class-sessions.edit', compact('classSession', 'batches'));
+        return view('admin.class-sessions.form', compact('classSession', 'batches'));
     }
 
     public function update(Request $request, ClassSession $classSession)
@@ -173,17 +168,20 @@ class ClassSessionController extends Controller
             'end_time' => 'required|date_format:H:i|after:start_time',
             'topic' => 'required|string|max:255',
             'description' => 'nullable|string',
-            'is_online' => 'required|boolean',
-            'meeting_link' => 'required_if:is_online,1|nullable|url',
+            'meeting_link' => 'nullable|url:http,https|max:2000',
             'meeting_id' => 'nullable|string|max:100',
             'meeting_password' => 'nullable|string|max:100',
         ]);
 
         $batch = Batch::findOrFail($request->batch_id);
-        
+
         // Check if teacher can update session for this batch
         if (auth()->user()->role === 'teacher' && $batch->teacher_id !== auth()->id()) {
             abort(403, 'You can only update sessions for your assigned batches.');
+        }
+
+        if ($batch->id !== $classSession->batch_id && $classSession->attendances()->exists()) {
+            throw \Illuminate\Validation\ValidationException::withMessages(['batch_id' => 'A session with attendance cannot move to another batch.']);
         }
 
         $classSession->update([
@@ -201,7 +199,7 @@ class ClassSessionController extends Controller
         ]);
 
         return redirect()->route('class-sessions.index')
-                        ->with('success', 'Class session updated successfully!');
+            ->with('success', 'Class session updated successfully!');
     }
 
     public function destroy(ClassSession $classSession)
@@ -211,16 +209,10 @@ class ClassSessionController extends Controller
             abort(403, 'You can only delete sessions for your assigned batches.');
         }
 
-        // Don't allow deleting if attendance is already marked
-        if ($classSession->attendances()->count() > 0) {
-            return redirect()->route('class-sessions.index')
-                            ->with('error', 'Cannot delete session with existing attendance records.');
-        }
-
-        $classSession->delete();
+        $classSession->update(['status' => 'cancelled']);
 
         return redirect()->route('class-sessions.index')
-                        ->with('success', 'Class session deleted successfully!');
+            ->with('success', 'Class session cancelled. Attendance history preserved.');
     }
 
     public function start(ClassSession $classSession)
@@ -230,6 +222,9 @@ class ClassSessionController extends Controller
             abort(403, 'You can only start sessions for your assigned batches.');
         }
 
+        if ($classSession->status !== 'scheduled') {
+            throw \Illuminate\Validation\ValidationException::withMessages(['status' => 'Only scheduled sessions can start.']);
+        }
         $classSession->update([
             'status' => 'ongoing',
             'actual_start_time' => now(),
@@ -240,7 +235,7 @@ class ClassSessionController extends Controller
         }
 
         return redirect()->route('class-sessions.show', $classSession)
-                        ->with('success', 'Class session started!');
+            ->with('success', 'Class session started!');
     }
 
     public function end(ClassSession $classSession)
@@ -250,13 +245,16 @@ class ClassSessionController extends Controller
             abort(403, 'You can only end sessions for your assigned batches.');
         }
 
+        if (! in_array($classSession->status, ['ongoing', 'completed'], true)) {
+            throw \Illuminate\Validation\ValidationException::withMessages(['status' => 'Only ongoing sessions can end.']);
+        }
         $classSession->update([
             'status' => 'completed',
             'actual_end_time' => now(),
         ]);
 
         return redirect()->route('class-sessions.show', $classSession)
-                        ->with('success', 'Class session ended!');
+            ->with('success', 'Class session ended!');
     }
 
     public function markAttendance(ClassSession $classSession)
@@ -266,9 +264,9 @@ class ClassSessionController extends Controller
             abort(403, 'You can only mark attendance for your assigned batches.');
         }
 
-        $classSession->load(['batch.activeEnrollments.student']);
+        $eligibleEnrollments = $classSession->eligibleEnrollments()->with('student:id,name')->get();
 
-        return view('admin.class-sessions.attendance', compact('classSession'));
+        return view('admin.class-sessions.attendance', compact('classSession', 'eligibleEnrollments'));
     }
 
     public function storeAttendance(Request $request, ClassSession $classSession)
@@ -278,27 +276,24 @@ class ClassSessionController extends Controller
             abort(403, 'You can only mark attendance for your assigned batches.');
         }
 
+        if (is_array($request->input('attendance'))) {
+            $request->merge(['attendance' => array_filter($request->input('attendance'), fn ($status) => $status !== null && $status !== '')]);
+        }
         $request->validate([
             'attendance' => 'required|array',
             'attendance.*' => 'required|in:present,absent,late,excused',
+            'notes' => 'nullable|array',
+            'reason' => 'nullable|string|min:5|max:1000',
             'notes.*' => 'nullable|string|max:255',
         ]);
 
+        $rows = [];
         foreach ($request->attendance as $studentId => $status) {
-            Attendance::updateOrCreate(
-                [
-                    'student_id' => $studentId,
-                    'class_session_id' => $classSession->id,
-                ],
-                [
-                    'status' => $status,
-                    'notes' => $request->notes[$studentId] ?? null,
-                    'marked_by' => auth()->id(),
-                ]
-            );
+            $rows[] = ['student_id' => $studentId, 'status' => $status, 'notes' => $request->input('notes.'.$studentId)];
         }
+        app(\App\Services\AttendanceService::class)->markBulkAttendance($classSession->id, $rows, $request->input('reason'));
 
         return redirect()->route('class-sessions.show', $classSession)
-                        ->with('success', 'Attendance marked successfully!');
+            ->with('success', 'Attendance marked successfully!');
     }
 }

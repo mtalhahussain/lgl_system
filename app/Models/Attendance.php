@@ -64,25 +64,10 @@ class Attendance extends Model
 
     public static function getAttendanceStats($studentId, $batchId = null)
     {
-        $query = static::where('student_id', $studentId);
-        
-        if ($batchId) {
-            $query->whereHas('classSession', function ($q) use ($batchId) {
-                $q->where('batch_id', $batchId);
-            });
-        }
+        $query = static::where('student_id', $studentId)->whereHas('classSession', function ($query) use ($batchId) {
+            $query->where('status', '!=', 'cancelled')->when($batchId, fn ($query) => $query->where('batch_id', $batchId));
+        });
 
-        $total = $query->count();
-        $present = $query->where('status', 'present')->count();
-        $late = $query->where('status', 'late')->count();
-        $absent = $query->where('status', 'absent')->count();
-
-        return [
-            'total' => $total,
-            'present' => $present,
-            'late' => $late,
-            'absent' => $absent,
-            'attendance_rate' => $total > 0 ? (($present + $late) / $total) * 100 : 0,
-        ];
+        return app(\App\Services\AttendanceService::class)->statistics($query);
     }
 }

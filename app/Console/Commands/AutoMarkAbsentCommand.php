@@ -31,6 +31,10 @@ class AutoMarkAbsentCommand extends Command
      */
     public function handle()
     {
+        if (!config('services.automatic_attendance_enabled', false)) {
+            $this->warn('Automatic absence processing is deferred. Use manual attendance.');
+            return self::FAILURE;
+        }
         $gracePeriod = $this->option('grace-period');
         $date = $this->option('date') ? Carbon::parse($this->option('date')) : Carbon::today();
         

@@ -12,7 +12,7 @@ class TeacherEarningPolicy
      */
     public function viewAny(User $user): bool
     {
-        return in_array($user->role, ['admin', 'teacher', 'accountant']);
+        return in_array($user->role, ['admin', 'teacher']);
     }
 
     /**
@@ -20,8 +20,8 @@ class TeacherEarningPolicy
      */
     public function view(User $user, TeacherEarning $earning): bool
     {
-        // Admin and accountant can view all earnings
-        if (in_array($user->role, ['admin', 'accountant'])) {
+        // Admin can view all earnings
+        if (in_array($user->role, ['admin'])) {
             return true;
         }
 
@@ -38,7 +38,7 @@ class TeacherEarningPolicy
      */
     public function create(User $user): bool
     {
-        return in_array($user->role, ['admin', 'accountant']);
+        return in_array($user->role, ['admin']);
     }
 
     /**
@@ -46,7 +46,7 @@ class TeacherEarningPolicy
      */
     public function update(User $user, TeacherEarning $earning): bool
     {
-        return in_array($user->role, ['admin', 'accountant']);
+        return in_array($user->role, ['admin']);
     }
 
     /**
@@ -62,7 +62,7 @@ class TeacherEarningPolicy
      */
     public function processPayment(User $user, TeacherEarning $earning): bool
     {
-        return in_array($user->role, ['admin', 'accountant']);
+        return in_array($user->role, ['admin']);
     }
 
     /**
@@ -70,7 +70,7 @@ class TeacherEarningPolicy
      */
     public function generateReports(User $user): bool
     {
-        return in_array($user->role, ['admin', 'accountant']);
+        return in_array($user->role, ['admin']);
     }
 
     /**
@@ -78,8 +78,8 @@ class TeacherEarningPolicy
      */
     public function viewDetailedBreakdown(User $user, TeacherEarning $earning): bool
     {
-        // Admin and accountant can view detailed breakdowns
-        if (in_array($user->role, ['admin', 'accountant'])) {
+        // Admin can view detailed breakdowns
+        if (in_array($user->role, ['admin'])) {
             return true;
         }
 

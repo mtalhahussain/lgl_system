@@ -13,9 +13,9 @@ return new class extends Migration
     {
         Schema::table('users', function (Blueprint $table) {
             // Add only missing teacher information fields
-            $table->string('qualification')->nullable()->after('bio');
-            $table->integer('experience_years')->default(0)->after('qualification');
-            $table->string('specialization')->nullable()->after('experience_years');
+            // $table->string('qualification')->nullable()->after('bio');
+            // $table->integer('experience_years')->default(0)->after('qualification');
+            // $table->string('specialization')->nullable()->after('experience_years');
         });
     }
 

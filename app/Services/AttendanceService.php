@@ -2,9 +2,9 @@
 
 namespace App\Services;
 
-use App\Models\ClassSession;
-use App\Models\Batch;
 use App\Models\Attendance;
+use App\Models\Batch;
+use App\Models\ClassSession;
 use Carbon\Carbon;
 
 class AttendanceService
@@ -12,46 +12,71 @@ class AttendanceService
     /**
      * Mark attendance for multiple students in a class session
      */
-    public function markBulkAttendance($classSessionId, $attendanceData)
+    public function markBulkAttendance($classSessionId, $attendanceData, ?string $reason = null)
     {
-        $classSession = ClassSession::with('batch.activeEnrollments.student')->findOrFail($classSessionId);
-        $results = [];
+        $actor = auth()->user();
+        abort_unless($actor && $actor->is_active && in_array($actor->role, ['admin', 'teacher'], true), 403);
 
-        foreach ($attendanceData as $studentAttendance) {
-            $studentId = $studentAttendance['student_id'];
-            $status = $studentAttendance['status'];
-            $checkInTime = $studentAttendance['check_in_time'] ?? null;
-            $notes = $studentAttendance['notes'] ?? null;
-
-            $enrollment = $classSession->batch->activeEnrollments()
-                ->where('student_id', $studentId)
-                ->first();
-
-            if (!$enrollment) {
-                $results[] = [
-                    'student_id' => $studentId,
-                    'success' => false,
-                    'error' => 'Student not enrolled in this batch',
-                ];
-                continue;
+        return \Illuminate\Support\Facades\DB::transaction(function () use ($classSessionId, $attendanceData, $reason, $actor) {
+            $session = ClassSession::lockForUpdate()->findOrFail($classSessionId);
+            \Illuminate\Support\Facades\Gate::authorize('view', $session->batch);
+            if ($session->session_date->gt(today())) {
+                throw \Illuminate\Validation\ValidationException::withMessages(['attendance' => 'Future attendance cannot be recorded.']);
+            }
+            $session->validateAttendanceStudents(array_column($attendanceData, 'student_id'));
+            $results = [];
+            foreach ($attendanceData as $row) {
+                if (! in_array($row['status'], ['present', 'absent', 'late', 'excused'], true)) {
+                    throw \Illuminate\Validation\ValidationException::withMessages(['attendance' => 'Invalid attendance status.']);
+                }
+                $record = Attendance::firstOrNew(['class_session_id' => $session->id, 'student_id' => $row['student_id']]);
+                $before = $record->exists ? $record->only(['status', 'notes']) : null;
+                $after = ['status' => $row['status'], 'notes' => array_key_exists('notes', $row) ? $row['notes'] : $record->notes];
+                $changed = $record->exists && $before !== $after;
+                if ($changed && (strlen(trim((string) $reason)) < 5 || strlen((string) $reason) > 1000)) {
+                    throw \Illuminate\Validation\ValidationException::withMessages(['reason' => 'Attendance corrections require a reason of 5–1000 characters.']);
+                }
+                if (! $record->exists || $changed) {
+                    $record->fill($after)->save();
+                    \App\Models\AuditLog::create(['actor_id' => $actor->id, 'action' => $changed ? 'attendance.corrected' : 'attendance.marked',
+                        'subject_type' => 'attendance', 'subject_id' => $record->id, 'reason' => $changed ? trim($reason) : null,
+                        'changes' => ['before' => $before, 'after' => $after], 'created_at' => now()]);
+                }
+                $results[] = ['student_id' => $record->student_id, 'status' => $record->status, 'success' => true];
+            }
+            if (count($attendanceData) > 0) {
+                $session->update(['status' => 'completed']);
             }
 
-            $attendance = $classSession->markAttendance($studentId, $status, $checkInTime);
-            
-            if ($notes) {
-                $attendance->update(['notes' => $notes]);
-            }
+            return $results;
+        });
+    }
 
-            $results[] = [
-                'student_id' => $studentId,
-                'student_name' => $enrollment->student->name,
-                'status' => $status,
-                'check_in_time' => $attendance->check_in_time,
-                'success' => true,
-            ];
+    public function statistics($query): array
+    {
+        $counts = (clone $query)->reorder()->selectRaw('status, COUNT(*) AS total')->groupBy('status')->pluck('total', 'status');
+        $stats = [];
+        foreach (['present', 'late', 'absent', 'excused'] as $status) {
+            $stats[$status] = (int) ($counts[$status] ?? 0);
         }
+        $stats['total'] = array_sum($stats);
+        $denominator = $stats['present'] + $stats['late'] + $stats['absent'];
+        $stats['attendance_rate'] = $denominator > 0 ? round(100 * ($stats['present'] + $stats['late']) / $denominator, 1) : null;
 
-        return $results;
+        return $stats;
+    }
+
+    public function expectedStudentSessions(int $studentId): int
+    {
+        return ClassSession::whereDate('session_date', '<=', today())->where('status', '!=', 'cancelled')
+            ->whereHas('batch.enrollments', function ($query) use ($studentId) {
+                $query->where('student_id', $studentId)->whereColumn('enrollment_date', '<=', 'class_sessions.session_date')
+                    ->where(function ($query) {
+                        $query->whereIn('status', ['active', 'completed'])
+                            ->orWhere(fn ($query) => $query->where('status', 'transferred')->whereColumn('transfer_date', '>=', 'class_sessions.session_date'))
+                            ->orWhere(fn ($query) => $query->where('status', 'dropped')->whereColumn('dropout_date', '>=', 'class_sessions.session_date'));
+                    });
+            })->count();
     }
 
     /**
@@ -60,17 +85,17 @@ class AttendanceService
     public function getBatchAttendanceReport($batchId, $startDate = null, $endDate = null)
     {
         $batch = Batch::with(['course', 'teacher', 'activeEnrollments.student'])->findOrFail($batchId);
-        
+
         $sessionsQuery = $batch->classeSessions()->where('status', 'completed');
-        
+
         if ($startDate) {
             $sessionsQuery->whereDate('session_date', '>=', $startDate);
         }
-        
+
         if ($endDate) {
             $sessionsQuery->whereDate('session_date', '<=', $endDate);
         }
-        
+
         $sessions = $sessionsQuery->with('attendances.student')->orderBy('session_date')->get();
         $students = $batch->activeEnrollments->map(function ($enrollment) {
             return $enrollment->student;
@@ -140,7 +165,7 @@ class AttendanceService
             $sessionAttendance = collect($session['attendance']);
             $presentCount = $sessionAttendance->whereIn('status', ['present', 'late'])->count();
             $totalStudents = $sessionAttendance->count();
-            
+
             $overallStats['session_wise_average'][] = [
                 'date' => $session['date'],
                 'topic' => $session['topic'],
@@ -154,7 +179,7 @@ class AttendanceService
             'batch_info' => [
                 'id' => $batch->id,
                 'name' => $batch->name,
-                'course' => $batch->course->name . ' - ' . $batch->course->level,
+                'course' => $batch->course->name.' - '.$batch->course->level,
                 'teacher' => $batch->teacher->name,
             ],
             'overall_stats' => $overallStats,
@@ -181,7 +206,7 @@ class AttendanceService
         }
 
         $sessions = $query->get();
-        
+
         $summary = [
             'total_sessions' => $sessions->count(),
             'total_attendance_records' => 0,
@@ -202,11 +227,11 @@ class AttendanceService
             $date = $session->session_date->format('Y-m-d');
 
             // Initialize batch stats if not exists
-            if (!isset($batchStats[$batchId])) {
+            if (! isset($batchStats[$batchId])) {
                 $batchStats[$batchId] = [
                     'batch_id' => $batchId,
                     'batch_name' => $session->batch->name,
-                    'course' => $session->batch->course->name . ' - ' . $session->batch->course->level,
+                    'course' => $session->batch->course->name.' - '.$session->batch->course->level,
                     'sessions_count' => 0,
                     'total_records' => 0,
                     'present' => 0,
@@ -218,7 +243,7 @@ class AttendanceService
             }
 
             // Initialize daily stats if not exists
-            if (!isset($dailyStats[$date])) {
+            if (! isset($dailyStats[$date])) {
                 $dailyStats[$date] = [
                     'date' => $date,
                     'sessions_count' => 0,
@@ -236,15 +261,15 @@ class AttendanceService
 
             foreach ($session->attendances as $attendance) {
                 $status = $attendance->status;
-                
+
                 // Update overall summary
                 $summary['total_attendance_records']++;
-                $summary[$status . '_count']++;
-                
+                $summary[$status.'_count']++;
+
                 // Update batch stats
                 $batchStats[$batchId]['total_records']++;
                 $batchStats[$batchId][$status]++;
-                
+
                 // Update daily stats
                 $dailyStats[$date]['total_records']++;
                 $dailyStats[$date][$status]++;
@@ -302,18 +327,18 @@ class AttendanceService
             ->get();
 
         $results = [];
-        
+
         foreach ($studentAttendance as $attendance) {
             $student = $attendance->student;
             $recentSession = $attendance->classSession;
-            
+
             $results[] = [
                 'student_id' => $student->id,
                 'student_name' => $student->name,
                 'student_email' => $student->email,
                 'student_phone' => $student->phone,
                 'batch_name' => $recentSession->batch->name ?? 'N/A',
-                'course' => $recentSession->batch->course->name . ' - ' . $recentSession->batch->course->level ?? 'N/A',
+                'course' => $recentSession->batch->course->name.' - '.$recentSession->batch->course->level ?? 'N/A',
                 'total_sessions' => $attendance->total_sessions,
                 'attended_sessions' => $attendance->attended_sessions,
                 'attendance_rate' => round($attendance->attendance_rate, 2),
@@ -334,14 +359,14 @@ class AttendanceService
     public function generateAttendanceQR($classSessionId)
     {
         $classSession = ClassSession::with('batch')->findOrFail($classSessionId);
-        
+
         $qrData = [
             'type' => 'attendance',
             'session_id' => $classSessionId,
             'batch_id' => $classSession->batch_id,
             'date' => $classSession->session_date,
             'expires_at' => now()->addHours(3)->toISOString(), // QR expires after 3 hours
-            'verification_hash' => hash('sha256', $classSessionId . config('app.key')),
+            'verification_hash' => hash('sha256', $classSessionId.config('app.key')),
         ];
 
         return base64_encode(json_encode($qrData));
@@ -354,9 +379,9 @@ class AttendanceService
     {
         try {
             $data = json_decode(base64_decode($qrData), true);
-            
+
             // Validate QR data
-            if (!$data || $data['type'] !== 'attendance') {
+            if (! $data || $data['type'] !== 'attendance') {
                 throw new \Exception('Invalid QR code');
             }
 
@@ -364,7 +389,7 @@ class AttendanceService
                 throw new \Exception('QR code has expired');
             }
 
-            $expectedHash = hash('sha256', $data['session_id'] . config('app.key'));
+            $expectedHash = hash('sha256', $data['session_id'].config('app.key'));
             if ($data['verification_hash'] !== $expectedHash) {
                 throw new \Exception('QR code verification failed');
             }

@@ -14,6 +14,10 @@ class SendFeeReminders extends Command
 
     public function handle()
     {
+        if (!config('services.fee_reminders_enabled', false)) {
+            $this->warn('Fee reminder delivery is deferred.');
+            return self::FAILURE;
+        }
         $days = $this->option('days');
         $reminderDate = Carbon::now()->addDays($days)->toDateString();
 

@@ -11,7 +11,7 @@ class UserPolicy
      */
     public function viewAny(User $user): bool
     {
-        return in_array($user->role, ['admin', 'teacher', 'accountant']);
+        return in_array($user->role, ['admin', 'teacher']);
     }
 
     /**
@@ -32,16 +32,12 @@ class UserPolicy
         // Teachers can view their students
         if ($user->role === 'teacher' && $model->role === 'student') {
             return $user->teachingBatches()
-                ->whereHas('activeEnrollments', function ($query) use ($model) {
+                ->whereHas('enrollments', function ($query) use ($model) {
                     $query->where('student_id', $model->id);
                 })
                 ->exists();
         }
 
-        // Accountants can view students for fee management
-        if ($user->role === 'accountant' && $model->role === 'student') {
-            return true;
-        }
 
         return false;
     }
@@ -103,8 +99,8 @@ class UserPolicy
      */
     public function viewFinancials(User $user, User $model): bool
     {
-        // Admin and accountant can view financial info
-        if (in_array($user->role, ['admin', 'accountant'])) {
+        // Admin can view financial info
+        if (in_array($user->role, ['admin'])) {
             return true;
         }
 
@@ -134,15 +130,11 @@ class UserPolicy
             return true;
         }
 
-        // Accountant can view student financial reports
-        if ($user->role === 'accountant' && $model->role === 'student') {
-            return true;
-        }
 
         // Teachers can view reports for their own students
         if ($user->role === 'teacher' && $model->role === 'student') {
             return $user->teachingBatches()
-                ->whereHas('activeEnrollments', function ($query) use ($model) {
+                ->whereHas('enrollments', function ($query) use ($model) {
                     $query->where('student_id', $model->id);
                 })
                 ->exists();

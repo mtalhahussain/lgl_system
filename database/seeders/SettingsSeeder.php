@@ -53,7 +53,7 @@ class SettingsSeeder extends Seeder
             ],
             [
                 'key' => 'institute_email',
-                'value' => 'info@germanlanguage.edu',
+                'value' => 'info@lgl.com',
                 'type' => 'email',
                 'group' => 'institute',
                 'label' => 'Email Address',

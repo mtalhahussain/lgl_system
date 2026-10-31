@@ -90,9 +90,9 @@
                                         <strong>{{ currency_format($course->total_fee) }}</strong>
                                     </div>
                                     <div class="col-4">
-                                        <small class="text-muted">Max Students</small>
+                                        <small class="text-muted">Sessions / week</small>
                                         <br>
-                                        <strong>{{ $course->max_students }}</strong>
+                                        <strong>{{ $course->sessions_per_week }}</strong>
                                     </div>
                                 </div>
                                 

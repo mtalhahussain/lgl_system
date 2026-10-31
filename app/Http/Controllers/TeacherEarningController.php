@@ -26,7 +26,7 @@ class TeacherEarningController extends Controller
             $query->where('teacher_id', auth()->id());
         }
         
-        // Filter by teacher ID (for admin/accountant)
+        // Filter by teacher ID (for admin)
         if ($request->has('teacher_id') && auth()->user()->role !== 'teacher') {
             $query->where('teacher_id', $request->teacher_id);
         }
@@ -199,7 +199,7 @@ class TeacherEarningController extends Controller
         // Check authorization
         if (auth()->user()->role === 'teacher' && auth()->id() != $validated['teacher_id']) {
             abort(403, 'Unauthorized');
-        } elseif (!in_array(auth()->user()->role, ['admin', 'accountant', 'teacher'])) {
+        } elseif (!in_array(auth()->user()->role, ['admin', 'teacher'])) {
             abort(403, 'Unauthorized');
         }
         

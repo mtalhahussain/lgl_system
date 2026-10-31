@@ -2,205 +2,88 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\FeeInstallment;
-use App\Models\User;
 use App\Models\Batch;
-use App\Models\Course;
-use App\Services\FeeCalculatorService;
+use App\Models\Enrollment;
+use App\Models\FeeInstallment;
+use App\Models\Payment;
+use App\Models\PaymentReversal;
+use App\Models\User;
+use App\Services\PaymentService;
+use App\Support\Money;
 use Illuminate\Http\Request;
-use Carbon\Carbon;
-use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 class FeeController extends Controller
 {
-    protected $feeCalculatorService;
-
-    public function __construct(FeeCalculatorService $feeCalculatorService)
+    public function __construct()
     {
         $this->middleware('auth');
-        $this->middleware('role:admin,accountant')->except(['studentFees']);
-        $this->feeCalculatorService = $feeCalculatorService;
+        $this->middleware('role:admin')->except('studentFees');
     }
 
     public function index(Request $request)
     {
-        $query = FeeInstallment::with(['enrollment.student', 'enrollment.batch.course']);
-        
-        // Filters
-        if ($request->filled('status')) {
-            $query->where('status', $request->status);
-        }
-        
-        if ($request->filled('student_search')) {
-            $query->whereHas('enrollment.student', function($q) use ($request) {
-                $q->where('name', 'LIKE', "%{$request->student_search}%")
-                  ->orWhere('email', 'LIKE', "%{$request->student_search}%")
-                  ->orWhere('student_id', 'LIKE', "%{$request->student_search}%");
-            });
-        }
-        
-        if ($request->filled('course_id')) {
-            $query->whereHas('enrollment.batch.course', function($q) use ($request) {
-                $q->where('id', $request->course_id);
-            });
-        }
-        
-        if ($request->filled('overdue')) {
-            $query->where('status', 'pending')
-                  ->where('due_date', '<', now());
-        }
-
-        $installments = $query->orderBy('due_date', 'asc')->paginate(20);
-        $courses = Course::all();
-        
-        // Calculate statistics
-        $stats = [
-            'total_pending' => FeeInstallment::where('status', 'pending')->sum('amount'),
-            'total_paid' => FeeInstallment::where('status', 'paid')->sum('amount'),
-            'overdue_count' => FeeInstallment::where('status', 'pending')
-                ->where('due_date', '<', now())->count(),
-            'overdue_amount' => FeeInstallment::where('status', 'pending')
-                ->where('due_date', '<', now())->sum('amount'),
-            'monthly_collection' => FeeInstallment::where('status', 'paid')
-                ->whereMonth('paid_date', now()->month)
-                ->whereYear('paid_date', now()->year)
-                ->sum('amount')
-        ];
-
-        return view('admin.fees.index', compact('installments', 'courses', 'stats'));
-    }
-
-    public function pay(Request $request, FeeInstallment $installment)
-    {
-        $request->validate([
-            'payment_method' => 'required|in:cash,bank,card,online',
-            'transaction_reference' => 'nullable|string|max:255',
-            'notes' => 'nullable|string|max:500'
-        ]);
-
-        DB::beginTransaction();
-        try {
-            $installment->update([
-                'status' => 'paid',
-                'paid_date' => now(),
-                'payment_method' => $request->payment_method,
-                'transaction_reference' => $request->transaction_reference,
-                'notes' => $request->notes
-            ]);
-
-            DB::commit();
-            
-            return back()->with('success', 'Payment recorded successfully! Installment paid: ' . currency_format($installment->amount));
-        } catch (\Exception $e) {
-            DB::rollBack();
-            return back()->withErrors(['error' => 'Failed to record payment: ' . $e->getMessage()]);
-        }
-    }
-
-    public function reports(Request $request)
-    {
-        $startDate = $request->get('start_date', now()->startOfMonth());
-        $endDate = $request->get('end_date', now()->endOfMonth());
-        
-        // Fee collection report
-        $dailyCollection = FeeInstallment::where('status', 'paid')
-            ->whereBetween('paid_date', [$startDate, $endDate])
-            ->selectRaw('DATE(paid_date) as date, SUM(amount) as total')
-            ->groupBy('date')
-            ->orderBy('date')
-            ->get();
-
-        // Course-wise collection
-        $courseCollection = FeeInstallment::where('fee_installments.status', 'paid')
-            ->whereBetween('paid_date', [$startDate, $endDate])
-            ->join('enrollments', 'fee_installments.enrollment_id', '=', 'enrollments.id')
-            ->join('batches', 'enrollments.batch_id', '=', 'batches.id')
-            ->join('courses', 'batches.course_id', '=', 'courses.id')
-            ->selectRaw('courses.name as course_name, courses.level, SUM(fee_installments.amount) as total')
-            ->groupBy('courses.id', 'courses.name', 'courses.level')
-            ->get();
-
-        // Outstanding dues
-        $outstandingDues = FeeInstallment::where('fee_installments.status', 'pending')
-            ->with(['enrollment.student', 'enrollment.batch.course'])
-            ->orderBy('due_date')
-            ->get();
-
-        // Monthly trends
-        $monthlyTrends = FeeInstallment::where('status', 'paid')
-            ->whereYear('paid_date', $request->get('year', now()->year))
-            ->selectRaw('MONTH(paid_date) as month, SUM(amount) as total')
-            ->groupBy('month')
-            ->orderBy('month')
-            ->get();
-
-        return view('admin.fees.reports', compact(
-            'dailyCollection', 'courseCollection', 'outstandingDues', 'monthlyTrends', 'startDate', 'endDate'
-        ));
+        return $this->ledger();
     }
 
     public function studentFees(User $student)
     {
-        // Check if user is student and can only view their own fees
-        if (auth()->user()->role === 'student' && auth()->id() !== $student->id) {
-            abort(403, 'You can only view your own fees.');
-        }
-        
-        $student->load(['enrollments.feeInstallments', 'enrollments.batch.course']);
-        
-        // Calculate fee stats correctly
-        $totalFees = 0;
-        $paidFees = 0;
-        $pendingFees = 0;
-        $overdueFees = 0;
-        
-        foreach($student->enrollments as $enrollment) {
-            foreach($enrollment->feeInstallments as $installment) {
-                $totalFees += $installment->amount;
-                if($installment->status === 'paid') {
-                    $paidFees += $installment->amount;
-                } else {
-                    $pendingFees += $installment->amount;
-                    if($installment->due_date < now()) {
-                        $overdueFees += $installment->amount;
-                    }
-                }
-            }
-        }
-        
-        $feeStats = [
-            'total_fees' => $totalFees,
-            'paid_fees' => $paidFees,
-            'pending_fees' => $pendingFees,
-            'overdue_fees' => $overdueFees
-        ];
+        abort_unless($student->isStudent(), 404);
+        $this->authorize('viewFinancials', $student);
 
-        // Return different views based on user role
-        $view = auth()->user()->role === 'student' ? 'student.fees' : 'admin.fees.student';
-        return view($view, compact('student', 'feeStats'));
+        return $this->ledger($student);
     }
 
     public function batchFees(Batch $batch)
     {
-        $batch->load(['enrollments.feeInstallments', 'enrollments.student', 'course']);
-        
-        $feeStats = [
-            'total_expected' => $batch->enrollments->sum(function($enrollment) {
-                return $enrollment->feeInstallments->sum('amount');
-            }),
-            'total_collected' => $batch->enrollments->sum(function($enrollment) {
-                return $enrollment->feeInstallments->where('status', 'paid')->sum('amount');
-            }),
-            'total_pending' => $batch->enrollments->sum(function($enrollment) {
-                return $enrollment->feeInstallments->where('status', 'pending')->sum('amount');
-            }),
-            'collection_rate' => 0
-        ];
+        return $this->ledger(null, $batch);
+    }
 
-        if ($feeStats['total_expected'] > 0) {
-            $feeStats['collection_rate'] = round(($feeStats['total_collected'] / $feeStats['total_expected']) * 100, 2);
-        }
+    private function ledger(?User $student = null, ?Batch $batch = null)
+    {
+        abort_unless(Schema::hasTable('payments'), 503, 'Fee collection is temporarily unavailable. Contact the administrator.');
+        $enrollments = Enrollment::with(['student:id,name', 'batch:id,name', 'feeInstallments.allocations.payment.reversal'])
+            ->when($student, fn ($query) => $query->where('student_id', $student->id))
+            ->when($batch, fn ($query) => $query->where('batch_id', $batch->id))
+            ->orderByDesc('id')->paginate(15);
+        $payments = Payment::with(['enrollment.student:id,name', 'reversal'])
+            ->when($student, fn ($query) => $query->whereHas('enrollment', fn ($enrollment) => $enrollment->where('student_id', $student->id)))
+            ->when($batch, fn ($query) => $query->whereHas('enrollment', fn ($enrollment) => $enrollment->where('batch_id', $batch->id)))
+            ->orderByDesc('id')->paginate(20, ['*'], 'payments_page');
 
-        return view('admin.fees.batch', compact('batch', 'feeStats'));
+        return view('fees.ledger', compact('enrollments', 'payments', 'student', 'batch'));
+    }
+
+    public function pay(Request $request, FeeInstallment $installment, PaymentService $service)
+    {
+        $data = $request->validate(['amount' => 'nullable|decimal:0,2|gt:0',
+            'payment_method' => 'required|in:cash,bank,card,jazzcash,easypaisa,online',
+            'transaction_reference' => 'nullable|string|max:255', 'submission_key' => 'required|string|min:16|max:64']);
+        $payment = $service->pay($installment->enrollment_id, (string) ($data['amount'] ?? $installment->outstanding_amount),
+            $data['payment_method'], $data['submission_key'], $request->user(), $data['transaction_reference'] ?? null, $installment->id);
+
+        return redirect()->route('payments.show', $payment)->with('success', 'Payment recorded.');
+    }
+
+    public function reports(Request $request)
+    {
+        $data = $request->validate(['start_date' => 'nullable|date', 'end_date' => 'nullable|date|after_or_equal:start_date',
+            'batch_id' => 'nullable|integer', 'course_id' => 'nullable|integer']);
+        $start = \Carbon\Carbon::parse($data['start_date'] ?? today()->startOfMonth())->startOfDay();
+        $end = \Carbon\Carbon::parse($data['end_date'] ?? today())->endOfDay();
+        $scope = fn ($query) => $query
+            ->when(! empty($data['batch_id']), fn ($query) => $query->where('batch_id', $data['batch_id']))
+            ->when(! empty($data['course_id']), fn ($query) => $query->whereHas('batch', fn ($batch) => $batch->where('course_id', $data['course_id'])));
+        $paymentQuery = Payment::whereBetween('paid_at', [$start, $end])->whereHas('enrollment', $scope);
+        $reversalQuery = PaymentReversal::whereBetween('payment_reversals.created_at', [$start, $end])->whereHas('payment.enrollment', $scope);
+        $paid = Money::minor((string) (clone $paymentQuery)->sum('amount'));
+        $reversed = Money::minor((string) (clone $reversalQuery)->join('payments', 'payments.id', '=', 'payment_reversals.payment_id')->sum('payments.amount'));
+        $net = ($paid < $reversed ? '-' : '').Money::decimal(abs($paid - $reversed));
+        $payments = $paymentQuery->with(['enrollment.student:id,name', 'reversal'])->orderBy('paid_at')->paginate(50)->withQueryString();
+        $reversals = $reversalQuery->with('payment.enrollment.student:id,name')->orderBy('payment_reversals.id')->paginate(50, ['*'], 'reversals_page')->withQueryString();
+        $batches = Batch::select('id', 'name')->orderBy('name')->get();
+        $courses = \App\Models\Course::select('id', 'name')->orderBy('name')->get();
+
+        return view('fees.report', compact('payments', 'reversals', 'net', 'start', 'end', 'batches', 'courses'));
     }
 }

@@ -9,6 +9,29 @@ use Illuminate\Notifications\Notifiable;
 
 class User extends Authenticatable
 {
+    public const ROLES = ['admin', 'teacher', 'student'];
+
+    public function getStudentIdAttribute(): ?string
+    {
+        return $this->isStudent() ? 'STD'.str_pad((string) $this->id, 4, '0', STR_PAD_LEFT) : null;
+    }
+
+    protected static function booted(): void
+    {
+        static::created(fn (User $user) => $user->recordAccountAudit('user.created', $user->only(['name', 'email', 'role', 'is_active'])));
+        static::updated(fn (User $user) => $user->recordAccountAudit('user.updated',
+            array_intersect_key($user->getChanges(), array_flip(['name', 'email', 'role', 'is_active']))));
+    }
+
+    private function recordAccountAudit(string $action, array $fields): void
+    {
+        if (! $fields || ! \Illuminate\Support\Facades\Schema::hasTable('audit_logs')) {
+            return;
+        }
+        AuditLog::create(['actor_id' => auth()->id(), 'action' => $action, 'subject_type' => 'user', 'subject_id' => $this->id,
+            'changes' => ['before' => $action === 'user.created' ? null : array_intersect_key($this->getRawOriginal(), $fields),
+                'after' => $fields], 'created_at' => now()]);
+    }
     use HasFactory, Notifiable;
 
     public function teacherPayments()
@@ -72,6 +95,7 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'date_of_birth' => 'date',
+            'hire_date' => 'date',
             'hourly_rate' => 'decimal:2',
             'per_student_rate' => 'decimal:2',
             'experience_years' => 'integer',
@@ -163,8 +187,4 @@ class User extends Authenticatable
         return $this->role === 'student';
     }
 
-    public function isAccountant()
-    {
-        return $this->role === 'accountant';
-    }
 }

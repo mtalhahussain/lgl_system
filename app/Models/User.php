@@ -98,6 +98,7 @@ class User extends Authenticatable
             'hire_date' => 'date',
             'hourly_rate' => 'decimal:2',
             'per_student_rate' => 'decimal:2',
+            'monthly_salary' => 'decimal:2',
             'experience_years' => 'integer',
             'is_active' => 'boolean',
             'password' => 'hashed',

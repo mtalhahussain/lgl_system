@@ -1,79 +1,48 @@
 @extends('layouts.admin')
-
-@section('title', 'Attendance Management')
-
+@section('title', 'Attendance')
 @section('content')
-<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
-    <h1 class="h2">
-        <i class="fas fa-clipboard-check me-2"></i>Attendance Management
-    </h1>
-    <div class="btn-toolbar mb-2 mb-md-0">
-        <a href="{{ route('attendance.create') }}" class="btn btn-primary">
-            <i class="fas fa-plus me-1"></i>Mark Attendance
-        </a>
+<x-list.header title="Attendance" eyebrow="Classes" subtitle="Mark past and current sessions; future sessions open on their date">
+    <a class="btn btn-outline-primary" href="{{ route('attendance.reports') }}"><i class="fas fa-chart-bar me-1" aria-hidden="true"></i>Attendance report</a>
+    <a class="btn btn-primary" href="{{ route('attendance.create') }}"><i class="fas fa-plus me-1" aria-hidden="true"></i>New session</a>
+</x-list.header>
+<x-list.kpis :items="[
+    ['label' => 'Sessions', 'value' => $stats['total_sessions'], 'icon' => 'fa-calendar-check'],
+    ['label' => 'Needs marking', 'value' => $stats['unmarked_sessions'], 'icon' => 'fa-pen-to-square', 'note' => 'Past or today, no records'],
+    ['label' => 'Upcoming', 'value' => $stats['upcoming_sessions'], 'icon' => 'fa-clock'],
+    ['label' => 'Attendance rate', 'value' => $stats['average_attendance'] === null ? '—' : $stats['average_attendance'].'%', 'icon' => 'fa-percent', 'note' => '(present + late) ÷ marked, excused excluded'],
+]" />
+<div class="panel list-panel">
+    <x-list.toolbar :filters="$filters" search="Search topic or batch…" />
+    <div class="table-responsive">
+        <table class="table list-table">
+            <thead><tr>
+                <x-list.th sort="date" default="-date">Date</x-list.th>
+                <th scope="col">Batch</th><th scope="col">Topic</th><th scope="col">Status</th><th scope="col">Records</th>
+                <th scope="col"><span class="visually-hidden">Actions</span></th>
+            </tr></thead>
+            <tbody>
+            @forelse($sessions as $session)
+                @php $markable = $session->status !== 'cancelled' && $session->session_date->lte(today()); @endphp
+                <tr>
+                    <td><span class="cell-main">{{ $session->session_date->format('d M Y') }}</span><span class="cell-sub">{{ $session->start_time?->format('H:i') }}</span></td>
+                    <td>{{ $session->batch->name }}<span class="cell-sub">{{ $session->batch->course?->name }}</span></td>
+                    <td>{{ $session->topic ?: '—' }}</td>
+                    <td><x-list.status :value="$session->status" /></td>
+                    <td>@if($session->attendances_count)<x-list.status value="active" :label="$session->attendances_count.' marked'" />@elseif($markable)<x-list.status value="due" label="Needs marking" />@else — @endif</td>
+                    <td class="text-end">
+                        @if($markable)
+                            <a class="btn btn-outline-primary btn-sm" href="{{ route('class-sessions.attendance', $session) }}">{{ $session->attendances_count ? 'Review' : 'Mark' }}</a>
+                        @else
+                            <a class="btn btn-outline-primary btn-sm" href="{{ route('class-sessions.show', $session) }}">View</a>
+                        @endif
+                    </td>
+                </tr>
+            @empty
+                <x-list.empty colspan="6" />
+            @endforelse
+            </tbody>
+        </table>
     </div>
-</div>
-
-<!-- Statistics Cards -->
-<div class="row mb-4">
-    <div class="col-md-3">
-        <div class="card dashboard-card stat-card">
-            <div class="card-body text-center">
-                <i class="fas fa-calendar-check fa-2x mb-3"></i>
-                <h3>{{ $stats['total_sessions'] ?? 0 }}</h3>
-                <p class="card-text">Total Sessions</p>
-            </div>
-        </div>
-    </div>
-    <div class="col-md-3">
-        <div class="card dashboard-card stat-card-success">
-            <div class="card-body text-center">
-                <i class="fas fa-check fa-2x mb-3"></i>
-                <h3>{{ $stats['completed_sessions'] ?? 0 }}</h3>
-                <p class="card-text">Completed</p>
-            </div>
-        </div>
-    </div>
-    <div class="col-md-3">
-        <div class="card dashboard-card stat-card-warning">
-            <div class="card-body text-center">
-                <i class="fas fa-clock fa-2x mb-3"></i>
-                <h3>{{ $stats['upcoming_sessions'] ?? 0 }}</h3>
-                <p class="card-text">Upcoming</p>
-            </div>
-        </div>
-    </div>
-    <div class="col-md-3">
-        <div class="card dashboard-card stat-card-info">
-            <div class="card-body text-center">
-                <i class="fas fa-percentage fa-2x mb-3"></i>
-                <h3>{{ $stats['average_attendance'] ?? 0 }}%</h3>
-                <p class="card-text">Avg Attendance</p>
-            </div>
-        </div>
-    </div>
-</div>
-
-<div class="card dashboard-card">
-    <div class="card-header">
-        <h5 class="mb-0">
-            <i class="fas fa-list me-2"></i>Attendance Management
-        </h5>
-    </div>
-    <div class="card-body">
-        <div class="text-center py-5">
-            <i class="fas fa-clipboard-check fa-3x text-muted mb-3"></i>
-            <h5>Attendance Tracking</h5>
-            <p class="text-muted">Mark daily attendance and generate attendance reports.</p>
-            <div class="d-flex justify-content-center gap-2">
-                <a href="{{ route('attendance.create') }}" class="btn btn-primary">
-                    <i class="fas fa-plus me-1"></i>Mark Attendance
-                </a>
-                <a href="{{ route('attendance.reports') }}" class="btn btn-outline-primary">
-                    <i class="fas fa-chart-bar me-1"></i>View Reports
-                </a>
-            </div>
-        </div>
-    </div>
+    <x-list.footer :paginator="$sessions" label="sessions" />
 </div>
 @endsection

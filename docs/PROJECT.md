@@ -2,7 +2,7 @@
 
 ## Product and current analysis
 
-A small institute administration monolith, preserving Laravel 12, PHP 8.2+, Eloquent, Blade/Bootstrap and MySQL-compatible storage. Local verification used PHP 8.2.12 and MariaDB 10.4.32. The shared shell, three dashboards and login use compiled Tailwind 4/Vite assets and a navy/purple visual theme. Existing Bootstrap/Font Awesome CDN assets remain for compatibility. Tailwind utilities use the tw: prefix without Preflight; npm ci and npm run build prepare assets. Existing declared frontend dependencies are now installed and pinned in package-lock.json; no new package was added to package.json. Database sessions/cache remain infrastructure; baseline needs no persistent workers or business scheduler.
+A small institute administration monolith, preserving Laravel 12, PHP 8.2+, Eloquent, Blade/Bootstrap and MySQL-compatible storage. Local verification used PHP 8.2.12 and MariaDB 10.4.32. The shared shell, three dashboards and login use compiled Tailwind 4/Vite assets and a navy/purple visual theme. Existing Bootstrap/Font Awesome CDN assets remain for compatibility. Tailwind utilities use the tw: prefix without Preflight; npm ci and npm run build prepare assets. Existing declared frontend dependencies are now installed and pinned in package-lock.json; no new package was added to package.json. Database sessions/cache remain infrastructure; no persistent workers are needed. One business scheduler task exists: `batches:sync-status` daily at 00:05, which needs the host cron entry `* * * * * php artisan schedule:run`.
 
 The original project mixed academic functions with payroll, device integrations and multiple financial writers. Its legacy demo had 24 users, including an Accountant, and 39 inconsistent enrollment balances. Those records were preserved rather than converted into invented payments. The active clean demo uses canonical services and reconciles. Local implementation is complete; general operational-data migration and production acceptance are separate work.
 
@@ -12,7 +12,8 @@ The original project mixed academic functions with payroll, device integrations 
 |---|---|---|
 | 1 | Authentication and accounts | Keep; three roles, login throttling, active-session checks and last-Admin protection |
 | 2 | People and self-profile | Merge Student/Teacher administration around users; deactivate to retain history |
-| 3 | Courses and batches | Keep; one assigned Teacher, capacity, dates and manual meeting links |
+| 3a | Teacher payroll | Each teacher is fixed monthly salary or per student per batch (course teacher amount × active+completed students, once per batch). Admin generates immutable dues, records capped idempotent payouts with slips, reverses payouts once with reason and voids unpaid dues; Teacher sees own dues/slips read-only |
+| 3 | Courses and batches | Keep; one assigned Teacher, capacity, dates and manual meeting links. Upcoming/ongoing/completed follow dates (end date counts as ongoing); only cancellation is manual; a completed batch completes its active enrollments (and moving it back reactivates them), leaving fees payable; Admin dashboard shows batches starting or ending within 2 days |
 | 4 | Sessions and timetable | Keep; schedule actual class sessions and cancel without erasing history |
 | 5 | Admissions and enrollments | Improve; transactional registration, fee snapshot, restricted transfer and withdrawal |
 | 6 | Fee plans and ledger | Merge financial writers into one payment boundary; allocations, receipts and full reversals |
@@ -21,7 +22,7 @@ The original project mixed academic functions with payroll, device integrations 
 | 9 | Reports | Keep only enrollment roster, collections, dues and attendance summaries |
 | 10 | Institute settings | Keep validated identity/logo/currency settings |
 
-Payroll/staff leave, expenses, exams/results, certificates/letters, CRM, tasks/materials, bulk imports, branch isolation, hardware/biometrics, Zoom/WhatsApp integrations and notification delivery are deferred. Their legacy files/tables are retained. Deferred route/scheduler entry points were disabled; absence/reminder commands refuse execution by default. No automatic absence, wallet, payment gateway, refund automation, paid transfers or partial reversals is included. Dormant API routes are unregistered; old API examples are not a supported contract.
+Legacy payroll code/tables, staff leave, expenses, exams/results, certificates/letters, CRM, tasks/materials, bulk imports, branch isolation, hardware/biometrics, Zoom/WhatsApp integrations and notification delivery are deferred. Their legacy files/tables are retained. Deferred route/scheduler entry points were disabled; absence/reminder commands refuse execution by default. No automatic absence, wallet, payment gateway, refund automation, paid transfers or partial reversals is included. Dormant API routes are unregistered; old API examples are not a supported contract.
 
 ## Roles and dashboards
 
@@ -60,10 +61,11 @@ Web/session middleware checks active accounts and coarse roles; policies and sco
 | users | Single role, unique email, contact/profile fields, active flag; retain unused legacy columns |
 | courses, batches | Fee defaults, course/Teacher relationships, capacity, dates and meeting fields |
 | enrollments | Gross fee, discount, status, source-transfer link; paid_amount is reconciled cache only |
-| fee_installments | Immutable scheduled amounts/dates; allocation-derived balances/status |
+| fee_installments | Scheduled amounts/dates are fixed except an Admin discount change, which moves the difference through unpaid amounts of the latest installments (paid amounts never change; reason and audit required); allocation-derived balances/status |
 | payments | Enrollment, amount, method/reference, actor/time, unique submission key/payload and receipt snapshot |
 | payment_allocations | Explicit payment/installment amounts; same enrollment and exact payment conservation |
 | payment_reversals | One full reversal per payment with actor, timestamp and reason |
+| fee_refunds | Refund recorded only when an Admin discount change pushes the net fee below what was paid: amount, method/reference, reason, actor/time, unique submission key/payload and slip snapshot; immutable. `enrollments.refunded_amount` caches the total; the schedule keeps covering paid amounts (scheduled = net + refunded). Payments of an enrollment with a refund cannot be reversed |
 | audit_logs | Targeted account/admission/finance/attendance evidence; no secrets |
 | class_sessions, attendances | Session/student eligibility, unique pair and manual status |
 | settings | Validated institute identity/currency; no public secrets |
@@ -95,4 +97,4 @@ The owner will set up the server/project. Agents have no deployment assignment o
 2. Set production secrets privately, disable debug, use HTTPS/secure cookies and aligned app/database timezones. Preserve the app key for an existing deployment; generate only for a new installation.
 3. Back up database/configuration/uploads and restore-test. Validate migrations on staging first. Real-data cutover requires explicit role mapping and authoritative balance reconciliation; the clean-demo script is not an operational migration tool.
 4. Provision a trusted non-demo Admin. Verify access, payment/reversal/attendance/report totals and storage/logo permissions. Keep SQL, environment copies and private output outside public storage/releases.
-5. Review staging, backup/rollback and responsive/print results before activation. Baseline requires no persistent business worker/scheduler; do not restore deferred cron jobs. Arrange actual host backups separately.
+5. Review staging, backup/rollback and responsive/print results before activation. Add the `schedule:run` cron entry for `batches:sync-status`; no persistent worker is required and deferred cron jobs stay disabled. Arrange actual host backups separately.

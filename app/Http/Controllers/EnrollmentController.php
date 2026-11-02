@@ -5,6 +5,8 @@ namespace App\Http\Controllers;
 use App\Models\Enrollment;
 use App\Services\EnrollmentService;
 use App\Services\FeeCalculatorService;
+use App\Support\ListQuery;
+use App\Support\Money;
 use Illuminate\Http\Request;
 
 class EnrollmentController extends Controller
@@ -22,52 +24,37 @@ class EnrollmentController extends Controller
     {
         $this->authorize('viewAny', Enrollment::class);
         
-        $query = Enrollment::with(['student', 'batch.course']);
-        
-        // Filter by status
-        if ($request->has('status') && $request->status !== '') {
-            $query->where('status', $request->status);
+        // Route middleware limits this page to Admin.
+        $statuses = ['active' => 'Active', 'completed' => 'Completed', 'dropped' => 'Withdrawn', 'transferred' => 'Transferred'];
+        $courses = \App\Models\Course::orderBy('name')->pluck('name', 'id');
+        $batches = \App\Models\Batch::orderBy('name')->pluck('name', 'id');
+        $list = ListQuery::for(Enrollment::with(['student:id,name,email', 'batch:id,name,course_id', 'batch.course:id,name']), $request)
+            ->search(['student.name', 'student.email'])
+            ->filter('status', fn ($query, $status) => $query->where('status', $status), array_keys($statuses))
+            ->filter('course_id', fn ($query, $id) => $query->whereHas('batch', fn ($batch) => $batch->where('course_id', $id)), $courses->keys()->all())
+            ->filter('batch_id', fn ($query, $id) => $query->where('batch_id', $id), $batches->keys()->all())
+            ->dateRange('enrollment_date')
+            ->sorts(['admitted' => 'enrollment_date',
+                'student' => fn ($query, $direction) => $query->orderBy(\App\Models\User::select('name')->whereColumn('users.id', 'enrollments.student_id'), $direction)], '-admitted');
+        if ($list->wantsCsv()) {
+            return $list->csv('enrollments', ['Student' => fn ($row) => $row->student?->name, 'Email' => fn ($row) => $row->student?->email,
+                'Course' => fn ($row) => $row->batch?->course?->name, 'Batch' => fn ($row) => $row->batch?->name,
+                'Admitted' => fn ($row) => $row->enrollment_date?->toDateString(), 'Status' => fn ($row) => $statuses[$row->status] ?? $row->status,
+                'Discount %' => fn ($row) => $row->discount_percentage, 'Discount' => fn ($row) => $row->discount_amount,
+                'Net fee' => fn ($row) => Money::decimal(max(0, Money::minor($row->total_fee) - Money::minor($row->discount_amount))),
+                'Outstanding' => fn ($row) => $row->remaining_fee]);
         }
-        
-        // Filter by batch
-        if ($request->has('batch_id') && $request->batch_id !== '') {
-            $query->where('batch_id', $request->batch_id);
-        }
-        
-        // Search functionality
-        if ($request->has('search') && $request->search !== '') {
-            $searchTerm = $request->search;
-            $query->whereHas('student', function ($q) use ($searchTerm) {
-                $q->where('name', 'like', "%{$searchTerm}%")
-                  ->orWhere('email', 'like', "%{$searchTerm}%");
-            });
-        }
-        
-        // Filter by student (for student role)
-        if (auth()->user()->role === 'student') {
-            $query->where('student_id', auth()->id());
-        }
-        
-        // Filter by teacher's batches (for teacher role)
-        if (auth()->user()->role === 'teacher') {
-            $query->whereHas('batch', function ($q) {
-                $q->where('teacher_id', auth()->id());
-            });
-        }
-        
-        // Order by latest first
-        $query->orderBy('created_at', 'desc');
-        
-        $enrollments = $query->paginate(10);
-        
-        // Add payment progress to each enrollment
-        $enrollments->getCollection()->transform(function ($enrollment) {
-            $enrollment->remaining_fee = $enrollment->remaining_fee;
-            $enrollment->payment_progress = $enrollment->payment_progress_percentage;
-            return $enrollment;
-        });
-        
-        return view('admin.enrollments.index', compact('enrollments'));
+        $counts = $list->counts(['active' => "enrollments.status = 'active'", 'completed' => "enrollments.status = 'completed'",
+            'dropped' => "enrollments.status = 'dropped'", 'transferred' => "enrollments.status = 'transferred'"]);
+        $kpis = [['label' => 'Active', 'value' => $counts['active'], 'icon' => 'fa-user-graduate'],
+            ['label' => 'Completed', 'value' => $counts['completed'], 'icon' => 'fa-check'],
+            ['label' => 'Withdrawn', 'value' => $counts['dropped'], 'icon' => 'fa-user-minus'],
+            ['label' => 'Transferred', 'value' => $counts['transferred'], 'icon' => 'fa-right-left']];
+        $filters = [['name' => 'status', 'label' => 'Status', 'options' => $statuses], ['name' => 'course_id', 'label' => 'Course', 'options' => $courses],
+            ['name' => 'batch_id', 'label' => 'Batch', 'options' => $batches],
+            ['name' => 'from', 'label' => 'Admitted from', 'type' => 'date'], ['name' => 'to', 'label' => 'Admitted to', 'type' => 'date']];
+
+        return view('admin.enrollments.index', ['enrollments' => $list->paginate(), 'kpis' => $kpis, 'filters' => $filters, 'statuses' => $statuses]);
     }
 
     public function create(Request $request)
@@ -107,7 +94,9 @@ class EnrollmentController extends Controller
             'student',
             'batch.course',
             'feeInstallments',
-            'transferredToBatch'
+            'transferredToBatch',
+            'payments.reversal',
+            'refunds',
         ]);
         
         $enrollment->remaining_fee = $enrollment->remaining_fee;
@@ -277,6 +266,22 @@ class EnrollmentController extends Controller
                 'message' => $e->getMessage()
             ], 422);
         }
+    }
+
+    public function updateDiscount(Request $request, Enrollment $enrollment, \App\Services\PaymentService $service)
+    {
+        $data = $request->validate(['discount_percentage' => 'required|decimal:0,2|min:0|max:100', 'reason' => 'required|string|min:5|max:1000',
+            'refund_method' => 'nullable|in:'.implode(',', array_keys(\App\Services\PaymentService::REFUND_METHODS)),
+            'refund_reference' => 'nullable|string|max:255', 'submission_key' => 'nullable|string|min:16|max:64']);
+        $refund = filled($data['refund_method'] ?? null) ? ['method' => $data['refund_method'], 'reference' => $data['refund_reference'] ?? null,
+            'submission_key' => $data['submission_key'] ?? null] : null;
+        $refundsBefore = $enrollment->refunds()->count();
+        $service->changeDiscount($enrollment, (string) $data['discount_percentage'], $request->user(), $data['reason'], $refund);
+        $newRefund = $enrollment->refunds()->count() > $refundsBefore ? $enrollment->refunds()->latest('id')->first() : null;
+
+        return $newRefund
+            ? redirect()->route('refunds.show', $newRefund)->with('success', 'Discount updated and refund recorded.')
+            : redirect()->route('enrollments.show', $enrollment)->with('success', 'Discount updated; unpaid installments adjusted.');
     }
 
     public function applyDiscount(Request $request, Enrollment $enrollment)

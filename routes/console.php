@@ -11,3 +11,6 @@ Artisan::command('inspire', function () {
 
 // Automatic absence/device processing is deferred; attendance remains manual.
 
+// Requires the host cron entry: * * * * * php artisan schedule:run
+Schedule::command('batches:sync-status')->dailyAt('00:05')->withoutOverlapping();
+

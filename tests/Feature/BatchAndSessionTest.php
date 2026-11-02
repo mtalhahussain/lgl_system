@@ -49,7 +49,9 @@ class BatchAndSessionTest extends TestCase
         $this->assertDatabaseCount('batch_teacher_earnings', 0);
         $this->get('/batches/'.$batch->id)->assertOk();
         $this->get('/batches/'.$batch->id.'/edit')->assertOk();
-        $this->put('/batches/'.$batch->id, array_merge($this->batchData(), ['status' => 'completed']))->assertRedirect('/batches/'.$batch->id);
+        $this->assertSame('ongoing', $batch->status);
+        $this->put('/batches/'.$batch->id, array_merge($this->batchData(), ['status' => 'auto',
+            'start_date' => today()->subMonth()->toDateString(), 'end_date' => today()->subDay()->toDateString()]))->assertRedirect('/batches/'.$batch->id);
         $this->assertSame('completed', $batch->fresh()->status);
     }
 

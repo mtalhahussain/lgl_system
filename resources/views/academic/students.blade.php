@@ -1,18 +1,24 @@
 @extends('layouts.admin')
 @section('title', 'Assigned Students')
 @section('content')
-<h1>Assigned Students</h1>
-<form method="get" class="mb-3">
-    <label for="search">Student name</label>
-    <input id="search" name="search" value="{{ request('search') }}" class="form-control">
-    <button class="btn btn-primary mt-2">Search</button>
-</form>
-<ul class="list-group mb-3">
-    @forelse($students as $student)
-        <li class="list-group-item"><a href="{{ route('students.show', $student) }}">{{ $student->name }}</a></li>
-    @empty
-        <li class="list-group-item">No assigned students.</li>
-    @endforelse
-</ul>
-{{ $students->links() }}
+<x-list.header title="Assigned Students" eyebrow="My classes" subtitle="Students enrolled in your batches" />
+<div class="panel list-panel">
+    <x-list.toolbar :filters="[['name' => 'batch_id', 'label' => 'Batch', 'options' => $batches]]" search="Search student name…" />
+    <div class="table-responsive">
+        <table class="table list-table">
+            <thead><tr><x-list.th sort="name" default="name">Name</x-list.th><th scope="col"><span class="visually-hidden">Actions</span></th></tr></thead>
+            <tbody>
+            @forelse($students as $student)
+                <tr>
+                    <td><div class="person-cell"><span class="user-avatar" aria-hidden="true">{{ mb_substr($student->name, 0, 1) }}</span><a class="cell-main" href="{{ route('students.show', $student) }}">{{ $student->name }}</a></div></td>
+                    <td class="text-end"><a class="btn btn-outline-primary btn-sm" href="{{ route('students.show', $student) }}">View</a></td>
+                </tr>
+            @empty
+                <x-list.empty colspan="2" message="No assigned students." />
+            @endforelse
+            </tbody>
+        </table>
+    </div>
+    <x-list.footer :paginator="$students" label="students" />
+</div>
 @endsection

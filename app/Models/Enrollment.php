@@ -16,6 +16,7 @@ class Enrollment extends Model
         'status',
         'total_fee',
         'paid_amount',
+        'refunded_amount',
         'discount_amount',
         'notes',
         'transferred_to_batch_id',
@@ -33,6 +34,7 @@ class Enrollment extends Model
             'dropout_date' => 'date',
             'total_fee' => 'decimal:2',
             'paid_amount' => 'decimal:2',
+            'refunded_amount' => 'decimal:2',
             'discount_amount' => 'decimal:2',
         ];
     }
@@ -63,6 +65,11 @@ class Enrollment extends Model
         return $this->hasMany(Payment::class);
     }
 
+    public function refunds()
+    {
+        return $this->hasMany(FeeRefund::class);
+    }
+
     // Scopes
     public function scopeActive($query)
     {
@@ -86,13 +93,31 @@ class Enrollment extends Model
             return '0.00';
         }
         return \App\Support\Money::decimal(max(0, \App\Support\Money::minor($this->total_fee)
-            - \App\Support\Money::minor($this->paid_amount) - \App\Support\Money::minor($this->discount_amount)));
+            - \App\Support\Money::minor($this->net_paid) - \App\Support\Money::minor($this->discount_amount)));
+    }
+
+    // Payments kept by the institute: posted payments less refunds.
+    public function getNetPaidAttribute(): string
+    {
+        return \App\Support\Money::decimal(max(0, \App\Support\Money::minor($this->paid_amount) - \App\Support\Money::minor($this->refunded_amount ?? '0')));
+    }
+
+    // Derived from the stored amount (only the amount is kept); e.g. "10" or "12.5".
+    public function getDiscountPercentageAttribute(): string
+    {
+        $gross = \App\Support\Money::minor($this->total_fee);
+        if ($gross === 0) {
+            return '0';
+        }
+        $basisPoints = intdiv(\App\Support\Money::minor($this->discount_amount) * 10000 + intdiv($gross, 2), $gross);
+
+        return rtrim(rtrim(intdiv($basisPoints, 100).'.'.str_pad((string) ($basisPoints % 100), 2, '0', STR_PAD_LEFT), '0'), '.');
     }
 
     public function getPaymentProgressPercentageAttribute()
     {
         $net = \App\Support\Money::minor($this->total_fee) - \App\Support\Money::minor($this->discount_amount);
-        return $net > 0 ? (\App\Support\Money::minor($this->paid_amount) / $net) * 100 : 100;
+        return $net > 0 ? (\App\Support\Money::minor($this->net_paid) / $net) * 100 : 100;
     }
 
     public function isFullyPaid()

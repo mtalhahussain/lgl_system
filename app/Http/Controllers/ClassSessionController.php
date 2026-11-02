@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Batch;
 use App\Models\ClassSession;
+use App\Support\ListQuery;
 use Illuminate\Http\Request;
 
 class ClassSessionController extends Controller
@@ -16,47 +17,32 @@ class ClassSessionController extends Controller
 
     public function index(Request $request)
     {
-        $query = ClassSession::with(['batch.course', 'batch.teacher']);
-
-        // Filter by teacher for teacher role
-        if (auth()->user()->role === 'teacher') {
-            $query->whereHas('batch', function ($q) {
-                $q->where('teacher_id', auth()->id());
-            });
+        $batches = Batch::query()->when(auth()->user()->isTeacher(), fn ($query) => $query->where('teacher_id', auth()->id()))
+            ->orderBy('name')->pluck('name', 'id');
+        $statuses = ['scheduled' => 'Scheduled', 'ongoing' => 'Ongoing', 'completed' => 'Completed', 'cancelled' => 'Cancelled'];
+        $list = ListQuery::for(ClassSession::with(['batch:id,name,course_id,teacher_id', 'batch.course:id,name'])
+            ->whereIn('batch_id', $batches->keys()), $request)
+            ->search(['topic', 'batch.name'])
+            ->filter('batch_id', fn ($query, $id) => $query->where('batch_id', $id), $batches->keys()->all())
+            ->filter('status', fn ($query, $status) => $query->where('status', $status), array_keys($statuses))
+            ->dateRange('session_date')
+            ->sorts(['date' => fn ($query, $direction) => $query->orderBy('session_date', $direction)->orderBy('start_time', $direction),
+                'topic' => 'topic'], '-date');
+        if ($list->wantsCsv()) {
+            return $list->csv('class-sessions', ['Batch' => fn ($session) => $session->batch?->name, 'Date' => fn ($session) => $session->session_date?->toDateString(),
+                'Start' => fn ($session) => $session->start_time?->format('H:i'), 'Topic' => fn ($session) => $session->topic, 'Status' => fn ($session) => $session->status]);
         }
+        $counts = $list->counts(['today' => ['DATE(class_sessions.session_date) = ?', [today()->toDateString()]],
+            'week' => ['DATE(class_sessions.session_date) BETWEEN ? AND ?', [today()->startOfWeek()->toDateString(), today()->endOfWeek()->toDateString()]],
+            'cancelled' => "class_sessions.status = 'cancelled'"]);
+        $kpis = [['label' => 'Sessions', 'value' => $counts['total'], 'icon' => 'fa-calendar-alt'],
+            ['label' => 'Today', 'value' => $counts['today'], 'icon' => 'fa-calendar-day'],
+            ['label' => 'This week', 'value' => $counts['week'], 'icon' => 'fa-calendar-week'],
+            ['label' => 'Cancelled', 'value' => $counts['cancelled'], 'icon' => 'fa-ban']];
+        $filters = [['name' => 'batch_id', 'label' => 'Batch', 'options' => $batches], ['name' => 'status', 'label' => 'Status', 'options' => $statuses],
+            ['name' => 'from', 'label' => 'From', 'type' => 'date'], ['name' => 'to', 'label' => 'To', 'type' => 'date']];
 
-        // Filter by batch
-        if ($request->filled('batch_id')) {
-            $query->where('batch_id', $request->batch_id);
-        }
-
-        // Filter by date
-        if ($request->filled('date')) {
-            $query->whereDate('session_date', $request->date);
-        }
-
-        // Filter by status
-        if ($request->filled('status')) {
-            $query->where('status', $request->status);
-        }
-
-        $sessions = $query->orderBy('session_date', 'desc')
-            ->orderBy('start_time', 'desc')
-            ->paginate(15);
-
-        // Get available batches based on role
-        if (auth()->user()->role === 'teacher') {
-            $batches = Batch::where('teacher_id', auth()->id())
-                ->with('course')
-                ->orderBy('name')
-                ->get();
-        } else {
-            $batches = Batch::with('course')
-                ->orderBy('name')
-                ->get();
-        }
-
-        return view('admin.class-sessions.index', compact('sessions', 'batches'));
+        return view('admin.class-sessions.index', ['sessions' => $list->paginate(), 'kpis' => $kpis, 'filters' => $filters]);
     }
 
     public function create()

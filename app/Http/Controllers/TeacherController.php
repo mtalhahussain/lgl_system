@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Course;
 use App\Models\User;
 use App\Services\SalaryCalculatorService;
+use App\Support\ListQuery;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -21,23 +22,24 @@ class TeacherController extends Controller
 
     public function index(Request $request)
     {
-        $query = User::where('role', 'teacher')
-            ->with('taughtBatches.course')
-            ->orderBy('created_at', 'desc');
-
-        if ($request->filled('search')) {
-            $search = $request->get('search');
-            $query->where(function ($q) use ($search) {
-                $q->where('name', 'LIKE', "%{$search}%")
-                    ->orWhere('email', 'LIKE', "%{$search}%")
-                    ->orWhere('phone', 'LIKE', "%{$search}%")
-                    ->orWhere('employee_id', 'LIKE', "%{$search}%");
-            });
+        $list = ListQuery::for(User::where('role', 'teacher')->withCount('taughtBatches'), $request)
+            ->search(['name', 'email', 'phone', 'employee_id'])
+            ->filter('status', fn ($query, $status) => $query->where('is_active', $status === 'active'), ['active', 'inactive'])
+            ->sorts(['name' => 'name', 'joined' => 'created_at'], '-joined');
+        if ($list->wantsCsv()) {
+            return $list->csv('teachers', ['Name' => fn ($user) => $user->name, 'Email' => fn ($user) => $user->email,
+                'Phone' => fn ($user) => $user->phone, 'Batches' => fn ($user) => $user->taught_batches_count,
+                'Status' => fn ($user) => $user->is_active ? 'Active' : 'Inactive', 'Joined' => fn ($user) => $user->created_at?->toDateString()]);
         }
+        $counts = $list->counts(['active' => 'users.is_active = 1',
+            'teaching' => "EXISTS (SELECT 1 FROM batches WHERE batches.teacher_id = users.id AND batches.status = 'ongoing')"]);
+        $kpis = [['label' => 'Teachers', 'value' => $counts['total'], 'icon' => 'fa-chalkboard-teacher'],
+            ['label' => 'Active', 'value' => $counts['active'], 'icon' => 'fa-user-check'],
+            ['label' => 'Inactive', 'value' => $counts['total'] - $counts['active'], 'icon' => 'fa-user-slash'],
+            ['label' => 'Teaching now', 'value' => $counts['teaching'], 'icon' => 'fa-play', 'note' => 'With an ongoing batch']];
+        $filters = [['name' => 'status', 'label' => 'Status', 'options' => ['active' => 'Active', 'inactive' => 'Inactive']]];
 
-        $teachers = $query->paginate(15);
-
-        return view('admin.people.index', ['people' => $teachers, 'kind' => 'teachers']);
+        return view('admin.people.index', ['people' => $list->paginate(), 'kind' => 'teachers', 'kpis' => $kpis, 'filters' => $filters]);
     }
 
     public function create()
@@ -60,6 +62,8 @@ class TeacherController extends Controller
             'specialization' => 'nullable|string|max:255',
             'emergency_contact' => 'nullable|string|max:255',
             'hire_date' => 'nullable|date',
+            'salary_type' => 'sometimes|in:monthly,per_student',
+            'monthly_salary' => 'nullable|decimal:0,2|min:0|max:99999999.99',
             'password' => 'required|string|min:8|confirmed',
             'is_active' => 'sometimes|boolean',
         ]);
@@ -81,9 +85,14 @@ class TeacherController extends Controller
             abort(403);
         }
 
-        $teacher->load('taughtBatches.course');
+        $batches = $teacher->taughtBatches()->with('course:id,name,level')->withCount('activeEnrollments')
+            ->orderByRaw("CASE status WHEN 'ongoing' THEN 0 WHEN 'upcoming' THEN 1 WHEN 'completed' THEN 2 ELSE 3 END")
+            ->orderByDesc('start_date')->get();
+        $dues = \App\Models\TeacherDue::with(['batch:id,name', 'payouts.reversal'])->where('teacher_id', $teacher->id)
+            ->orderByDesc('id')->get();
 
-        return view('admin.people.profile', ['person' => $teacher, 'kind' => 'teachers', 'enrollments' => collect(), 'batches' => $teacher->taughtBatches]);
+        return view('admin.people.profile', ['person' => $teacher, 'kind' => 'teachers', 'enrollments' => collect(),
+            'batches' => $batches, 'dues' => $dues]);
     }
 
     public function edit(User $teacher)
@@ -108,6 +117,8 @@ class TeacherController extends Controller
             'specialization' => 'nullable|string|max:255',
             'emergency_contact' => 'nullable|string|max:255',
             'hire_date' => 'nullable|date',
+            'salary_type' => 'sometimes|in:monthly,per_student',
+            'monthly_salary' => 'nullable|decimal:0,2|min:0|max:99999999.99',
             'password' => 'nullable|string|min:8|confirmed',
             'is_active' => 'sometimes|boolean',
         ]);

@@ -7,6 +7,7 @@ use App\Models\Batch;
 use App\Models\ClassSession;
 use App\Models\User;
 use App\Services\AttendanceService;
+use App\Support\ListQuery;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -26,19 +27,29 @@ class AttendanceController extends Controller
     public function index(Request $request)
     {
         $visible = ClassSession::whereIn('batch_id', $this->batches()->select('id'));
-        $sessions = (clone $visible)->with(['batch.course:id,name,level', 'batch.teacher:id,name', 'attendances.student:id,name'])
-            ->when($request->filled('batch_id'), fn ($query) => $query->where('batch_id', $request->input('batch_id')))
-            ->when($request->filled('date'), fn ($query) => $query->whereDate('session_date', $request->input('date')))
-            ->when($request->filled('status'), fn ($query) => $query->where('status', $request->input('status')))
-            ->orderByDesc('session_date')->paginate(15);
-        $batches = $this->batches()->with('course:id,name,level')->get();
+        $batches = $this->batches()->orderBy('name')->pluck('name', 'id');
+        $statuses = ['scheduled' => 'Scheduled', 'ongoing' => 'Ongoing', 'completed' => 'Completed', 'cancelled' => 'Cancelled'];
+        $list = ListQuery::for((clone $visible)->with(['batch:id,name,course_id', 'batch.course:id,name'])->withCount('attendances'), $request)
+            ->search(['topic', 'batch.name'])
+            ->filter('batch_id', fn ($query, $id) => $query->where('batch_id', $id), $batches->keys()->all())
+            ->filter('status', fn ($query, $status) => $query->where('status', $status), array_keys($statuses))
+            ->filter('marking', fn ($query, $marking) => $marking === 'unmarked'
+                ? $query->where('status', '!=', 'cancelled')->whereDate('session_date', '<=', today())->doesntHave('attendances')
+                : $query->has('attendances'), ['marked', 'unmarked'])
+            ->dateRange('session_date')
+            ->sorts(['date' => 'session_date'], '-date');
+        $sessions = $list->paginate();
         $attendance = Attendance::whereHas('classSession', fn ($query) => $query->where('status', '!=', 'cancelled')->whereIn('batch_id', $this->batches()->select('id')));
         $summary = $this->attendanceService->statistics($attendance);
         $stats = ['total_sessions' => (clone $visible)->count(), 'completed_sessions' => (clone $visible)->where('status', 'completed')->count(),
             'upcoming_sessions' => (clone $visible)->where('status', 'scheduled')->whereDate('session_date', '>=', today())->count(),
+            'unmarked_sessions' => (clone $visible)->where('status', '!=', 'cancelled')->whereDate('session_date', '<=', today())->doesntHave('attendances')->count(),
             'average_attendance' => $summary['attendance_rate']];
+        $filters = [['name' => 'batch_id', 'label' => 'Batch', 'options' => $batches], ['name' => 'status', 'label' => 'Status', 'options' => $statuses],
+            ['name' => 'marking', 'label' => 'Marking', 'options' => ['unmarked' => 'Needs marking', 'marked' => 'Marked']],
+            ['name' => 'from', 'label' => 'From', 'type' => 'date'], ['name' => 'to', 'label' => 'To', 'type' => 'date']];
 
-        return view('admin.attendance.index', compact('sessions', 'batches', 'stats'));
+        return view('admin.attendance.index', compact('sessions', 'stats', 'filters'));
     }
 
     public function create(Request $request)
@@ -115,6 +126,7 @@ class AttendanceController extends Controller
     private function attendanceReport(Request $request, ?User $student = null)
     {
         $data = $request->validate(['start_date' => 'nullable|date', 'end_date' => 'nullable|date|after_or_equal:start_date', 'batch_id' => 'nullable|integer']);
+        $statuses = ['present' => 'Present', 'late' => 'Late', 'absent' => 'Absent', 'excused' => 'Excused'];
         $query = Attendance::with(['student:id,name', 'classSession.batch:id,name'])
             ->whereHas('classSession', fn ($query) => $query->where('status', '!=', 'cancelled')->whereIn('batch_id', $this->batches()->select('id'))
                 ->when(! empty($data['start_date']), fn ($query) => $query->whereDate('session_date', '>=', $data['start_date']))
@@ -122,8 +134,23 @@ class AttendanceController extends Controller
                 ->when(! empty($data['batch_id']), fn ($query) => $query->where('batch_id', $data['batch_id'])))
             ->when($student, fn ($query) => $query->where('student_id', $student->id));
         $stats = $this->attendanceService->statistics($query);
-        $records = $query->orderByDesc('id')->paginate(30)->withQueryString();
+        $list = ListQuery::for($query, $request)
+            ->search($student ? [] : ['student.name'])
+            ->filter('status', fn ($query, $status) => $query->where('status', $status), array_keys($statuses))
+            ->sorts(['date' => fn ($query, $direction) => $query->orderBy(ClassSession::select('session_date')->whereColumn('class_sessions.id', 'attendances.class_session_id'), $direction),
+                'student' => fn ($query, $direction) => $query->orderBy(User::select('name')->whereColumn('users.id', 'attendances.student_id'), $direction)], '-date');
+        if ($list->wantsCsv()) {
+            return $list->csv('attendance', ['Student' => fn ($row) => $row->student?->name, 'Batch' => fn ($row) => $row->classSession?->batch?->name,
+                'Date' => fn ($row) => $row->classSession?->session_date?->toDateString(), 'Status' => fn ($row) => $row->status]);
+        }
+        $records = $list->paginate(25);
+        // Only Admin/Teacher see the batch filter; a Student must not receive other batch names.
+        $filters = [['name' => 'start_date', 'label' => 'From', 'type' => 'date'], ['name' => 'end_date', 'label' => 'To', 'type' => 'date']];
+        if (! $request->user()->isStudent()) {
+            $filters[] = ['name' => 'batch_id', 'label' => 'Batch', 'options' => $this->batches()->orderBy('name')->pluck('name', 'id')];
+        }
+        $filters[] = ['name' => 'status', 'label' => 'Status', 'options' => $statuses];
 
-        return view('academic.attendance', compact('records', 'stats'));
+        return view('academic.attendance', compact('records', 'stats', 'filters', 'student'));
     }
 }

@@ -8,6 +8,7 @@ use App\Models\Course;
 use App\Models\User;
 use App\Services\EnrollmentService;
 use App\Services\FeeCalculatorService;
+use App\Support\ListQuery;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -31,44 +32,38 @@ class StudentController extends Controller
     public function index(Request $request)
     {
         if (auth()->user()->isTeacher()) {
-            $students = User::students()->select('users.id', 'users.name')
-                ->whereHas('enrollments.batch', fn ($query) => $query->where('teacher_id', auth()->id()))
-                ->when($request->filled('search'), fn ($query) => $query->where('name', 'like', '%'.$request->input('search').'%'))
-                ->orderBy('name')->paginate(15)->withQueryString();
+            $batches = Batch::where('teacher_id', auth()->id())->orderBy('name')->pluck('name', 'id');
+            $list = ListQuery::for(User::students()->select('users.id', 'users.name')
+                ->whereHas('enrollments.batch', fn ($query) => $query->where('teacher_id', auth()->id())), $request)
+                ->search(['name'])
+                ->filter('batch_id', fn ($query, $id) => $query->whereHas('enrollments', fn ($enrollment) => $enrollment->where('batch_id', $id)), $batches->keys()->all())
+                ->sorts(['name' => 'name'], 'name');
+            $students = $list->paginate();
 
-            return view('academic.students', compact('students'));
+            return view('academic.students', compact('students', 'batches'));
         }
-        $query = User::where('role', 'student')
-            ->with('enrollments.batch.course')
-            ->orderBy('created_at', 'desc');
-
-        // Filter by teacher's batches for teacher role
-        if (auth()->user()->role === 'teacher') {
-            $query->whereHas('enrollments.batch', function ($q) {
-                $q->where('teacher_id', auth()->id());
-            });
+        $courses = Course::orderBy('name')->pluck('name', 'id');
+        $batches = Batch::orderBy('name')->pluck('name', 'id');
+        $list = ListQuery::for(User::students()->with('enrollments.batch:id,name'), $request)
+            ->search(['name', 'email', 'phone'])
+            ->filter('status', fn ($query, $status) => $query->where('is_active', $status === 'active'), ['active', 'inactive'])
+            ->filter('course_id', fn ($query, $id) => $query->whereHas('enrollments.batch', fn ($batch) => $batch->where('course_id', $id)), $courses->keys()->all())
+            ->filter('batch_id', fn ($query, $id) => $query->whereHas('enrollments', fn ($enrollment) => $enrollment->where('batch_id', $id)), $batches->keys()->all())
+            ->sorts(['name' => 'name', 'joined' => 'created_at'], '-joined');
+        if ($list->wantsCsv()) {
+            return $list->csv('students', ['Name' => fn ($user) => $user->name, 'Email' => fn ($user) => $user->email,
+                'Phone' => fn ($user) => $user->phone, 'Batches' => fn ($user) => $user->enrollments->pluck('batch.name')->filter()->implode('; '),
+                'Status' => fn ($user) => $user->is_active ? 'Active' : 'Inactive', 'Joined' => fn ($user) => $user->created_at?->toDateString()]);
         }
+        $counts = $list->counts(['active' => 'users.is_active = 1', 'recent' => ['users.created_at >= ?', [today()->startOfMonth()]]]);
+        $kpis = [['label' => 'Students', 'value' => $counts['total'], 'icon' => 'fa-users'],
+            ['label' => 'Active', 'value' => $counts['active'], 'icon' => 'fa-user-check'],
+            ['label' => 'Inactive', 'value' => $counts['total'] - $counts['active'], 'icon' => 'fa-user-slash'],
+            ['label' => 'Joined this month', 'value' => $counts['recent'], 'icon' => 'fa-user-plus']];
+        $filters = [['name' => 'status', 'label' => 'Status', 'options' => ['active' => 'Active', 'inactive' => 'Inactive']],
+            ['name' => 'course_id', 'label' => 'Course', 'options' => $courses], ['name' => 'batch_id', 'label' => 'Batch', 'options' => $batches]];
 
-        // Search functionality
-        if ($request->filled('search')) {
-            $search = $request->get('search');
-            $query->where(function ($q) use ($search) {
-                $q->where('name', 'LIKE', "%{$search}%")
-                    ->orWhere('email', 'LIKE', "%{$search}%")
-                    ->orWhere('phone', 'LIKE', "%{$search}%");
-            });
-        }
-
-        // Filter by course
-        if ($request->filled('course_id')) {
-            $query->whereHas('enrollments.batch', function ($q) use ($request) {
-                $q->where('course_id', $request->get('course_id'));
-            });
-        }
-
-        $students = $query->paginate(15);
-
-        return view('admin.people.index', ['people' => $students, 'kind' => 'students']);
+        return view('admin.people.index', ['people' => $list->paginate(), 'kind' => 'students', 'kpis' => $kpis, 'filters' => $filters]);
     }
 
     public function create()

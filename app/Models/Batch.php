@@ -106,6 +106,42 @@ class Batch extends Model
     }
 
     // Helper methods
+    // Date-derived status; the end date itself still counts as ongoing. Cancellation is handled by callers.
+    public static function statusForDates($startDate, $endDate, $today = null): string
+    {
+        $today = \Illuminate\Support\Carbon::parse($today ?? today())->startOfDay();
+        if ($endDate && \Illuminate\Support\Carbon::parse($endDate)->startOfDay()->lt($today)) {
+            return 'completed';
+        }
+
+        return \Illuminate\Support\Carbon::parse($startDate)->startOfDay()->lte($today) ? 'ongoing' : 'upcoming';
+    }
+
+    /**
+     * Keeps enrollments in step with the batch: a completed batch completes its active enrollments,
+     * and a batch moved back to upcoming/ongoing reactivates them. Withdrawn and transferred ones stay.
+     * Fees are untouched; any outstanding balance remains payable.
+     */
+    public function syncEnrollmentStatuses(?int $actorId = null): int
+    {
+        [$from, $to] = match ($this->status) {
+            'completed' => ['active', 'completed'],
+            'upcoming', 'ongoing' => ['completed', 'active'],
+            default => [null, null],
+        };
+        if (! $from) {
+            return 0;
+        }
+        $ids = $this->enrollments()->where('status', $from)->lockForUpdate()->pluck('id');
+        foreach ($ids as $id) {
+            Enrollment::whereKey($id)->update(['status' => $to]);
+            AuditLog::create(['actor_id' => $actorId, 'action' => 'enrollment.status_synced', 'subject_type' => 'enrollment',
+                'subject_id' => $id, 'changes' => ['before' => ['status' => $from], 'after' => ['status' => $to], 'batch_status' => $this->status]]);
+        }
+
+        return $ids->count();
+    }
+
     public function getCurrentEnrollmentCount()
     {
         return $this->activeEnrollments()->count();

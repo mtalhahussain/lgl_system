@@ -96,6 +96,8 @@ Route::middleware(['auth', \App\Http\Middleware\EnsureActiveAccount::class])->gr
         ->name('enrollments.transfer')->middleware('role:admin');
     Route::patch('/enrollments/{enrollment}/withdraw', [App\Http\Controllers\EnrollmentController::class, 'drop'])
         ->name('enrollments.withdraw')->middleware('role:admin');
+    Route::patch('/enrollments/{enrollment}/discount', [App\Http\Controllers\EnrollmentController::class, 'updateDiscount'])
+        ->name('enrollments.discount')->middleware('role:admin');
     
     // Fee Management Routes
     Route::post('/enrollments/{enrollment}/payments', [App\Http\Controllers\PaymentController::class, 'store'])
@@ -104,6 +106,8 @@ Route::middleware(['auth', \App\Http\Middleware\EnsureActiveAccount::class])->gr
         ->name('payments.show')->middleware('role:admin,student');
     Route::post('/payments/{payment}/reverse', [App\Http\Controllers\PaymentController::class, 'reverse'])
         ->name('payments.reverse')->middleware('role:admin');
+    Route::get('/refunds/{refund}', [App\Http\Controllers\PaymentController::class, 'refund'])
+        ->name('refunds.show')->middleware('role:admin,student');
     Route::get('/fees', [App\Http\Controllers\FeeController::class, 'index'])
         ->name('fees.index')->middleware('role:admin');
     Route::post('/fees/{installment}/pay', [App\Http\Controllers\FeeController::class, 'pay'])
@@ -115,6 +119,24 @@ Route::middleware(['auth', \App\Http\Middleware\EnsureActiveAccount::class])->gr
     Route::get('/fees/batch/{batch}', [App\Http\Controllers\FeeController::class, 'batchFees'])
         ->name('fees.batch')->middleware('role:admin');
     
+    // Teacher payroll: Admin manages; a Teacher sees only own dues and slips (scoped in the controller)
+    Route::get('/payroll', [App\Http\Controllers\PayrollController::class, 'index'])
+        ->name('payroll.index')->middleware('role:admin,teacher');
+    Route::post('/payroll/salaries', [App\Http\Controllers\PayrollController::class, 'storeSalaries'])
+        ->name('payroll.salaries')->middleware('role:admin');
+    Route::post('/payroll/batches', [App\Http\Controllers\PayrollController::class, 'storeBatch'])
+        ->name('payroll.batches')->middleware('role:admin');
+    Route::get('/payroll/dues/{due}', [App\Http\Controllers\PayrollController::class, 'show'])
+        ->name('payroll.show')->middleware('role:admin,teacher');
+    Route::post('/payroll/dues/{due}/void', [App\Http\Controllers\PayrollController::class, 'void'])
+        ->name('payroll.void')->middleware('role:admin');
+    Route::post('/payroll/dues/{due}/payouts', [App\Http\Controllers\PayrollController::class, 'pay'])
+        ->name('payroll.pay')->middleware('role:admin');
+    Route::get('/payroll/payouts/{payout}', [App\Http\Controllers\PayrollController::class, 'slip'])
+        ->name('payroll.slip')->middleware('role:admin,teacher');
+    Route::post('/payroll/payouts/{payout}/reverse', [App\Http\Controllers\PayrollController::class, 'reverse'])
+        ->name('payroll.reverse')->middleware('role:admin');
+
     // Installment Management Routes
     Route::get('/installments/create', [App\Http\Controllers\InstallmentController::class, 'create'])
         ->name('installments.create')->middleware('role:admin');

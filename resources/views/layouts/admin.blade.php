@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>@yield('title') - {{ institute_name() }}</title>
+    <script>try { if (localStorage.getItem('lgl:sidebar') === 'collapsed') document.documentElement.classList.add('sidebar-collapsed'); } catch (e) {}</script>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     @vite(['resources/css/app.css', 'resources/js/app.js'])
@@ -14,7 +15,10 @@
     <!-- Navigation -->
     <nav class="navbar navbar-expand-md navbar-light app-topbar">
         <div class="container-fluid">
-            <a class="navbar-brand" href="{{ route('dashboard') }}" title="{{ institute_name() }}">
+            <button class="sidebar-collapse-btn d-none d-md-inline-flex" type="button" id="sidebarCollapse" aria-controls="appSidebar" aria-expanded="true" aria-label="Collapse sidebar" title="Collapse sidebar">
+                <i class="fas fa-bars" aria-hidden="true"></i>
+            </button>
+            <a class="navbar-brand d-md-none" href="{{ route('dashboard') }}" title="{{ institute_name() }}">
                 <span class="brand-mark"><i class="fas fa-graduation-cap" aria-hidden="true"></i></span>
                 {{ institute_name() }}
             </a>
@@ -53,6 +57,10 @@
         <div class="row">
             <!-- Sidebar -->
             <nav id="appSidebar" class="col-md-3 col-lg-2 d-md-block sidebar collapse content-wrapper" aria-label="Main navigation">
+                <a class="sidebar-brand d-none d-md-flex" href="{{ route('dashboard') }}" title="{{ institute_name() }}">
+                    <span class="brand-mark"><i class="fas fa-graduation-cap" aria-hidden="true"></i></span>
+                    <span>{{ institute_name() }}</span>
+                </a>
                 <div class="position-sticky pt-3"><div class="sidebar-heading">WORKSPACE</div>
                     <ul class="nav flex-column">
                         <!-- Dashboard Links -->
@@ -108,7 +116,6 @@
                         @endif
                         
                         @if(auth()->user()->isAdmin())
-                        <li class="nav-item"><a class="nav-link {{ request()->is('accounts*') ? 'active' : '' }}" href="{{ route('accounts.index') }}"><i class="fas fa-user-shield me-2" aria-hidden="true"></i>Account Access</a></li>
                         <!-- Teacher Management -->
                         <li class="nav-item">
                             <a class="nav-link {{ request()->is('teachers*') ? 'active' : '' }}" 
@@ -145,7 +152,15 @@
                                 <i class="fas fa-money-bill me-2"></i>Fee Management
                             </a>
                         </li>
-                        
+
+                        @endif
+
+                        @if(auth()->user()->isAdmin() || auth()->user()->isTeacher())
+                        <li class="nav-item">
+                            <a class="nav-link {{ request()->is('payroll*') ? 'active' : '' }}" href="{{ route('payroll.index') }}">
+                                <i class="fas fa-hand-holding-usd me-2"></i>{{ auth()->user()->isTeacher() ? 'My Earnings' : 'Teacher Payroll' }}
+                            </a>
+                        </li>
                         @endif
                         
                         @if(auth()->user()->isAdmin() || auth()->user()->isTeacher())
@@ -171,6 +186,7 @@
                         <li class="sidebar-heading">MANAGEMENT</li>
                         
                         @if(auth()->user()->isAdmin())
+                        <li class="nav-item"><a class="nav-link {{ request()->is('accounts*') ? 'active' : '' }}" href="{{ route('accounts.index') }}"><i class="fas fa-users-cog me-2" aria-hidden="true"></i>Users</a></li>
                         <!-- Settings -->
                         <li class="nav-item">
                             <a class="nav-link {{ request()->is('settings*') ? 'active' : '' }}" 
@@ -215,12 +231,25 @@
                     </div>
                 @endif
 
+                @if($back = \App\Support\BackLink::for(request()))
+                    <a class="back-link d-print-none" href="{{ $back['url'] }}"><i class="fas fa-arrow-left" aria-hidden="true"></i>Back to {{ $back['label'] }}</a>
+                @endif
                 @yield('content')
             </main>
         </div>
     </div>
 
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <dialog id="confirmDialog" class="confirm-dialog" aria-labelledby="confirmDialogTitle">
+        <form method="dialog">
+            <h2 id="confirmDialogTitle" class="h5">Please confirm</h2>
+            <p data-confirm-message></p>
+            <div class="confirm-actions">
+                <button class="btn btn-outline-primary" value="cancel">Cancel</button>
+                <button class="btn btn-primary" value="confirm">Confirm</button>
+            </div>
+        </form>
+    </dialog>
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     @stack('scripts')

@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Course;
 use App\Models\Batch;
+use App\Support\ListQuery;
 use Illuminate\Http\Request;
 
 class CourseController extends Controller
@@ -15,7 +16,7 @@ class CourseController extends Controller
         $this->middleware('role:admin')->except(['index', 'show']);
     }
 
-    public function index()
+    public function index(Request $request)
     {
         if (auth()->user()->isTeacher()) {
             $courses = Course::select('id', 'name', 'level', 'duration_weeks')
@@ -24,18 +25,27 @@ class CourseController extends Controller
 
             return view('academic.courses', compact('courses'));
         }
-        $courses = Course::withCount(['batches', 'batches as active_batches_count' => function($q) {
-            $q->where('status', 'ongoing');
-        }])->orderBy('level')->get();
+        $levels = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2'];
+        $list = ListQuery::for(Course::withCount(['batches', 'batches as active_batches_count' => fn ($query) => $query->where('status', 'ongoing')]), $request)
+            ->search(['name', 'description'])
+            ->filter('level', fn ($query, $level) => $query->where('level', $level), $levels)
+            ->filter('status', fn ($query, $status) => $query->where('is_active', $status === 'active'), ['active', 'inactive'])
+            ->sorts(['name' => 'name', 'level' => 'level', 'fee' => 'total_fee', 'duration' => 'duration_weeks'], 'level');
+        if ($list->wantsCsv()) {
+            return $list->csv('courses', ['Name' => fn ($course) => $course->name, 'Level' => fn ($course) => $course->level,
+                'Weeks' => fn ($course) => $course->duration_weeks, 'Fee' => fn ($course) => $course->total_fee,
+                'Batches' => fn ($course) => $course->batches_count, 'Ongoing batches' => fn ($course) => $course->active_batches_count,
+                'Status' => fn ($course) => $course->is_active ? 'Active' : 'Inactive']);
+        }
+        $counts = $list->counts(['active' => 'courses.is_active = 1']);
+        $kpis = [['label' => 'Courses', 'value' => $counts['total'], 'icon' => 'fa-book'],
+            ['label' => 'Active courses', 'value' => $counts['active'], 'icon' => 'fa-check'],
+            ['label' => 'Ongoing batches', 'value' => Batch::where('status', 'ongoing')->whereIn('course_id', $list->totalsQuery()->select('courses.id'))->count(), 'icon' => 'fa-play'],
+            ['label' => 'Active students', 'value' => \App\Models\Enrollment::active()->whereHas('batch', fn ($batch) => $batch->whereIn('course_id', $list->totalsQuery()->select('courses.id')))->distinct()->count('student_id'), 'icon' => 'fa-users']];
+        $filters = [['name' => 'level', 'label' => 'Level', 'options' => array_combine($levels, $levels)],
+            ['name' => 'status', 'label' => 'Status', 'options' => ['active' => 'Active', 'inactive' => 'Inactive']]];
 
-        $stats = [
-            'total_courses' => $courses->count(),
-            'active_batches' => Batch::where('status', 'ongoing')->count(),
-            'total_students' => Batch::withCount('enrollments')->get()->sum('enrollments_count'),
-            'course_levels' => $courses->groupBy('level')->count()
-        ];
-
-        return view('admin.courses.index', compact('courses', 'stats'));
+        return view('admin.courses.index', ['courses' => $list->paginate(), 'kpis' => $kpis, 'filters' => $filters]);
     }
 
     public function create()
@@ -73,16 +83,11 @@ class CourseController extends Controller
 
             return view('academic.batches', compact('course', 'batches'));
         }
-        $course->load(['batches.enrollments.student', 'batches.teacher']);
-        
-        $stats = [
-            'total_batches' => $course->batches()->count(),
-            'active_batches' => $course->batches()->where('status', 'ongoing')->count(),
-            'total_students' => $course->batches()->withCount('enrollments')->get()->sum('enrollments_count'),
-            'average_batch_size' => $course->batches()->withCount('enrollments')->get()->avg('enrollments_count')
-        ];
+        $batches = $course->batches()->with('teacher:id,name')->withCount('activeEnrollments')
+            ->orderByRaw("CASE status WHEN 'ongoing' THEN 0 WHEN 'upcoming' THEN 1 WHEN 'completed' THEN 2 ELSE 3 END")
+            ->orderByDesc('start_date')->get();
 
-        return view('admin.courses.details', compact('course'));
+        return view('admin.courses.details', compact('course', 'batches'));
     }
 
     public function edit(Course $course)

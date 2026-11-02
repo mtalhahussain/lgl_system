@@ -35,6 +35,25 @@ class AccountAndProfileTest extends TestCase
         $this->patchJson('/accounts/'.$user->id, ['role' => 'accountant', 'is_active' => 1])->assertUnprocessable();
     }
 
+    public function test_users_page_saves_changes_in_the_background_without_a_save_button(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin', 'is_active' => true]);
+        $other = User::factory()->create(['role' => 'admin', 'is_active' => true]);
+        $user = User::factory()->create(['role' => 'student', 'is_active' => true, 'name' => 'Zara']);
+        $this->actingAs($admin)->get('/accounts')->assertOk()->assertSee('Users')->assertDontSee('Account Access')
+            ->assertSee('data-autosave', false)->assertDontSee('Choose a supported role')
+            ->assertSee('>Students</option>', false)->assertSee('>Admins</option>', false)->assertSee('>Student</option>', false)
+            ->assertDontSee('>Admin</option>', false)->assertSee('name="role" value="admin" form="account_'.$admin->id.'"', false);
+
+        $this->patchJson('/accounts/'.$user->id, ['role' => 'student', 'is_active' => 0])->assertOk()
+            ->assertJson(['message' => 'Zara: Student, inactive.', 'is_active' => false, 'redirect' => null]);
+        $this->assertDatabaseHas('users', ['id' => $user->id, 'is_active' => false]);
+
+        $this->patchJson('/accounts/'.$admin->id, ['role' => 'admin', 'is_active' => 0])->assertOk()
+            ->assertJson(['redirect' => route('dashboard')]);
+        $this->assertTrue($other->fresh()->is_active);
+    }
+
     public function test_self_service_cannot_change_roles_or_active_status_and_password_requires_current_password(): void
     {
         $student = User::factory()->create(['role' => 'student', 'is_active' => true, 'password' => Hash::make('existing-password')]);

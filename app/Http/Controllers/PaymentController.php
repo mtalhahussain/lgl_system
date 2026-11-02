@@ -29,6 +29,14 @@ class PaymentController extends Controller
         return view('payments.receipt', compact('payment'));
     }
 
+    public function refund(Request $request, \App\Models\FeeRefund $refund)
+    {
+        abort_unless($request->user()->isAdmin() || ($request->user()->isStudent()
+            && (int) $refund->enrollment->student_id === (int) $request->user()->id), 403);
+
+        return view('payments.refund', compact('refund'));
+    }
+
     public function reverse(Request $request, Payment $payment, PaymentService $service)
     {
         $data = $request->validate(['reason' => 'required|string|min:5|max:1000']);

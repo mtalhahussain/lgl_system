@@ -11,6 +11,25 @@
     @endforeach
     <div class="panel metric"><div><div class="metric-label">This month collected</div><div class="metric-value" style="font-size:23px">{{ $finance ? currency_format($finance['This month net collected']) : 'Unavailable' }}</div><div class="metric-note">Net of period reversals</div></div><span class="metric-icon" style="color:#24b7a0"><i class="fas fa-wallet" aria-hidden="true"></i></span></div>
 </div>
+@if($reminders['starting']->isNotEmpty() || $reminders['ending']->isNotEmpty())
+<section class="panel tw:mb-6" aria-labelledby="batch-reminders-heading" style="border-left:4px solid #e7974a">
+    <div class="panel-heading"><h2 id="batch-reminders-heading"><i class="fas fa-bell me-2" style="color:#e7974a" aria-hidden="true"></i>Batch reminders</h2><span class="page-subtitle">Next 2 days · status updates automatically</span></div>
+    <div class="tw:grid tw:grid-cols-1 tw:gap-5 tw:md:grid-cols-2 tw:p-5">
+        @foreach(['starting' => ['Starting soon', 'start_date', 'Starts'], 'ending' => ['Completing soon', 'end_date', 'Ends']] as $key => [$title, $column, $verb])
+            <div>
+                <h3 style="font-size:12px;font-weight:700;margin-bottom:10px">{{ $title }} ({{ $reminders[$key]->count() }})</h3>
+                @forelse($reminders[$key] as $batch)
+                    @php $days = (int) today()->diffInDays($batch->$column, false); @endphp
+                    <a href="{{ route('batches.show', $batch) }}" class="finance-row" style="color:inherit">
+                        <span><strong>{{ $batch->name }}</strong><small style="display:block;color:#8290a5;font-size:11px">{{ $batch->course?->name }} · {{ $batch->teacher?->name }}</small></span>
+                        <span class="status-pill">{{ $verb }} {{ $days === 0 ? 'today' : ($days === 1 ? 'tomorrow' : "in {$days} days") }} · {{ $batch->$column->toDateString() }}</span>
+                    </a>
+                @empty<p class="page-subtitle">None.</p>@endforelse
+            </div>
+        @endforeach
+    </div>
+</section>
+@endif
 <div class="tw:grid tw:grid-cols-1 tw:gap-5 tw:xl:grid-cols-3 tw:mb-6">
     <section class="panel tw:xl:col-span-2">
         <div class="panel-heading"><h2>Recent admissions</h2><a href="{{ route('enrollments.index') }}" style="font-size:11px;color:#7956df">View all <i class="fas fa-arrow-right ms-1" aria-hidden="true"></i></a></div>

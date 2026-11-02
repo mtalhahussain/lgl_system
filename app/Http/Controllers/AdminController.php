@@ -23,7 +23,8 @@ class AdminController extends Controller
             'Active enrollments' => Enrollment::active()->count(), 'Ongoing batches' => Batch::where('status', 'ongoing')->count()];
         $finance = \Illuminate\Support\Facades\Schema::hasTable('payments') ? app(\App\Services\OverviewService::class)->financialTotals() : null;
         $recent = Enrollment::with(['student:id,name', 'batch:id,name'])->orderByDesc('id')->limit(10)->get();
+        $reminders = app(\App\Services\OverviewService::class)->batchReminders();
 
-        return view('dashboards.admin', compact('stats', 'finance', 'recent'));
+        return view('dashboards.admin', compact('stats', 'finance', 'recent', 'reminders'));
     }
 }

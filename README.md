@@ -33,3 +33,9 @@ Demo seeders refuse production. Never use these accounts for production provisio
 - [Claude Code entry point](CLAUDE.md)
 
 These five Markdown files are the current documentation. Deferred modules remain outside the active product. Historical API examples were removed because API routing is unregistered and Sanctum is not installed.
+
+The login page fills the desktop viewport edge to edge and displays the institute logo uploaded in Settings, with an LGL fallback before upload. Its default branding is Land of German Language; Settings can override the institute name.
+
+Admin can sell the Rs 50,000 A1 + A2 full-advance package from Enrollments. Select both sequential batches; the system reserves both seats, splits fees exactly and issues a combined receipt. Normal module-wise admission and installments remain available. Package sales require PKR currency.
+
+Exam-based institute certificates are the next requested extension. Design is recorded under E01 in docs/TASKS.md; passing-rule clarification is pending and the legacy exam/certificate modules remain inactive.

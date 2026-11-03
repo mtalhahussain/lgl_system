@@ -90,6 +90,12 @@ Route::middleware(['auth', \App\Http\Middleware\EnsureActiveAccount::class])->gr
         ->name('class-sessions.attendance.store')->middleware('role:admin,teacher');
     
     // Enrollment Management Routes
+    Route::get('/enrollment-packages/create', [App\Http\Controllers\EnrollmentPackageController::class, 'create'])
+        ->name('enrollment-packages.create')->middleware('role:admin');
+    Route::post('/enrollment-packages', [App\Http\Controllers\EnrollmentPackageController::class, 'store'])
+        ->name('enrollment-packages.store')->middleware('role:admin');
+    Route::get('/enrollment-packages/{enrollmentPackage}', [App\Http\Controllers\EnrollmentPackageController::class, 'show'])
+        ->name('enrollment-packages.show')->middleware('role:admin,student');
     Route::resource('enrollments', App\Http\Controllers\EnrollmentController::class)
         ->middleware('role:admin')->only(['index', 'create', 'store', 'show']);
     Route::post('/enrollments/{enrollment}/transfer', [App\Http\Controllers\EnrollmentController::class, 'transfer'])

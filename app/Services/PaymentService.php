@@ -92,6 +92,30 @@ class PaymentService
     public function reverse(Payment $payment, User $actor, string $reason): PaymentReversal
     {
         abort_unless($actor->isAdmin() && $actor->is_active, 403);
+        $package = $payment->enrollment->packagePurchase;
+        if (! $package || ! in_array($payment->id, array_column($package->receipt_details['modules'], 'payment_id'), true)) {
+            return $this->reverseSingle($payment, $actor, $reason);
+        }
+
+        // A single tender must never leave only one module reversed.
+        return DB::transaction(function () use ($package, $payment, $actor, $reason) {
+            $package = \App\Models\EnrollmentPackage::lockForUpdate()->findOrFail($package->id);
+            $package->enrollments()->orderBy('id')->lockForUpdate()->get();
+            $payments = $package->payments()->orderBy('enrollment_id')->get();
+            if ($payments->count() !== 2) {
+                throw ValidationException::withMessages(['payment' => 'Package payment records require reconciliation.']);
+            }
+            foreach ($payments as $part) {
+                $this->reverseSingle($part, $actor, $reason);
+            }
+
+            return $payment->reversal()->firstOrFail();
+        }, 3);
+    }
+
+    private function reverseSingle(Payment $payment, User $actor, string $reason): PaymentReversal
+    {
+        abort_unless($actor->isAdmin() && $actor->is_active, 403);
         if (strlen(trim($reason)) < 5 || strlen($reason) > 1000 || $payment->legacy_source !== null) {
             throw ValidationException::withMessages(['reason' => 'Provide a reason of 5–1000 characters. Imported opening balances need separate reconciliation.']);
         }
@@ -134,6 +158,9 @@ class PaymentService
 
         return DB::transaction(function () use ($enrollment, $basisPoints, $actor, $reason, $refund, $payload) {
             $enrollment = Enrollment::lockForUpdate()->findOrFail($enrollment->id);
+            if ($enrollment->enrollment_package_id !== null) {
+                throw ValidationException::withMessages(['discount_percentage' => 'Package module prices are fixed by the combined agreement and cannot be edited separately.']);
+            }
             // A repeated submission of the same refund returns the already-applied result.
             if (! empty($refund['submission_key']) && ($existing = FeeRefund::where('submission_key', $refund['submission_key'])->first())) {
                 if (! hash_equals($existing->payload_hash, $payload) || (int) $existing->enrollment_id !== (int) $enrollment->id) {

@@ -6,6 +6,8 @@
     $currency = $details['currency_code'] ?? 'PKR';
     $isAdmin = auth()->user()->isAdmin();
     $student = ($details['student_name'] ?? 'Historical details unavailable').(! empty($details['student_reference']) ? ' ('.$details['student_reference'].')' : '');
+    $package = $payment->enrollment->packagePurchase;
+    $packagePart = $package && in_array($payment->id, array_column($package->receipt_details['modules'], 'payment_id'), true);
 @endphp
 <div class="doc-wrap">
     <div class="doc-actions d-print-none">
@@ -16,6 +18,9 @@
         @endif
         <button class="btn btn-primary ms-auto" type="button" onclick="window.print()"><i class="fas fa-print me-1" aria-hidden="true"></i>Print receipt</button>
     </div>
+    @if($packagePart)
+        <div class="alert alert-info">Module allocation of an A1 + A2 package, not an additional payment. <a href="{{ route('enrollment-packages.show', $package) }}">Combined package receipt</a>. Reversing this allocation reverses both original module payments together.</div>
+    @endif
     <x-show.document kind="Fee Payment Receipt" :number="$payment->receipt_number" :institute="$details['institute_name'] ?? null"
         :amount="$payment->amount" :currency="$currency" :date="$payment->paid_at?->format('d M Y, H:i') ?? 'Historical date unavailable'" :reversal="$payment->reversal"
         :rows="['Received from' => $student, 'Course' => $details['course_name'] ?? null, 'Batch' => $details['batch_name'] ?? 'Historical details unavailable',
@@ -36,13 +41,13 @@
     </x-show.document>
     @if($isAdmin && ! $payment->reversal && ! $payment->legacy_source)
         <details class="panel mt-4 d-print-none" style="padding:16px 22px">
-            <summary class="fw-semibold" style="cursor:pointer">Reverse this payment</summary>
-            <form class="mt-3" method="post" action="{{ route('payments.reverse', $payment) }}" data-confirm="Reverse this payment and restore its outstanding balance?">
+            <summary class="fw-semibold" style="cursor:pointer">{{ $packagePart ? 'Reverse entire package payment' : 'Reverse this payment' }}</summary>
+            <form class="mt-3" method="post" action="{{ route('payments.reverse', $payment) }}" data-confirm="{{ $packagePart ? 'Reverse both package module payments and restore both outstanding balances?' : 'Reverse this payment and restore its outstanding balance?' }}">
                 @csrf
                 <label class="form-label" for="reason">Reversal reason</label>
                 <input class="form-control mb-2" id="reason" name="reason" minlength="5" maxlength="1000" required>
                 <p class="form-text">The receipt stays on record and the installments become outstanding again.</p>
-                <button class="btn btn-outline-danger">Reverse payment</button>
+                <button class="btn btn-outline-danger">{{ $packagePart ? 'Reverse entire package payment' : 'Reverse payment' }}</button>
             </form>
         </details>
     @endif

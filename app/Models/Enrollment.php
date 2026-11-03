@@ -24,6 +24,7 @@ class Enrollment extends Model
         'dropout_date',
         'dropout_reason',
         'transferred_from_enrollment_id',
+        'enrollment_package_id',
     ];
 
     protected function casts(): array
@@ -40,6 +41,11 @@ class Enrollment extends Model
     }
 
     // Relationships
+    public function packagePurchase()
+    {
+        return $this->belongsTo(EnrollmentPackage::class, 'enrollment_package_id');
+    }
+
     public function batch()
     {
         return $this->belongsTo(Batch::class);

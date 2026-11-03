@@ -28,6 +28,9 @@ if (($argv[1] ?? null) === '--worker') {
     try {
         if ($argv[3] === 'admit') {
             $result = app(EnrollmentService::class)->enrollStudent((int) $argv[4], (int) $argv[5]);
+        } elseif ($argv[3] === 'package') {
+            $result = app(EnrollmentService::class)->enrollPackage((int) $argv[4], (int) $argv[5], (int) $argv[6],
+                '50000.00', 'cash', $argv[7], User::findOrFail($argv[8]));
         } elseif ($argv[3] === 'reverse') {
             $result = app(PaymentService::class)->reverse(Payment::findOrFail($argv[4]), User::findOrFail($argv[5]), $argv[6]);
         } else {
@@ -127,11 +130,51 @@ $reversals = race([['reverse', $firstPayment->id, $admin->id, 'Duplicate reversa
 if (App\Models\PaymentReversal::count() !== 1 || count(array_filter($reversals, fn ($row) => $row['outcome'] === 'accepted')) !== 1) {
     throw new RuntimeException('Concurrent reversal check failed.');
 }
+$packageBatches = [];
+foreach (['A1', 'A2'] as $index => $level) {
+    $packageCourse = Course::create(['name' => 'Package '.$level, 'level' => $level, 'total_fee' => '35000.00',
+        'teacher_per_student_amount' => 0, 'duration_weeks' => 8]);
+    $packageBatches[] = Batch::create(['name' => 'Package '.$level, 'teacher_id' => $teacher->id, 'course_id' => $packageCourse->id,
+        'start_date' => today()->addMonths($index * 2), 'end_date' => today()->addMonths(($index + 1) * 2)->subDay(),
+        'status' => $index === 0 ? 'ongoing' : 'upcoming', 'max_students' => 1]);
+}
+$packageKey = (string) Illuminate\Support\Str::uuid();
+$packageOperation = ['package', $students[0]->id, $packageBatches[0]->id, $packageBatches[1]->id, $packageKey, $admin->id];
+$packageReplay = race([$packageOperation, $packageOperation], $directory, $environment, 'package-replays');
+if (App\Models\EnrollmentPackage::count() !== 1 || $packageReplay[0]['outcome'] !== 'accepted'
+    || $packageReplay[1]['outcome'] !== 'accepted' || $packageReplay[0]['id'] !== $packageReplay[1]['id']) {
+    throw new RuntimeException('Concurrent package replay check failed.');
+}
+$package = App\Models\EnrollmentPackage::firstOrFail();
+if ($package->enrollments()->count() !== 2 || $package->payments()->sum('amount') !== '50000.00') {
+    throw new RuntimeException('Package allocation conservation check failed.');
+}
+$parts = $package->payments()->orderBy('id')->get();
+$packageReversals = race([['reverse', $parts[0]->id, $admin->id, 'Package reversal race'],
+    ['reverse', $parts[1]->id, $admin->id, 'Package reversal race']], $directory, $environment, 'package-reversals');
+if (App\Models\PaymentReversal::whereIn('payment_id', $parts->pluck('id'))->count() !== 2
+    || count(array_filter($packageReversals, fn ($row) => $row['outcome'] === 'accepted')) !== 1) {
+    throw new RuntimeException('Concurrent grouped package reversal check failed.');
+}
+foreach ($packageBatches as $index => $packageBatch) {
+    $packageBatches[$index] = $packageBatch->replicate();
+    $packageBatches[$index]->name .= ' last seat';
+    $packageBatches[$index]->save();
+}
+$packageCapacity = race([
+    ['package', $students[0]->id, $packageBatches[0]->id, $packageBatches[1]->id, (string) Illuminate\Support\Str::uuid(), $admin->id],
+    ['package', $students[1]->id, $packageBatches[0]->id, $packageBatches[1]->id, (string) Illuminate\Support\Str::uuid(), $admin->id],
+], $directory, $environment, 'package-capacity');
+if (App\Models\EnrollmentPackage::count() !== 2 || count(array_filter($packageCapacity, fn ($row) => $row['outcome'] === 'accepted')) !== 1
+    || Enrollment::whereIn('batch_id', array_column($packageBatches, 'id'))->count() !== 2) {
+    throw new RuntimeException('Concurrent two-module package capacity check failed.');
+}
 foreach (Enrollment::all() as $account) {
     app(PaymentService::class)->assertReconciled($account);
 }
 $report = ['database' => $database, 'admissions' => $admissions, 'payments' => $payments, 'replays' => $replays,
     'cross_account_collision' => $crossAccount, 'reversals' => $reversals,
+    'package_replays' => $packageReplay, 'package_reversals' => $packageReversals, 'package_capacity' => $packageCapacity,
     'source_business_data_changed' => false, 'success' => true];
 file_put_contents($directory.'/report.json', json_encode($report, JSON_PRETTY_PRINT));
 echo json_encode($report, JSON_PRETTY_PRINT).PHP_EOL;

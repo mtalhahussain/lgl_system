@@ -1,6 +1,7 @@
 @extends('layouts.admin')
 @section('title', 'Enroll Student')
 @section('content')
+<div class="alert alert-light border">Paying for A1 and A2 together? <a href="{{ route('enrollment-packages.create') }}">Use the Rs 50,000 full-payment package</a>. This form is for normal module-wise admission.</div>
 <x-list.header title="Enroll Student" eyebrow="Admissions" subtitle="Admission locks the fee agreement and creates the installment plan" />
 <form method="post" action="{{ route('enrollments.store') }}" class="panel form-panel">
     @csrf

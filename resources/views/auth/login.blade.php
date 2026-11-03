@@ -1,5 +1,12 @@
 <!DOCTYPE html>
-@php($instituteName = \Illuminate\Support\Facades\Schema::hasTable('settings') ? institute_name() : config('app.name', 'LGL Institute'))
+@php
+    $hasSettings = \Illuminate\Support\Facades\Schema::hasTable('settings');
+    $instituteName = $hasSettings ? trim((string) setting('institute_name', '')) : '';
+    if ($instituteName === '' || in_array($instituteName, ['Language Institute', 'LGL Institute', 'German Language Learning Institute'])) {
+        $instituteName = 'Land of German Language';
+    }
+    $instituteLogo = $hasSettings ? setting('institute_logo') : null;
+@endphp
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -12,30 +19,42 @@
     <main class="login-shell">
         <section class="login-story" aria-label="Welcome">
             <div>
-                <div class="login-wordmark"><span class="brand-mark"><i class="fas fa-graduation-cap" aria-hidden="true"></i></span>{{ $instituteName }}</div>
-                <h1>A better place<br>to learn. A simpler<br>way to manage.</h1>
-                <p>Your classes, people and progress.<br>One connected institute workspace.</p>
-                <div class="login-preview" aria-hidden="true">
-                    <div class="tw:flex tw:items-center tw:justify-between"><span style="font-size:12px;color:#bdcbe0">Learning, moving forward</span><i class="fas fa-arrow-trend-up" style="color:#a78bfa"></i></div>
-                    <div class="preview-bars"><span style="height:28%"></span><span style="height:42%"></span><span style="height:36%"></span><span style="height:65%"></span><span style="height:55%"></span><span style="height:82%"></span><span style="height:100%"></span></div>
-                    <div style="margin-top:16px;font-size:10px;color:#8399bc">A little progress. Every single day.</div>
+                <div class="login-wordmark">
+                    <span class="login-logo">
+                        @if($instituteLogo)
+                            <img src="{{ \Illuminate\Support\Facades\Storage::disk('public')->url($instituteLogo) }}" alt="{{ $instituteName }} logo">
+                        @else
+                            <span aria-hidden="true">LGL</span>
+                        @endif
+                    </span>
+                    <span>{{ $instituteName }}<small>INSTITUTE PORTAL</small></span>
+                </div>
+                <div class="login-story-content">
+                    <span class="login-kicker"><span class="login-flag" aria-hidden="true"></span> YOUR NEXT CHAPTER STARTS HERE</span>
+                    <h1>A new language.<br>A world of<br><em>possibilities.</em></h1>
+                    <p>Stay connected to your German learning journey. Your classes, attendance and progress, all in one place.</p>
+                    <div class="login-learning-card">
+                        <span class="login-greeting" lang="de">Guten Tag.</span>
+                        <span>A little German. A little closer to your goals.</span>
+                        <div class="login-levels" aria-label="German language learning"><span>Learn</span><span>Practice</span><span>Progress</span></div>
+                    </div>
                 </div>
             </div>
-            <footer style="margin-top:45px;color:#7e94b3;font-size:11px">Built around your learning community.</footer>
+            <footer class="login-story-footer"><span class="login-flag" aria-hidden="true"></span> Language connects. Learning opens doors.</footer>
         </section>
         <section class="login-form-side">
             <div class="login-form">
-                <div class="eyebrow">YOUR INSTITUTE WORKSPACE</div>
+                <div class="eyebrow">WELCOME TO YOUR PORTAL</div>
                 <h2>Welcome back</h2>
-                <p class="page-subtitle" style="line-height:1.7">Enter your details to sign in to your account.</p>
+                <p class="page-subtitle">Sign in to continue your learning journey.</p>
                 @if ($errors->any())
-                    <div role="alert" style="background:#fff0f2;color:#b4233a;padding:14px;border-radius:8px;margin-top:22px;font-size:13px">{{ $errors->first() }}</div>
+                    <div role="alert" id="login-error" class="login-error">{{ $errors->first() }}</div>
                 @endif
                 <form method="POST" action="{{ route('login.post') }}">
                     @csrf
                     <div class="login-field">
                         <label for="email">Email address</label>
-                        <input id="email" name="email" type="email" autocomplete="username" placeholder="you@example.com" value="{{ old('email') }}" required @error('email') aria-invalid="true" @enderror>
+                        <input id="email" name="email" type="email" autocomplete="username" placeholder="you@example.com" value="{{ old('email') }}" required @error('email') aria-invalid="true" aria-describedby="login-error" @enderror>
                     </div>
                     <div class="login-field">
                         <label for="password">Password</label>
@@ -44,11 +63,11 @@
                             <button class="password-toggle" type="button" aria-label="Show password" aria-pressed="false" id="passwordToggle"><i class="fas fa-eye" aria-hidden="true"></i></button>
                         </div>
                     </div>
-                    <label style="display:flex;align-items:center;gap:9px;font-weight:400;color:#66748b;cursor:pointer" for="remember"><input type="checkbox" name="remember" id="remember" value="1" style="accent-color:#7856ef" @checked(old('remember'))>Remember me on this device</label>
-                    <button type="submit" class="btn btn-primary login-submit" style="border:0;color:white;cursor:pointer">Sign in <i class="fas fa-arrow-right" style="margin-left:10px" aria-hidden="true"></i></button>
+                    <label class="login-remember" for="remember"><input type="checkbox" name="remember" id="remember" value="1" @checked(old('remember'))>Remember me on this device</label>
+                    <button type="submit" class="btn btn-primary login-submit">Sign in <i class="fas fa-arrow-right" aria-hidden="true"></i></button>
                 </form>
-                <p class="login-fine"><i class="fas fa-lock" aria-hidden="true"></i> Your workspace. Securely connected.</p>
-                <p class="login-fine" style="margin-top:40px">Need an account? Contact your institute administrator.</p>
+                <p class="login-fine"><i class="fas fa-lock" aria-hidden="true"></i> Admin · Teacher · Student</p>
+                <p class="login-help">Need help signing in?<br><span>Contact your institute administrator.</span></p>
             </div>
         </section>
     </main>

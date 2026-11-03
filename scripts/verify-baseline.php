@@ -121,11 +121,18 @@ try {
         config(['database.connections.baseline_fresh' => $fresh]);
         $report['seed_users'] = Illuminate\Support\Facades\DB::connection('baseline_fresh')->table('users')->count();
         $report['seed_non_lgl_emails'] = Illuminate\Support\Facades\DB::connection('baseline_fresh')->table('users')->where('email', 'not like', '%@lgl.com')->count();
+        // The owner uses a custom Admin email; Teacher and Student demo emails remain @lgl.com.
+        $report['seed_non_lgl_non_admin_emails'] = Illuminate\Support\Facades\DB::connection('baseline_fresh')->table('users')
+            ->where('role', '!=', 'admin')->where('email', 'not like', '%@lgl.com')->count();
+        $report['seed_roles'] = Illuminate\Support\Facades\DB::connection('baseline_fresh')->table('users')
+            ->selectRaw('role, COUNT(*) AS total')->groupBy('role')->pluck('total', 'role')->map(fn ($count) => (int) $count)->all();
     }
     $report['source_unchanged'] = $sourceFingerprint === databaseFingerprint($sourceConnection->getPdo());
     $report['success'] = $report['source_unchanged'] && $report['fresh_migrate_exit'] === 0
         && $report['restored_upgrade_exit'] === 0 && ($report['fresh_seed_exit'] ?? 1) === 0
-        && ($report['seed_users'] ?? 0) === 23 && ($report['seed_non_lgl_emails'] ?? -1) === 0;
+        && ($report['seed_users'] ?? 0) === 23 && ($report['seed_non_lgl_non_admin_emails'] ?? -1) === 0
+        && ($report['seed_roles']['admin'] ?? 0) === 1 && ($report['seed_roles']['teacher'] ?? 0) === 2
+        && ($report['seed_roles']['student'] ?? 0) === 20;
 } catch (Throwable $exception) {
     $report['success'] = false;
     // Keep credentials out of terminal output and the shareable report.

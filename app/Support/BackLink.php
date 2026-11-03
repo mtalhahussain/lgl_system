@@ -33,7 +33,7 @@ class BackLink
             $name === 'batches.edit' => ['batches.show', [$param('batch')], 'Batch'],
             in_array($name, ['class-sessions.show', 'class-sessions.create'], true) => ['class-sessions.index', [], 'Class sessions'],
             in_array($name, ['class-sessions.edit', 'class-sessions.attendance'], true) => ['class-sessions.show', [$param('class_session') ?? $param('classSession')], 'Session'],
-            in_array($name, ['enrollments.show', 'enrollments.create'], true) => ['enrollments.index', [], 'Enrollments'],
+            in_array($name, ['enrollments.show', 'enrollments.create', 'enrollment-packages.create'], true) => ['enrollments.index', [], 'Enrollments'],
             in_array($name, ['attendance.create', 'attendance.show'], true) => ['attendance.index', [], 'Attendance'],
             $name === 'attendance.reports' => $admin ? ['reports.index', [], 'Reports'] : ['attendance.index', [], 'Attendance'],
             $name === 'attendance.student' => ['students.show', [$param('student')], 'Student'],

@@ -2,6 +2,7 @@
 @section('title', 'Enrollments')
 @section('content')
 <x-list.header title="Enrollments" eyebrow="Admissions" subtitle="Student admissions, fee agreements and status">
+    <a class="btn btn-outline-primary" href="{{ route('enrollment-packages.create') }}">A1 + A2 package</a>
     <a class="btn btn-primary" href="{{ route('enrollments.create') }}"><i class="fas fa-user-plus me-1" aria-hidden="true"></i>Enroll student</a>
 </x-list.header>
 <x-list.kpis :items="$kpis" />

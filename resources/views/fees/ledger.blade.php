@@ -64,7 +64,8 @@
                                     @endforelse
                                     </tbody>
                                 </table>
-                                <p class="cell-sub mt-2">Agreed {{ currency_format($enrollment->total_fee) }}; discount {{ $enrollment->discount_percentage }}% ({{ currency_format($enrollment->discount_amount) }}).@if(auth()->user()->isAdmin() && $enrollment->status !== 'transferred') <a href="{{ route('enrollments.show', $enrollment) }}#fee-heading">Edit discount</a>@endif</p>
+                                <p class="cell-sub mt-2">Agreed {{ currency_format($enrollment->total_fee) }}; discount {{ $enrollment->discount_percentage }}% ({{ currency_format($enrollment->discount_amount) }}).@if(auth()->user()->isAdmin() && $enrollment->status !== 'transferred' && ! $enrollment->enrollment_package_id) <a href="{{ route('enrollments.show', $enrollment) }}#fee-heading">Edit discount</a>@endif
+                                @if($enrollment->enrollment_package_id)<a href="{{ route('enrollment-packages.show', $enrollment->enrollment_package_id) }}">A1 + A2 package receipt</a>@endif</p>
                             </div>
                             @if($isAdmin && $enrollment->status !== 'transferred')
                                 <div class="col-lg-6">

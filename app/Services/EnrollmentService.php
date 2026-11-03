@@ -10,6 +10,8 @@ use Carbon\Carbon;
 
 class EnrollmentService
 {
+    public const PACKAGE_AMOUNT = '50000.00';
+
     private $feeCalculator;
 
     public function __construct(FeeCalculatorService $feeCalculator)
@@ -51,6 +53,107 @@ class EnrollmentService
 
             return $enrollment->load(['student', 'batch.course', 'feeInstallments']);
         });
+    }
+
+    /**
+     * Sell an A1+A2 package with full advance payment and two canonical ledgers.
+     */
+    public function enrollPackage(int $studentId, int $a1BatchId, int $a2BatchId, string $amount, string $method,
+        string $key, User $actor, ?string $reference = null): \App\Models\EnrollmentPackage
+    {
+        abort_unless($actor->isAdmin() && $actor->is_active, 403);
+        \Illuminate\Support\Facades\Validator::make(compact('amount', 'method', 'key', 'reference'), [
+            'amount' => 'required|decimal:0,2|gt:0', 'method' => 'required|in:cash,bank,card,jazzcash,easypaisa,online',
+            'key' => ['required', 'regex:/^[A-Za-z0-9_-]{16,64}$/D'], 'reference' => 'nullable|string|max:255',
+        ])->validate();
+        $total = \App\Support\Money::minor(self::PACKAGE_AMOUNT);
+        if (\App\Models\Setting::get('currency_code', 'PKR') !== 'PKR') {
+            throw \Illuminate\Validation\ValidationException::withMessages(['package' => 'The Rs 50,000 package is available only with PKR institute currency.']);
+        }
+        if (\App\Support\Money::minor($amount) !== $total) {
+            throw \Illuminate\Validation\ValidationException::withMessages(['amount' => 'The A1 + A2 package requires full payment of Rs 50,000. Installments use normal module-wise admission.']);
+        }
+        $payload = hash('sha256', json_encode([$studentId, $a1BatchId, $a2BatchId, $total, $method, $reference, $actor->id]));
+
+        try {
+            return \Illuminate\Support\Facades\DB::transaction(function () use ($studentId, $a1BatchId, $a2BatchId, $total, $method, $key, $actor, $reference, $payload) {
+                // Batch order matches the transfer lock order; serialize package retries for the same student.
+                $batches = Batch::whereIn('id', [$a1BatchId, $a2BatchId])->orderBy('id')->lockForUpdate()->get()->keyBy('id');
+                $student = User::lockForUpdate()->findOrFail($studentId);
+                $existing = \App\Models\EnrollmentPackage::where('submission_key', $key)->first();
+                if ($existing) {
+                    return $this->replayPackage($existing, $payload);
+                }
+                $first = $batches->get($a1BatchId);
+                $second = $batches->get($a2BatchId);
+                if (! $first || ! $second || $first->id === $second->id
+                    || ! $first->end_date || ! $second->start_date || $second->start_date->lte($first->end_date)) {
+                    throw \Illuminate\Validation\ValidationException::withMessages(['a2_batch_id' => 'Select an A1 batch with an end date and an A2 batch starting after it ends.']);
+                }
+                $courses = Course::whereIn('id', [$first->course_id, $second->course_id])->orderBy('id')->lockForUpdate()->get()->keyBy('id');
+                $first->setRelation('course', $courses->get($first->course_id));
+                $second->setRelation('course', $courses->get($second->course_id));
+                if ($first->course->level !== 'A1' || $second->course->level !== 'A2') {
+                    throw \Illuminate\Validation\ValidationException::withMessages(['a2_batch_id' => 'The package requires A1 followed by A2.']);
+                }
+                $gross = [\App\Support\Money::minor($first->course->total_fee), \App\Support\Money::minor($second->course->total_fee)];
+                $grossTotal = array_sum($gross);
+                if (min($gross) <= 0 || $grossTotal < $total) {
+                    throw \Illuminate\Validation\ValidationException::withMessages(['a1_batch_id' => 'Both modules need positive normal fees totaling at least Rs 50,000.']);
+                }
+                $firstNet = intdiv($total * $gross[0] + intdiv($grossTotal, 2), $grossTotal);
+                $nets = [$firstNet, $total - $firstNet];
+                if (min($nets) <= 0) {
+                    throw \Illuminate\Validation\ValidationException::withMessages(['a1_batch_id' => 'Each module must receive a positive package allocation.']);
+                }
+                $modules = [];
+                foreach ([$first, $second] as $index => $batch) {
+                    // Reuse admission capacity, duplicate, student and course eligibility checks.
+                    $enrollment = $this->enrollStudent($studentId, $batch->id);
+                    $enrollment->update(['discount_amount' => \App\Support\Money::decimal($gross[$index] - $nets[$index])]);
+                    $enrollment->feeInstallments()->sole()->update(['amount' => \App\Support\Money::decimal($nets[$index])]);
+                    $payment = app(PaymentService::class)->pay($enrollment->id, \App\Support\Money::decimal($nets[$index]),
+                        $method, hash('sha256', 'package:'.$key.':'.$index), $actor, $reference);
+                    $modules[] = ['enrollment_id' => $enrollment->id, 'payment_id' => $payment->id,
+                        'receipt_number' => $payment->receipt_number, 'course' => $batch->course->name,
+                        'level' => $batch->course->level, 'batch' => $batch->name,
+                        'start_date' => $batch->start_date->toDateString(), 'end_date' => $batch->end_date?->toDateString(),
+                        'gross' => \App\Support\Money::decimal($gross[$index]),
+                        'discount' => $enrollment->discount_amount, 'amount' => $payment->amount];
+                }
+                $package = \App\Models\EnrollmentPackage::create(['student_id' => $studentId, 'received_by' => $actor->id,
+                    'amount' => self::PACKAGE_AMOUNT, 'method' => $method, 'reference' => $reference,
+                    'receipt_number' => 'PKG-'.\Illuminate\Support\Str::ulid(), 'submission_key' => $key,
+                    'payload_hash' => $payload, 'created_at' => now(),
+                    'receipt_details' => ['student_name' => $student->name, 'student_reference' => $student->student_id,
+                        'institute_name' => institute_name(), 'currency_code' => \App\Models\Setting::get('currency_code', 'PKR'),
+                        'timezone' => config('app.timezone'), 'modules' => $modules]]);
+                Enrollment::whereIn('id', array_column($modules, 'enrollment_id'))->update(['enrollment_package_id' => $package->id]);
+                \App\Models\AuditLog::create(['actor_id' => $actor->id, 'action' => 'enrollment.package_created',
+                    'subject_type' => 'enrollment_package', 'subject_id' => $package->id,
+                    'changes' => ['receipt_number' => $package->receipt_number, 'amount' => $package->amount, 'modules' => $modules]]);
+
+                return $package;
+            }, 3);
+        } catch (\InvalidArgumentException $exception) {
+            throw \Illuminate\Validation\ValidationException::withMessages(['package' => $exception->getMessage()]);
+        } catch (\Illuminate\Database\UniqueConstraintViolationException $exception) {
+            $existing = \App\Models\EnrollmentPackage::where('submission_key', $key)->first();
+            if (! $existing) {
+                throw $exception;
+            }
+
+            return $this->replayPackage($existing, $payload);
+        }
+    }
+
+    private function replayPackage(\App\Models\EnrollmentPackage $package, string $payload): \App\Models\EnrollmentPackage
+    {
+        if (! hash_equals($package->payload_hash, $payload)) {
+            throw \Illuminate\Validation\ValidationException::withMessages(['submission_key' => 'Submission key was already used for different package details.']);
+        }
+
+        return $package;
     }
 
     /**

@@ -16,6 +16,10 @@
     <a class="btn btn-outline-primary" href="{{ route('students.show', $enrollment->student) }}"><i class="fas fa-user me-1" aria-hidden="true"></i>Student</a>
 </x-show.hero>
 
+@if($enrollment->enrollment_package_id)
+    <div class="alert alert-info">Part of a full-payment A1 + A2 package. <a href="{{ route('enrollment-packages.show', $enrollment->enrollment_package_id) }}">View combined receipt</a>. Module prices are fixed by the package agreement.</div>
+@endif
+
 @if($enrollment->status === 'dropped')
     <div class="alert alert-secondary">Withdrawn {{ $enrollment->dropout_date?->format('d M Y') }}: {{ $enrollment->dropout_reason }}. Agreement and debt are retained.</div>
 @elseif($enrollment->status === 'transferred')
@@ -38,7 +42,7 @@
             @endif
             <div class="finance-row"><span>Outstanding</span><strong>{{ currency_format($enrollment->remaining_fee) }}</strong></div>
             <div class="balance-bar mt-3" role="progressbar" aria-label="Fee paid" aria-valuenow="{{ $progress }}" aria-valuemin="0" aria-valuemax="100"><span style="width:{{ $progress }}%"></span></div>
-            @if($enrollment->status !== 'transferred')
+            @if($enrollment->status !== 'transferred' && ! $enrollment->enrollment_package_id)
                 <details class="mt-3 d-print-none" @if($errors->hasAny(['discount_percentage', 'reason', 'refund_method', 'submission_key'])) open @endif>
                     <summary class="fw-semibold" style="cursor:pointer;font-size:13px"><i class="fas fa-percent me-1" aria-hidden="true"></i>Edit discount</summary>
                     <form class="mt-3" method="post" action="{{ route('enrollments.discount', $enrollment) }}" data-confirm="Change the discount? The difference is applied to unpaid installments."

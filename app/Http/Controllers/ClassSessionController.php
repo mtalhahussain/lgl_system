@@ -2,10 +2,16 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\AuditLog;
 use App\Models\Batch;
 use App\Models\ClassSession;
+use App\Services\AttendanceService;
 use App\Support\ListQuery;
+use Carbon\Carbon;
+use Carbon\CarbonPeriod;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class ClassSessionController extends Controller
 {
@@ -62,6 +68,57 @@ class ClassSessionController extends Controller
         }
 
         return view('admin.class-sessions.form', ['batches' => $batches, 'classSession' => null]);
+    }
+
+    public const WEEKDAYS = ['mon' => 'Mon', 'tue' => 'Tue', 'wed' => 'Wed', 'thu' => 'Thu', 'fri' => 'Fri', 'sat' => 'Sat', 'sun' => 'Sun'];
+
+    private const MAX_GENERATED = 200;
+
+    /** Creates one session per chosen weekday between two dates; dates that already have a session are skipped. */
+    public function generate(Request $request, Batch $batch)
+    {
+        $this->authorize('view', $batch);
+        abort_if(auth()->user()->isTeacher() && $batch->teacher_id !== auth()->id(), 403);
+        $data = $request->validate([
+            'days' => 'required|array|min:1', 'days.*' => 'in:'.implode(',', array_keys(self::WEEKDAYS)),
+            'start_time' => 'required|date_format:H:i', 'end_time' => 'required|date_format:H:i|after:start_time',
+            'from' => 'required|date_format:Y-m-d|after_or_equal:today',
+            'to' => 'required|date_format:Y-m-d|after_or_equal:from',
+            'topic' => 'required|string|max:255',
+        ], ['days.required' => 'Choose at least one class day.']);
+        if (! in_array($batch->status, ['upcoming', 'ongoing'], true)) {
+            throw ValidationException::withMessages(['days' => 'Sessions can only be generated for upcoming or ongoing batches.']);
+        }
+        $from = max(Carbon::parse($data['from']), $batch->start_date->copy());
+        $to = $batch->end_date ? min(Carbon::parse($data['to']), $batch->end_date->copy()) : Carbon::parse($data['to']);
+        $dates = collect($from->lte($to) ? CarbonPeriod::create($from, $to) : [])
+            ->filter(fn ($date) => in_array(strtolower($date->format('D')), $data['days'], true))->map(fn ($date) => $date->toDateString())->values();
+        if ($dates->isEmpty()) {
+            throw ValidationException::withMessages(['days' => 'No class day falls between these dates within the batch dates.']);
+        }
+        if ($dates->count() > self::MAX_GENERATED) {
+            throw ValidationException::withMessages(['to' => 'At most '.self::MAX_GENERATED.' sessions at a time; choose a shorter date range.']);
+        }
+        $created = DB::transaction(function () use ($batch, $dates, $data) {
+            Batch::lockForUpdate()->findOrFail($batch->id);
+            // whereDate: a stored value may carry a time part, which whereBetween on the last date would miss.
+            $existing = ClassSession::where('batch_id', $batch->id)->whereDate('session_date', '>=', $dates->first())
+                ->whereDate('session_date', '<=', $dates->last())
+                ->pluck('session_date')->map(fn ($date) => Carbon::parse($date)->toDateString())->all();
+            $new = $dates->reject(fn ($date) => in_array($date, $existing, true))->values();
+            foreach ($new as $date) {
+                ClassSession::create(['batch_id' => $batch->id, 'session_date' => $date, 'start_time' => $data['start_time'],
+                    'end_time' => $data['end_time'], 'topic' => $data['topic'], 'status' => 'scheduled', 'meeting_link' => $batch->meeting_link]);
+            }
+            AuditLog::create(['actor_id' => auth()->id(), 'action' => 'class_sessions.generated', 'subject_type' => 'batch',
+                'subject_id' => $batch->id, 'changes' => ['days' => $data['days'], 'from' => $dates->first(), 'to' => $dates->last(),
+                    'start_time' => $data['start_time'], 'end_time' => $data['end_time'], 'created' => $new->count()], 'created_at' => now()]);
+
+            return $new->count();
+        });
+        $skipped = $dates->count() - $created;
+
+        return redirect()->route('batches.show', $batch)->with('success', "{$created} sessions created".($skipped ? ", {$skipped} dates already had a session" : '').'.');
     }
 
     public function store(Request $request)
@@ -167,7 +224,7 @@ class ClassSessionController extends Controller
         }
 
         if ($batch->id !== $classSession->batch_id && $classSession->attendances()->exists()) {
-            throw \Illuminate\Validation\ValidationException::withMessages(['batch_id' => 'A session with attendance cannot move to another batch.']);
+            throw ValidationException::withMessages(['batch_id' => 'A session with attendance cannot move to another batch.']);
         }
 
         $classSession->update([
@@ -209,7 +266,7 @@ class ClassSessionController extends Controller
         }
 
         if ($classSession->status !== 'scheduled') {
-            throw \Illuminate\Validation\ValidationException::withMessages(['status' => 'Only scheduled sessions can start.']);
+            throw ValidationException::withMessages(['status' => 'Only scheduled sessions can start.']);
         }
         $classSession->update([
             'status' => 'ongoing',
@@ -232,7 +289,7 @@ class ClassSessionController extends Controller
         }
 
         if (! in_array($classSession->status, ['ongoing', 'completed'], true)) {
-            throw \Illuminate\Validation\ValidationException::withMessages(['status' => 'Only ongoing sessions can end.']);
+            throw ValidationException::withMessages(['status' => 'Only ongoing sessions can end.']);
         }
         $classSession->update([
             'status' => 'completed',
@@ -277,7 +334,7 @@ class ClassSessionController extends Controller
         foreach ($request->attendance as $studentId => $status) {
             $rows[] = ['student_id' => $studentId, 'status' => $status, 'notes' => $request->input('notes.'.$studentId)];
         }
-        app(\App\Services\AttendanceService::class)->markBulkAttendance($classSession->id, $rows, $request->input('reason'));
+        app(AttendanceService::class)->markBulkAttendance($classSession->id, $rows, $request->input('reason'));
 
         return redirect()->route('class-sessions.show', $classSession)
             ->with('success', 'Attendance marked successfully!');

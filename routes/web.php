@@ -80,6 +80,8 @@ Route::middleware(['auth', \App\Http\Middleware\EnsureActiveAccount::class])->gr
     // Class Session Management Routes
     Route::resource('class-sessions', App\Http\Controllers\ClassSessionController::class)
         ->middleware('role:admin,teacher');
+    Route::post('/batches/{batch}/sessions/generate', [App\Http\Controllers\ClassSessionController::class, 'generate'])
+        ->name('class-sessions.generate')->middleware('role:admin,teacher');
     Route::post('/class-sessions/{classSession}/start', [App\Http\Controllers\ClassSessionController::class, 'start'])
         ->name('class-sessions.start')->middleware('role:admin,teacher');
     Route::post('/class-sessions/{classSession}/end', [App\Http\Controllers\ClassSessionController::class, 'end'])
@@ -143,6 +145,19 @@ Route::middleware(['auth', \App\Http\Middleware\EnsureActiveAccount::class])->gr
     Route::post('/payroll/payouts/{payout}/reverse', [App\Http\Controllers\PayrollController::class, 'reverse'])
         ->name('payroll.reverse')->middleware('role:admin');
 
+    // Non-teaching staff (no sign-in): Admin only; listed on the Users page.
+    Route::get('/staff/create', [App\Http\Controllers\StaffController::class, 'create'])->name('staff.create')->middleware('role:admin');
+    Route::post('/staff', [App\Http\Controllers\StaffController::class, 'store'])->name('staff.store')->middleware('role:admin');
+    Route::get('/staff/{staff}/edit', [App\Http\Controllers\StaffController::class, 'edit'])->name('staff.edit')->middleware('role:admin');
+    Route::put('/staff/{staff}', [App\Http\Controllers\StaffController::class, 'update'])->name('staff.update')->middleware('role:admin');
+
+    // WhatsApp fee reminders (Meta Cloud API): Admin only.
+    Route::get('/whatsapp', [App\Http\Controllers\WhatsAppReminderController::class, 'index'])->name('whatsapp.index')->middleware('role:admin');
+    Route::put('/whatsapp/settings', [App\Http\Controllers\WhatsAppReminderController::class, 'updateSettings'])->name('whatsapp.settings')->middleware('role:admin');
+    Route::post('/whatsapp/test', [App\Http\Controllers\WhatsAppReminderController::class, 'test'])->name('whatsapp.test')->middleware(['role:admin', 'throttle:10,1']);
+    Route::post('/enrollments/{enrollment}/whatsapp-reminder', [App\Http\Controllers\WhatsAppReminderController::class, 'sendForEnrollment'])
+        ->name('whatsapp.enrollment')->middleware(['role:admin', 'throttle:30,1']);
+
     // Installment Management Routes
     Route::get('/installments/create', [App\Http\Controllers\InstallmentController::class, 'create'])
         ->name('installments.create')->middleware('role:admin');
@@ -167,7 +182,25 @@ Route::middleware(['auth', \App\Http\Middleware\EnsureActiveAccount::class])->gr
     Route::get('/attendance/student/{student}', [App\Http\Controllers\AttendanceController::class, 'studentAttendance'])
         ->name('attendance.student')->middleware('role:admin,teacher,student');
     
-    // Biometric and fingerprint routes are deferred; service/data files are retained.
+    // Attendance machine (Hikvision push): Admin only. The machine push endpoint is in routes/biometric.php.
+    Route::get('/biometric', [App\Http\Controllers\BiometricController::class, 'index'])
+        ->name('biometric.index')->middleware('role:admin');
+    Route::post('/biometric/devices', [App\Http\Controllers\BiometricController::class, 'store'])
+        ->name('biometric.store')->middleware('role:admin');
+    Route::put('/biometric/devices/{device}', [App\Http\Controllers\BiometricController::class, 'update'])
+        ->name('biometric.update')->middleware('role:admin');
+    Route::post('/biometric/devices/{device}/token', [App\Http\Controllers\BiometricController::class, 'regenerate'])
+        ->name('biometric.regenerate')->middleware('role:admin');
+    Route::get('/biometric/teachers', [App\Http\Controllers\BiometricController::class, 'teachers'])
+        ->name('biometric.teachers')->middleware('role:admin');
+    Route::post('/biometric/devices/{device}/resync', [App\Http\Controllers\BiometricController::class, 'resync'])
+        ->name('biometric.resync')->middleware('role:admin');
+    Route::post('/biometric/devices/{device}/bridge-token', [App\Http\Controllers\BiometricController::class, 'regenerateBridge'])
+        ->name('biometric.bridge-token')->middleware('role:admin');
+    Route::get('/biometric/devices/{device}/bridge-config', [App\Http\Controllers\BiometricController::class, 'bridgeConfig'])
+        ->name('biometric.bridge-config')->middleware('role:admin');
+    Route::get('/biometric/bridge-script', [App\Http\Controllers\BiometricController::class, 'bridgeScript'])
+        ->name('biometric.bridge-script')->middleware('role:admin');
     
     // Reports Routes
     Route::get('/reports', [App\Http\Controllers\ReportsController::class, 'index'])

@@ -106,7 +106,10 @@ class CoreWorkflowTest extends TestCase
     {
         \Illuminate\Support\Facades\Notification::fake();
         $this->artisan('attendance:auto-absent')->assertExitCode(1);
-        $this->artisan('fees:send-reminders')->assertExitCode(1);
+        \Illuminate\Support\Facades\Http::fake();
+        // Off by default and without credentials: nothing is sent.
+        $this->artisan('fees:whatsapp-reminders')->assertExitCode(1);
+        \Illuminate\Support\Facades\Http::assertNothingSent();
         \Illuminate\Support\Facades\Notification::assertNothingSent();
         $this->assertDatabaseCount('attendances', 0);
     }

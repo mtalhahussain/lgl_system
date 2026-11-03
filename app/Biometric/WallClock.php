@@ -3,6 +3,7 @@
 namespace App\Biometric;
 
 use Carbon\Carbon;
+use Carbon\Exceptions\InvalidFormatException;
 
 /**
  * Attendance stores the machine's wall-clock time labelled with the app timezone
@@ -25,7 +26,7 @@ final class WallClock
     /**
      * A string that may or may not carry a zone/offset. Without one it is already wall-clock.
      *
-     * @throws \Carbon\Exceptions\InvalidFormatException for unparseable input (drivers skip such records).
+     * @throws InvalidFormatException for unparseable input (drivers skip such records).
      */
     public static function parse(string $value, string $deviceTz): Carbon
     {

@@ -33,6 +33,11 @@ class EnrollmentPackage extends Model
 
     public function payments()
     {
-        return Payment::whereIn('id', array_column($this->receipt_details['modules'], 'payment_id'));
+        return Payment::whereIn('id', array_filter(array_column($this->receipt_details['modules'], 'payment_id')));
+    }
+
+    public function isFullAdvance(): bool
+    {
+        return ($this->receipt_details['plan'] ?? 'full') === 'full';
     }
 }

@@ -102,7 +102,7 @@ class PaymentService
             $package = \App\Models\EnrollmentPackage::lockForUpdate()->findOrFail($package->id);
             $package->enrollments()->orderBy('id')->lockForUpdate()->get();
             $payments = $package->payments()->orderBy('enrollment_id')->get();
-            if ($payments->count() !== 2) {
+            if ($payments->count() !== count(array_filter(array_column($package->receipt_details['modules'], 'payment_id')))) {
                 throw ValidationException::withMessages(['payment' => 'Package payment records require reconciliation.']);
             }
             foreach ($payments as $part) {

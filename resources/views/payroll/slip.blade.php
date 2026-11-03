@@ -10,7 +10,7 @@
         <a class="btn btn-outline-secondary" href="{{ route('payroll.show', $payout->due) }}"><i class="fas fa-arrow-left me-1" aria-hidden="true"></i>Back to due</a>
         <button class="btn btn-primary ms-auto" type="button" onclick="window.print()"><i class="fas fa-print me-1" aria-hidden="true"></i>Print slip</button>
     </div>
-    <x-show.document kind="Teacher Payment Slip" :number="$payout->voucher_number" :institute="$details['institute_name'] ?? null"
+    <x-show.document kind="Salary Payment Slip" :number="$payout->voucher_number" :institute="$details['institute_name'] ?? null"
         :amount="$payout->amount" :currency="$details['currency_code'] ?? 'PKR'" :date="$payout->paid_at->format('d M Y, H:i')" :reversal="$payout->reversal"
         :rows="['Paid to' => $teacher, 'For' => $details['description'] ?? null,
             'Due amount' => isset($details['due_amount']) ? ($details['currency_code'] ?? 'PKR').' '.number_format((float) $details['due_amount'], 2) : null,

@@ -89,6 +89,7 @@ class StudentController extends Controller
             'is_active' => 'sometimes|boolean',
             'batch_id' => 'nullable|exists:batches,id',
             'discount_percentage' => 'nullable|numeric|min:0|max:100',
+            'device_employee_no' => ['nullable', 'regex:/^[A-Za-z0-9]{1,32}$/D', \Illuminate\Validation\Rule::unique('users', 'device_employee_no')],
         ]);
 
         DB::beginTransaction();
@@ -105,6 +106,9 @@ class StudentController extends Controller
                 'emergency_contact' => $request->emergency_contact,
                 'is_active' => $request->boolean('is_active', true),
             ]);
+            if ($request->filled('device_employee_no')) {
+                $student->forceFill(['device_employee_no' => $request->input('device_employee_no')])->save();
+            }
 
             // Enroll in batch
             if ($request->filled('batch_id')) {
@@ -184,9 +188,13 @@ class StudentController extends Controller
             'emergency_contact' => 'nullable|string|max:255',
             'password' => 'nullable|string|min:8|confirmed',
             'is_active' => 'sometimes|boolean',
+            'device_employee_no' => ['nullable', 'regex:/^[A-Za-z0-9]{1,32}$/D', \Illuminate\Validation\Rule::unique('users', 'device_employee_no')->ignore($student->id)],
         ]);
 
         DB::transaction(function () use ($request, $student) {
+            if ($request->filled('device_employee_no')) {
+                $student->forceFill(['device_employee_no' => $request->input('device_employee_no')])->save();
+            }
             $student->update($request->only([
                 'name', 'email', 'phone', 'address', 'date_of_birth',
                 'emergency_contact', 'is_active',
@@ -252,101 +260,5 @@ class StudentController extends Controller
         $presentSessions = $student->attendances()->where('status', 'present')->count();
 
         return round(($presentSessions / $totalSessions) * 100, 1);
-    }
-
-    /**
-     * Enroll student fingerprint
-     */
-    public function enrollFingerprint(Request $request, User $student)
-    {
-        $request->validate([
-            'device_employee_no' => 'required|integer|min:1|max:9999',
-        ]);
-
-        try {
-            // Check if device employee number is already taken
-            $existingStudent = User::where('device_employee_no', $request->device_employee_no)
-                ->where('id', '!=', $student->id)
-                ->first();
-
-            if ($existingStudent) {
-                return response()->json([
-                    'success' => false,
-                    'message' => "Device employee number {$request->device_employee_no} is already assigned to {$existingStudent->name}",
-                ], 422);
-            }
-
-            $biometricService = app(\App\Services\HikvisionAttendanceService::class);
-            $result = $biometricService->registerStudentFingerprint(
-                $student,
-                $request->device_employee_no
-            );
-
-            if ($result['success']) {
-                $student->update([
-                    'device_employee_no' => $request->device_employee_no,
-                    'fingerprint_enrolled' => true,
-                ]);
-
-                return response()->json([
-                    'success' => true,
-                    'message' => 'Student fingerprint enrolled successfully!',
-                    'device_employee_no' => $request->device_employee_no,
-                ]);
-            }
-
-            return response()->json([
-                'success' => false,
-                'message' => $result['message'],
-            ], 400);
-
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to enroll fingerprint: '.$e->getMessage(),
-            ], 500);
-        }
-    }
-
-    /**
-     * Remove student fingerprint
-     */
-    public function removeFingerprint(User $student)
-    {
-        try {
-            if (! $student->fingerprint_enrolled) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Student fingerprint is not enrolled',
-                ], 422);
-            }
-
-            $biometricService = app(\App\Services\HikvisionAttendanceService::class);
-
-            // Try to remove from device (non-blocking)
-            try {
-                $biometricService->removeStudentFingerprint($student->device_employee_no);
-            } catch (\Exception $e) {
-                // Log but don't fail the operation
-                \Log::warning('Failed to remove fingerprint from device: '.$e->getMessage());
-            }
-
-            // Always update database
-            $student->update([
-                'device_employee_no' => null,
-                'fingerprint_enrolled' => false,
-            ]);
-
-            return response()->json([
-                'success' => true,
-                'message' => 'Student fingerprint removed successfully!',
-            ]);
-
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to remove fingerprint: '.$e->getMessage(),
-            ], 500);
-        }
     }
 }

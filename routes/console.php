@@ -13,4 +13,6 @@ Artisan::command('inspire', function () {
 
 // Requires the host cron entry: * * * * * php artisan schedule:run
 Schedule::command('batches:sync-status')->dailyAt('00:05')->withoutOverlapping();
+// Does nothing until Admin switches reminders on and WHATSAPP_* credentials are set.
+Schedule::command('fees:whatsapp-reminders')->dailyAt('10:00')->withoutOverlapping();
 

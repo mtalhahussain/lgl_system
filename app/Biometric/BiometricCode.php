@@ -6,68 +6,48 @@ use App\Models\User;
 use Illuminate\Database\UniqueConstraintViolationException;
 
 /**
- * Assigns the machine PIN (users.biometric_code): numeric, unique per gym, at most 9 digits.
- * Prefers the user's own id — members enrolled with their User ID before codes existed keep working —
- * and falls back to the gym's highest numeric code + 1 when that id is already someone else's PIN.
+ * Assigns the machine Employee No. (users.device_employee_no): numeric and unique, at most 9 digits.
+ * Prefers the user's own id and falls back to the highest numeric number + 1 when that id is already taken.
+ * Adapted from the gym project (no gym scope here; users are deactivated, never deleted, so numbers are not reused).
  */
 class BiometricCode
 {
     public const MAX = 999_999_999;
 
-    /** Existing code, or a new one. Null for users without a gym (super admin). */
-    public function ensure(User $user): ?string
+    /** Existing number, or a new one. */
+    public function ensure(User $user): string
     {
-        if ($user->biometric_code !== null && $user->biometric_code !== '') {
-            return $user->biometric_code;
+        if ($user->device_employee_no !== null && $user->device_employee_no !== '') {
+            return $user->device_employee_no;
         }
-
-        return $this->assign($user, (string) $user->id);
-    }
-
-    /** Always a new code, different from the current one. */
-    public function regenerate(User $user): ?string
-    {
-        return $this->assign($user, null);
-    }
-
-    private function assign(User $user, ?string $preferred): ?string
-    {
-        if ($user->gym_id === null) {
-            return null;
-        }
-
+        $preferred = (string) $user->id;
         for ($attempt = 1; ; $attempt++) {
-            $code = $this->nextFree($user->gym_id, $preferred);
-
+            $code = $this->nextFree($preferred);
             try {
-                $user->forceFill(['biometric_code' => $code])->saveQuietly();
+                // Quietly: the caller queues the machine sync once afterwards.
+                $user->forceFill(['device_employee_no' => $code])->saveQuietly();
+
                 return $code;
-            } catch (UniqueConstraintViolationException $e) {
-                // Another request took it in the meantime.
+            } catch (UniqueConstraintViolationException $exception) {
                 if ($attempt >= 3) {
-                    throw $e;
+                    throw $exception;
                 }
                 $preferred = null;
             }
         }
     }
 
-    private function nextFree(int $gymId, ?string $preferred): string
+    private function nextFree(?string $preferred): string
     {
-        // Deleted users keep their code (the unique index covers them), so it is never handed out again.
-        $taken = User::withTrashed()->where('gym_id', $gymId)->whereNotNull('biometric_code')->pluck('biometric_code')->flip();
-
+        $taken = User::whereNotNull('device_employee_no')->pluck('device_employee_no')->flip();
         if ($preferred !== null && (int) $preferred <= self::MAX && ! isset($taken[$preferred])) {
             return $preferred;
         }
-
-        $max  = $taken->keys()->filter(fn ($c) => ctype_digit((string) $c))->map(fn ($c) => (int) $c)->max() ?? 0;
-        $next = $max + 1;
-
-        if ($next > self::MAX) {
-            throw new \RuntimeException("No free biometric code left in gym {$gymId}.");
+        $max = $taken->keys()->filter(fn ($code) => ctype_digit((string) $code))->map(fn ($code) => (int) $code)->max() ?? 0;
+        if ($max + 1 > self::MAX) {
+            throw new \RuntimeException('No free machine employee number left.');
         }
 
-        return (string) $next;
+        return (string) ($max + 1);
     }
 }

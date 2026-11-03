@@ -2,6 +2,25 @@
 @section('title', 'Institute Settings')
 @section('content')
 <h1>Institute Settings</h1>
+<section class="mb-4" aria-labelledby="integrations-heading">
+    <h2 class="h4" id="integrations-heading">Integrations</h2>
+    <div class="row g-3">
+        <div class="col-md-6">
+            <a class="card card-body h-100 text-decoration-none" href="{{ route('whatsapp.index') }}">
+                <span class="h5 mb-1 text-body"><i class="fab fa-whatsapp me-2 text-success" aria-hidden="true"></i>WhatsApp fee reminders</span>
+                <span class="text-muted">Automatic reminders {{ $integrations['whatsapp']['enabled'] ? 'on' : 'off' }} · API {{ $integrations['whatsapp']['configured'] ? 'connected' : 'not set' }}</span>
+                <span class="small mt-2">Settings, template, test message and message log →</span>
+            </a>
+        </div>
+        <div class="col-md-6">
+            <a class="card card-body h-100 text-decoration-none" href="{{ route('biometric.index') }}">
+                <span class="h5 mb-1 text-body"><i class="fas fa-fingerprint me-2 text-primary" aria-hidden="true"></i>Attendance machine</span>
+                <span class="text-muted">{{ $integrations['biometric']['machines'] }} active {{ \Illuminate\Support\Str::plural('machine', $integrations['biometric']['machines']) }} · last contact {{ $integrations['biometric']['last_seen'] ? \Illuminate\Support\Carbon::parse($integrations['biometric']['last_seen'])->diffForHumans() : 'never' }}</span>
+                <span class="small mt-2">Machines, push URL, bridge PC, user sync and punch log →</span>
+            </a>
+        </div>
+    </div>
+</section>
 <form method="post" enctype="multipart/form-data" action="{{ route('settings.update') }}">
     @csrf @method('PUT')
     @foreach($settingGroups as $group => $settings)

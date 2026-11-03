@@ -12,8 +12,14 @@ class SettingController extends Controller
         $this->authorize('viewAny', Setting::class);
 
         $settingGroups = Setting::whereIn('group', ['institute', 'currency'])->get()->groupBy('group');
+        $machines = \App\Models\BiometricDevice::where('is_active', true)->get(['id', 'last_seen_at']);
+        $integrations = [
+            'whatsapp' => ['enabled' => app(\App\Services\FeeReminderService::class)->settings()['enabled'],
+                'configured' => app(\App\Services\WhatsAppService::class)->configured()],
+            'biometric' => ['machines' => $machines->count(), 'last_seen' => $machines->max('last_seen_at')],
+        ];
 
-        return view('admin.settings.index', compact('settingGroups'));
+        return view('admin.settings.index', compact('settingGroups', 'integrations'));
     }
 
     public function update(Request $request)

@@ -66,13 +66,19 @@ class TeacherController extends Controller
             'monthly_salary' => 'nullable|decimal:0,2|min:0|max:99999999.99',
             'password' => 'required|string|min:8|confirmed',
             'is_active' => 'sometimes|boolean',
+            'device_employee_no' => ['nullable', 'regex:/^[A-Za-z0-9]{1,32}$/D', \Illuminate\Validation\Rule::unique('users', 'device_employee_no')],
         ]);
-        DB::transaction(function () use ($data, $request) {
+        $machineNo = $data['device_employee_no'] ?? null;
+        unset($data['device_employee_no']);
+        DB::transaction(function () use ($data, $request, $machineNo) {
             $data['role'] = 'teacher';
             $data['is_active'] = $request->boolean('is_active', true);
             $data['experience_years'] = $data['experience_years'] ?? 0;
             $teacher = User::create($data);
             $teacher->update(['employee_id' => 'TCH'.str_pad((string) $teacher->id, 4, '0', STR_PAD_LEFT)]);
+            if ($machineNo !== null) {
+                $teacher->forceFill(['device_employee_no' => $machineNo])->save();
+            }
         });
 
         return redirect()->route('teachers.index')->with('success', 'Teacher created successfully.');
@@ -121,12 +127,16 @@ class TeacherController extends Controller
             'monthly_salary' => 'nullable|decimal:0,2|min:0|max:99999999.99',
             'password' => 'nullable|string|min:8|confirmed',
             'is_active' => 'sometimes|boolean',
+            'device_employee_no' => ['nullable', 'regex:/^[A-Za-z0-9]{1,32}$/D', \Illuminate\Validation\Rule::unique('users', 'device_employee_no')->ignore($teacher->id)],
         ]);
+        $machineNo = $data['device_employee_no'] ?? null;
+        unset($data['device_employee_no']);
         if (empty($data['password'])) {
             unset($data['password']);
         }
         $data['experience_years'] = $data['experience_years'] ?? 0;
-        DB::transaction(fn () => $teacher->update($data));
+        // Empty keeps the current (automatic) number.
+        DB::transaction(fn () => $teacher->forceFill(['device_employee_no' => $machineNo ?? $teacher->device_employee_no])->fill($data)->save());
 
         return redirect()->route('teachers.show', $teacher)->with('success', 'Teacher updated successfully.');
     }

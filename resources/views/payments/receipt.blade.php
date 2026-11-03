@@ -19,7 +19,7 @@
         <button class="btn btn-primary ms-auto" type="button" onclick="window.print()"><i class="fas fa-print me-1" aria-hidden="true"></i>Print receipt</button>
     </div>
     @if($packagePart)
-        <div class="alert alert-info">Module allocation of an A1 + A2 package, not an additional payment. <a href="{{ route('enrollment-packages.show', $package) }}">Combined package receipt</a>. Reversing this allocation reverses both original module payments together.</div>
+        <div class="alert alert-info">Module allocation of a multi-level package, not an additional payment. <a href="{{ route('enrollment-packages.show', $package) }}">Combined package receipt</a>. Reversing this allocation reverses all original module payments of the package together.</div>
     @endif
     <x-show.document kind="Fee Payment Receipt" :number="$payment->receipt_number" :institute="$details['institute_name'] ?? null"
         :amount="$payment->amount" :currency="$currency" :date="$payment->paid_at?->format('d M Y, H:i') ?? 'Historical date unavailable'" :reversal="$payment->reversal"

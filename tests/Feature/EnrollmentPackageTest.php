@@ -52,8 +52,8 @@ class EnrollmentPackageTest extends TestCase
 
     private function data(array $overrides = []): array
     {
-        return array_replace(['student_id' => $this->student->id, 'a1_batch_id' => $this->a1->id,
-            'a2_batch_id' => $this->a2->id, 'amount' => '50000.00', 'method' => 'cash',
+        return array_replace(['student_id' => $this->student->id, 'batch_ids' => [$this->a1->id, $this->a2->id],
+            'price' => '50000.00', 'plan' => 'full', 'method' => 'cash',
             'submission_key' => (string) Str::uuid()], $overrides);
     }
 
@@ -69,7 +69,7 @@ class EnrollmentPackageTest extends TestCase
 
     public function test_full_package_posts_exact_module_ledgers_and_a_single_summary_without_double_counting(): void
     {
-        $this->get('/enrollments')->assertOk()->assertSee('A1 + A2 package');
+        $this->get('/enrollments')->assertOk()->assertSee('Multi-level package');
         $this->get('/enrollment-packages/create')->assertOk()->assertSee('Full payment');
         $package = $this->purchase();
         $this->assertDatabaseCount('enrollments', 2);
@@ -85,7 +85,7 @@ class EnrollmentPackageTest extends TestCase
             $this->assertSame(1, $enrollment->feeInstallments()->count());
             $this->assertSame('paid', $enrollment->feeInstallments()->sole()->status);
             app(PaymentService::class)->assertReconciled($enrollment);
-            $this->get('/enrollments/'.$enrollment->id)->assertOk()->assertSee('View combined receipt')->assertDontSee('Edit discount');
+            $this->get('/enrollments/'.$enrollment->id)->assertOk()->assertSee('View package agreement')->assertDontSee('Edit discount');
         }
         $this->assertSame('50000.00', app(OverviewService::class)->financialTotals()['Net collected']);
         $this->assertSame('0.00', app(OverviewService::class)->financialTotals()['Outstanding']);
@@ -129,23 +129,23 @@ class EnrollmentPackageTest extends TestCase
         $this->postJson('/enrollment-packages', $this->data())->assertUnprocessable();
         $this->assertDatabaseCount('payments', 0);
         $this->a2->course->update(['is_active' => true, 'total_fee' => '1000.00']);
-        $this->postJson('/enrollment-packages', $this->data())->assertUnprocessable()->assertJsonValidationErrors('a1_batch_id');
-        \App\Models\Setting::create(['key' => 'currency_code', 'value' => 'USD', 'label' => 'Currency']);
-        $this->postJson('/enrollment-packages', $this->data())->assertUnprocessable()->assertJsonValidationErrors('package');
+        $this->postJson('/enrollment-packages', $this->data())->assertUnprocessable()->assertJsonValidationErrors('price');
         $this->assertDatabaseCount('enrollment_packages', 0);
         $this->assertDatabaseCount('enrollments', 0);
     }
 
     public function test_partial_payments_installments_wrong_levels_and_overlapping_batches_are_rejected(): void
     {
-        foreach (['25000.00', '50000.01', '0.00'] as $amount) {
-            $this->postJson('/enrollment-packages', $this->data(['amount' => $amount]))->assertUnprocessable();
+        foreach (['70000.02', '0.00', ''] as $price) {
+            $this->postJson('/enrollment-packages', $this->data(['price' => $price]))->assertUnprocessable();
         }
-        $this->postJson('/enrollment-packages', $this->data(['installments' => 2]))->assertUnprocessable();
-        $this->postJson('/enrollment-packages', $this->data(['a2_batch_id' => $this->a1->id]))->assertUnprocessable();
-        $this->postJson('/enrollment-packages', $this->data(['a1_batch_id' => $this->a2->id, 'a2_batch_id' => $this->a1->id]))->assertUnprocessable();
+        $this->postJson('/enrollment-packages', $this->data(['plan' => 'installments', 'installments' => 1]))->assertUnprocessable()->assertJsonValidationErrors('installments');
+        $this->postJson('/enrollment-packages', $this->data(['method' => null]))->assertUnprocessable()->assertJsonValidationErrors('method');
+        $this->postJson('/enrollment-packages', $this->data(['batch_ids' => [$this->a1->id]]))->assertUnprocessable();
+        $this->postJson('/enrollment-packages', $this->data(['batch_ids' => [$this->a1->id, $this->a1->id]]))->assertUnprocessable();
+        $this->postJson('/enrollment-packages', $this->data(['batch_ids' => [$this->a2->id, $this->a1->id]]))->assertUnprocessable()->assertJsonValidationErrors('batch_ids');
         $this->a2->update(['start_date' => $this->a1->end_date]);
-        $this->postJson('/enrollment-packages', $this->data())->assertUnprocessable()->assertJsonValidationErrors('a2_batch_id');
+        $this->postJson('/enrollment-packages', $this->data())->assertUnprocessable()->assertJsonValidationErrors('batch_ids');
         $this->assertDatabaseCount('enrollments', 0);
         $this->assertDatabaseCount('payments', 0);
     }
@@ -218,6 +218,64 @@ class EnrollmentPackageTest extends TestCase
         $this->post('/payments/'.$package->payments()->first()->id.'/reverse', ['reason' => 'Correct payment entry'])->assertSessionHasErrors('enrollment');
         $this->assertDatabaseCount('payment_reversals', 0);
         $this->assertSame('25000.00', $enrollments->first()->fresh()->paid_amount);
+    }
+
+    private function level(string $level, string $fee, Batch $after): Batch
+    {
+        $course = Course::create(['name' => 'German '.$level, 'level' => $level, 'total_fee' => $fee,
+            'teacher_per_student_amount' => 500, 'duration_weeks' => 8]);
+
+        return Batch::create(['name' => $level.' batch', 'course_id' => $course->id, 'teacher_id' => $this->teacher->id,
+            'start_date' => $after->end_date->copy()->addDay(), 'end_date' => $after->end_date->copy()->addMonths(2),
+            'status' => 'upcoming', 'max_students' => 10]);
+    }
+
+    public function test_a1_to_b2_package_with_special_price_and_installments_per_level(): void
+    {
+        $b1 = $this->level('B1', '40000.00', $this->a2);
+        $b2 = $this->level('B2', '39999.99', $b1);
+        $this->get('/enrollment-packages/create')->assertOk()->assertSee('B2 batch');
+        $this->postJson('/enrollment-packages', $this->data(['batch_ids' => [$this->a1->id, $b1->id]]))
+            ->assertUnprocessable()->assertJsonValidationErrors('batch_ids');
+
+        // Blank level selects are ignored; gross 150,000.00, special price 120,000.00 in 3 installments per level.
+        $package = $this->purchase($this->data(['batch_ids' => [$this->a1->id, $this->a2->id, '', $b1->id, $b2->id],
+            'price' => '120000.00', 'plan' => 'installments', 'installments' => 3, 'method' => 'cash']));
+        $this->assertSame('installments', $package->method);
+        $this->assertSame(['installments', 3, '150000.00', '30000.00'], [$package->receipt_details['plan'], $package->receipt_details['installments'],
+            $package->receipt_details['gross_total'], $package->receipt_details['discount_total']]);
+        $this->assertDatabaseCount('payments', 0);
+        $modules = $package->receipt_details['modules'];
+        $this->assertSame(['A1', 'A2', 'B1', 'B2'], array_column($modules, 'level'));
+        $this->assertSame(['28000.00', '28000.01', '32000.00', '31999.99'], array_column($modules, 'amount'));
+        foreach ($package->enrollments()->with('batch')->orderBy('id')->get() as $index => $enrollment) {
+            $installments = $enrollment->feeInstallments()->orderBy('due_date')->get();
+            $this->assertCount(3, $installments);
+            $this->assertSame($modules[$index]['amount'], Money::decimal($installments->sum(fn ($row) => Money::minor($row->amount))));
+            $this->assertSame(max(today(), $enrollment->batch->start_date)->toDateString(), $installments->first()->due_date->toDateString());
+            $this->assertSame($modules[$index]['amount'], $enrollment->remaining_fee);
+            app(PaymentService::class)->assertReconciled($enrollment);
+        }
+        $this->assertSame('120000.00', app(OverviewService::class)->financialTotals()['Outstanding']);
+        $this->get('/enrollment-packages/'.$package->id)->assertOk()->assertSee('A1 + A2 + B1 + B2 Package Agreement')
+            ->assertSee('3 monthly installments per level')->assertDontSee('Reverse entire package payment');
+
+        // Installment payments are ordinary module payments and reverse on their own.
+        $first = $package->enrollments()->orderBy('id')->firstOrFail();
+        $payment = app(PaymentService::class)->pay($first->id, '5000.00', 'cash', (string) Str::uuid(), $this->admin);
+        $this->post('/payments/'.$payment->id.'/reverse', ['reason' => 'Wrong installment entry'])->assertSessionHasNoErrors();
+        $this->assertDatabaseCount('payment_reversals', 1);
+        $this->patch('/enrollments/'.$first->id.'/discount', ['discount_percentage' => 50, 'reason' => 'Change package price'])
+            ->assertSessionHasErrors('discount_percentage');
+    }
+
+    public function test_two_level_package_at_special_price_records_full_payment(): void
+    {
+        $package = $this->purchase($this->data(['price' => '45000.00', 'method' => 'bank', 'reference' => 'TX-9']));
+        $this->assertSame(['22500.00', '22500.00'], array_column($package->receipt_details['modules'], 'amount'));
+        $this->assertSame('45000.00', app(OverviewService::class)->financialTotals()['Net collected']);
+        $this->assertSame('25000.01', $package->receipt_details['discount_total']);
+        $this->get('/enrollment-packages/'.$package->id)->assertOk()->assertSee('A1 + A2 Package Receipt')->assertSee('TX-9');
     }
 
     public function test_normal_level_wise_enrollment_and_installments_remain_independent(): void

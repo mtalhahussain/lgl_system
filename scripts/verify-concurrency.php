@@ -29,8 +29,8 @@ if (($argv[1] ?? null) === '--worker') {
         if ($argv[3] === 'admit') {
             $result = app(EnrollmentService::class)->enrollStudent((int) $argv[4], (int) $argv[5]);
         } elseif ($argv[3] === 'package') {
-            $result = app(EnrollmentService::class)->enrollPackage((int) $argv[4], (int) $argv[5], (int) $argv[6],
-                '50000.00', 'cash', $argv[7], User::findOrFail($argv[8]));
+            $result = app(EnrollmentService::class)->enrollPackage((int) $argv[4], [(int) $argv[5], (int) $argv[6]],
+                '50000.00', 'full', 1, 'cash', $argv[7], User::findOrFail($argv[8]));
         } elseif ($argv[3] === 'reverse') {
             $result = app(PaymentService::class)->reverse(Payment::findOrFail($argv[4]), User::findOrFail($argv[5]), $argv[6]);
         } else {

@@ -48,7 +48,7 @@ class ShowPagesTest extends TestCase
             ->assertSee('reversed')->assertSee('Withdraw enrollment');
         $this->get('/payments/'.$payment->id)->assertOk()->assertSee('Fee Payment Receipt')->assertSee('Entered twice')
             ->assertSee('German A1')->assertDontSee('Reverse this payment');
-        $this->get('/payroll/payouts/'.$payout->id)->assertOk()->assertSee('Teacher Payment Slip')->assertSee('Teacher Tariq')
+        $this->get('/payroll/payouts/'.$payout->id)->assertOk()->assertSee('Salary Payment Slip')->assertSee('Teacher Tariq')
             ->assertSee('TX-77')->assertSee('Reverse this payout');
 
         $this->get('/batches/'.$batch->id)->assertSee('Back to Batches')->assertSee('href="'.route('batches.index').'"', false);

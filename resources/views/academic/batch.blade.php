@@ -57,6 +57,30 @@
                 <li class="page-subtitle">No upcoming sessions scheduled.</li>
             @endforelse
         </ul>
+        @if(in_array($batch->status, ['upcoming', 'ongoing'], true) && (auth()->user()->isAdmin() || $batch->teacher_id === auth()->id()))
+            <details class="px-4 pb-4" @if($errors->hasAny(['days', 'start_time', 'end_time', 'from', 'to', 'topic'])) open @endif>
+                <summary class="fw-semibold">Generate sessions</summary>
+                <form method="post" action="{{ route('class-sessions.generate', $batch) }}" class="row g-2 mt-1">
+                    @csrf
+                    <fieldset class="col-12">
+                        <legend class="form-label mb-1">Class days</legend>
+                        @foreach(\App\Http\Controllers\ClassSessionController::WEEKDAYS as $value => $label)
+                            <div class="form-check form-check-inline">
+                                <input class="form-check-input" type="checkbox" id="day_{{ $value }}" name="days[]" value="{{ $value }}" @checked(in_array($value, old('days', []), true))>
+                                <label class="form-check-label" for="day_{{ $value }}">{{ $label }}</label>
+                            </div>
+                        @endforeach
+                    </fieldset>
+                    <div class="col-6"><label class="form-label" for="gen_start">Start time</label><input class="form-control" type="time" id="gen_start" name="start_time" value="{{ old('start_time') }}" required></div>
+                    <div class="col-6"><label class="form-label" for="gen_end">End time</label><input class="form-control" type="time" id="gen_end" name="end_time" value="{{ old('end_time') }}" required></div>
+                    <div class="col-6"><label class="form-label" for="gen_from">From</label><input class="form-control" type="date" id="gen_from" name="from" min="{{ today()->toDateString() }}" value="{{ old('from', max(today(), $batch->start_date)->toDateString()) }}" required></div>
+                    <div class="col-6"><label class="form-label" for="gen_to">To</label><input class="form-control" type="date" id="gen_to" name="to" value="{{ old('to', $batch->end_date?->toDateString()) }}" required></div>
+                    <div class="col-12"><label class="form-label" for="gen_topic">Topic</label><input class="form-control" id="gen_topic" name="topic" maxlength="255" value="{{ old('topic', 'Class') }}" required></div>
+                    <div class="col-12"><button class="btn btn-primary btn-sm">Create sessions</button></div>
+                    <p class="form-text mb-0">One session per chosen day inside the batch dates. Dates that already have a session are skipped. Cancel holidays from the session page.</p>
+                </form>
+            </details>
+        @endif
     </section>
 </div>
 @endsection

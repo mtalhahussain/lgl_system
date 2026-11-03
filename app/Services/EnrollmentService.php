@@ -10,7 +10,8 @@ use Carbon\Carbon;
 
 class EnrollmentService
 {
-    public const PACKAGE_AMOUNT = '50000.00';
+    /** CEFR order; a package covers 2-4 consecutive levels. */
+    public const LEVELS = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2'];
 
     private $feeCalculator;
 
@@ -22,9 +23,10 @@ class EnrollmentService
     /**
      * Enroll a student in a batch
      */
-    public function enrollStudent($studentId, $batchId, $discountPercentage = 0, $installments = 1, ?array $schedule = null)
+    public function enrollStudent($studentId, $batchId, $discountPercentage = 0, $installments = 1, ?array $schedule = null,
+        ?int $discountMinor = null, $scheduleStart = null)
     {
-        return \Illuminate\Support\Facades\DB::transaction(function () use ($studentId, $batchId, $discountPercentage, $installments, $schedule) {
+        return \Illuminate\Support\Facades\DB::transaction(function () use ($studentId, $batchId, $discountPercentage, $installments, $schedule, $discountMinor, $scheduleStart) {
             $batch = Batch::with('course')->lockForUpdate()->findOrFail($batchId);
             $student = User::students()->where('is_active', true)->findOrFail($studentId);
             if (! in_array($batch->status, ['upcoming', 'ongoing'], true) || ! $batch->course->is_active) {
@@ -40,10 +42,12 @@ class EnrollmentService
             $enrollment = Enrollment::create([
                 'batch_id' => $batch->id, 'student_id' => $student->id, 'enrollment_date' => now(),
                 'status' => 'active', 'total_fee' => $structure['original_fee'],
-                'discount_amount' => $structure['discount_amount'], 'paid_amount' => 0,
+                // A package passes its exact allocated discount instead of a percentage.
+                'discount_amount' => $discountMinor === null ? $structure['discount_amount'] : \App\Support\Money::decimal($discountMinor),
+                'paid_amount' => 0,
             ]);
             if ($schedule === null) {
-                $this->feeCalculator->createInstallments($enrollment->id, $installments);
+                $this->feeCalculator->createInstallments($enrollment->id, $installments, $scheduleStart);
             } else {
                 $this->feeCalculator->createCustomInstallments($enrollment->id, $schedule);
             }
@@ -56,82 +60,99 @@ class EnrollmentService
     }
 
     /**
-     * Sell an A1+A2 package with full advance payment and two canonical ledgers.
+     * Sell a multi-level package (2-4 consecutive CEFR levels, e.g. A1+A2 or A1 to B2) at an Admin-entered price.
+     * The price is split across modules in proportion to their normal fees; the last module takes the exact remainder.
+     * Plan "full": the whole price is received now and posted to each module ledger.
+     * Plan "installments": each module's share is due in equal monthly installments from that module's start; nothing is posted now.
      */
-    public function enrollPackage(int $studentId, int $a1BatchId, int $a2BatchId, string $amount, string $method,
-        string $key, User $actor, ?string $reference = null): \App\Models\EnrollmentPackage
+    public function enrollPackage(int $studentId, array $batchIds, string $price, string $plan, int $installments,
+        ?string $method, string $key, User $actor, ?string $reference = null): \App\Models\EnrollmentPackage
     {
         abort_unless($actor->isAdmin() && $actor->is_active, 403);
-        \Illuminate\Support\Facades\Validator::make(compact('amount', 'method', 'key', 'reference'), [
-            'amount' => 'required|decimal:0,2|gt:0', 'method' => 'required|in:cash,bank,card,jazzcash,easypaisa,online',
+        $batchIds = array_values($batchIds);
+        \Illuminate\Support\Facades\Validator::make(compact('batchIds', 'price', 'plan', 'installments', 'method', 'key', 'reference'), [
+            'batchIds' => 'required|array|min:2|max:4', 'batchIds.*' => 'required|integer|distinct',
+            'price' => 'required|decimal:0,2|gt:0|max:99999999.99', 'plan' => 'required|in:full,installments',
+            'installments' => $plan === 'full' ? 'required|integer|in:1' : 'required|integer|min:2|max:12',
+            'method' => $plan === 'full' ? 'required|in:cash,bank,card,jazzcash,easypaisa,online' : 'nullable|prohibited',
             'key' => ['required', 'regex:/^[A-Za-z0-9_-]{16,64}$/D'], 'reference' => 'nullable|string|max:255',
-        ])->validate();
-        $total = \App\Support\Money::minor(self::PACKAGE_AMOUNT);
-        if (\App\Models\Setting::get('currency_code', 'PKR') !== 'PKR') {
-            throw \Illuminate\Validation\ValidationException::withMessages(['package' => 'The Rs 50,000 package is available only with PKR institute currency.']);
-        }
-        if (\App\Support\Money::minor($amount) !== $total) {
-            throw \Illuminate\Validation\ValidationException::withMessages(['amount' => 'The A1 + A2 package requires full payment of Rs 50,000. Installments use normal module-wise admission.']);
-        }
-        $payload = hash('sha256', json_encode([$studentId, $a1BatchId, $a2BatchId, $total, $method, $reference, $actor->id]));
+        ], ['batchIds.min' => 'Choose batches for at least two levels.', 'batchIds.*.distinct' => 'Choose a different batch for each level.'])->validate();
+        $total = \App\Support\Money::minor($price);
+        $payload = hash('sha256', json_encode([$studentId, array_map('intval', $batchIds), $total, $plan, $installments, $method, $reference, $actor->id]));
 
         try {
-            return \Illuminate\Support\Facades\DB::transaction(function () use ($studentId, $a1BatchId, $a2BatchId, $total, $method, $key, $actor, $reference, $payload) {
+            return \Illuminate\Support\Facades\DB::transaction(function () use ($studentId, $batchIds, $total, $plan, $installments, $method, $key, $actor, $reference, $payload) {
                 // Batch order matches the transfer lock order; serialize package retries for the same student.
-                $batches = Batch::whereIn('id', [$a1BatchId, $a2BatchId])->orderBy('id')->lockForUpdate()->get()->keyBy('id');
+                $locked = Batch::whereIn('id', $batchIds)->orderBy('id')->lockForUpdate()->get()->keyBy('id');
                 $student = User::lockForUpdate()->findOrFail($studentId);
                 $existing = \App\Models\EnrollmentPackage::where('submission_key', $key)->first();
                 if ($existing) {
                     return $this->replayPackage($existing, $payload);
                 }
-                $first = $batches->get($a1BatchId);
-                $second = $batches->get($a2BatchId);
-                if (! $first || ! $second || $first->id === $second->id
-                    || ! $first->end_date || ! $second->start_date || $second->start_date->lte($first->end_date)) {
-                    throw \Illuminate\Validation\ValidationException::withMessages(['a2_batch_id' => 'Select an A1 batch with an end date and an A2 batch starting after it ends.']);
+                $batches = array_map(fn ($id) => $locked->get((int) $id), $batchIds);
+                if (in_array(null, $batches, true)) {
+                    throw \Illuminate\Validation\ValidationException::withMessages(['batch_ids' => 'Selected batch was not found.']);
                 }
-                $courses = Course::whereIn('id', [$first->course_id, $second->course_id])->orderBy('id')->lockForUpdate()->get()->keyBy('id');
-                $first->setRelation('course', $courses->get($first->course_id));
-                $second->setRelation('course', $courses->get($second->course_id));
-                if ($first->course->level !== 'A1' || $second->course->level !== 'A2') {
-                    throw \Illuminate\Validation\ValidationException::withMessages(['a2_batch_id' => 'The package requires A1 followed by A2.']);
+                $courses = Course::whereIn('id', array_map(fn ($batch) => $batch->course_id, $batches))->orderBy('id')->lockForUpdate()->get()->keyBy('id');
+                foreach ($batches as $index => $batch) {
+                    $batch->setRelation('course', $courses->get($batch->course_id));
+                    if ($index === 0) {
+                        continue;
+                    }
+                    $previous = $batches[$index - 1];
+                    $position = array_search($previous->course->level, self::LEVELS, true);
+                    $expected = $position === false ? null : (self::LEVELS[$position + 1] ?? null);
+                    if ($batch->course->level !== $expected) {
+                        throw \Illuminate\Validation\ValidationException::withMessages(['batch_ids' => 'Package levels must follow each other without gaps (for example A1, A2, B1).']);
+                    }
+                    if (! $previous->end_date || ! $batch->start_date || $batch->start_date->lte($previous->end_date)) {
+                        throw \Illuminate\Validation\ValidationException::withMessages(['batch_ids' => "The {$previous->course->level} batch needs an end date and the {$batch->course->level} batch must start after it ends."]);
+                    }
                 }
-                $gross = [\App\Support\Money::minor($first->course->total_fee), \App\Support\Money::minor($second->course->total_fee)];
+                $gross = array_map(fn ($batch) => \App\Support\Money::minor($batch->course->total_fee), $batches);
                 $grossTotal = array_sum($gross);
-                if (min($gross) <= 0 || $grossTotal < $total) {
-                    throw \Illuminate\Validation\ValidationException::withMessages(['a1_batch_id' => 'Both modules need positive normal fees totaling at least Rs 50,000.']);
+                if (min($gross) <= 0) {
+                    throw \Illuminate\Validation\ValidationException::withMessages(['batch_ids' => 'Every level needs a positive normal course fee.']);
                 }
-                $firstNet = intdiv($total * $gross[0] + intdiv($grossTotal, 2), $grossTotal);
-                $nets = [$firstNet, $total - $firstNet];
+                if ($total > $grossTotal) {
+                    throw \Illuminate\Validation\ValidationException::withMessages(['price' => 'Package price cannot be more than the normal fees total ('.\App\Support\Money::decimal($grossTotal).').']);
+                }
+                $nets = [];
+                foreach (array_slice($gross, 0, -1) as $fee) {
+                    $nets[] = intdiv($total * $fee + intdiv($grossTotal, 2), $grossTotal);
+                }
+                $nets[] = $total - array_sum($nets);
                 if (min($nets) <= 0) {
-                    throw \Illuminate\Validation\ValidationException::withMessages(['a1_batch_id' => 'Each module must receive a positive package allocation.']);
+                    throw \Illuminate\Validation\ValidationException::withMessages(['price' => 'Each level must receive a positive share of the package price.']);
                 }
                 $modules = [];
-                foreach ([$first, $second] as $index => $batch) {
+                foreach ($batches as $index => $batch) {
                     // Reuse admission capacity, duplicate, student and course eligibility checks.
-                    $enrollment = $this->enrollStudent($studentId, $batch->id);
-                    $enrollment->update(['discount_amount' => \App\Support\Money::decimal($gross[$index] - $nets[$index])]);
-                    $enrollment->feeInstallments()->sole()->update(['amount' => \App\Support\Money::decimal($nets[$index])]);
-                    $payment = app(PaymentService::class)->pay($enrollment->id, \App\Support\Money::decimal($nets[$index]),
-                        $method, hash('sha256', 'package:'.$key.':'.$index), $actor, $reference);
-                    $modules[] = ['enrollment_id' => $enrollment->id, 'payment_id' => $payment->id,
-                        'receipt_number' => $payment->receipt_number, 'course' => $batch->course->name,
+                    $start = $plan === 'full' ? null : max(today(), $batch->start_date->copy())->toDateString();
+                    $enrollment = $this->enrollStudent($studentId, $batch->id, 0, $installments, null, $gross[$index] - $nets[$index], $start);
+                    $payment = $plan === 'full' ? app(PaymentService::class)->pay($enrollment->id, \App\Support\Money::decimal($nets[$index]),
+                        $method, hash('sha256', 'package:'.$key.':'.$index), $actor, $reference) : null;
+                    $modules[] = ['enrollment_id' => $enrollment->id, 'payment_id' => $payment?->id,
+                        'receipt_number' => $payment?->receipt_number, 'course' => $batch->course->name,
                         'level' => $batch->course->level, 'batch' => $batch->name,
                         'start_date' => $batch->start_date->toDateString(), 'end_date' => $batch->end_date?->toDateString(),
                         'gross' => \App\Support\Money::decimal($gross[$index]),
-                        'discount' => $enrollment->discount_amount, 'amount' => $payment->amount];
+                        'discount' => $enrollment->discount_amount, 'amount' => \App\Support\Money::decimal($nets[$index]),
+                        'installments' => $enrollment->feeInstallments->map(fn ($row) => ['due_date' => $row->due_date->toDateString(), 'amount' => $row->amount])->all()];
                 }
                 $package = \App\Models\EnrollmentPackage::create(['student_id' => $studentId, 'received_by' => $actor->id,
-                    'amount' => self::PACKAGE_AMOUNT, 'method' => $method, 'reference' => $reference,
+                    'amount' => \App\Support\Money::decimal($total), 'method' => $plan === 'full' ? $method : 'installments', 'reference' => $reference,
                     'receipt_number' => 'PKG-'.\Illuminate\Support\Str::ulid(), 'submission_key' => $key,
                     'payload_hash' => $payload, 'created_at' => now(),
                     'receipt_details' => ['student_name' => $student->name, 'student_reference' => $student->student_id,
                         'institute_name' => institute_name(), 'currency_code' => \App\Models\Setting::get('currency_code', 'PKR'),
-                        'timezone' => config('app.timezone'), 'modules' => $modules]]);
+                        'timezone' => config('app.timezone'), 'plan' => $plan, 'installments' => $installments,
+                        'gross_total' => \App\Support\Money::decimal($grossTotal), 'discount_total' => \App\Support\Money::decimal($grossTotal - $total),
+                        'modules' => $modules]]);
                 Enrollment::whereIn('id', array_column($modules, 'enrollment_id'))->update(['enrollment_package_id' => $package->id]);
                 \App\Models\AuditLog::create(['actor_id' => $actor->id, 'action' => 'enrollment.package_created',
                     'subject_type' => 'enrollment_package', 'subject_id' => $package->id,
-                    'changes' => ['receipt_number' => $package->receipt_number, 'amount' => $package->amount, 'modules' => $modules]]);
+                    'changes' => ['receipt_number' => $package->receipt_number, 'amount' => $package->amount, 'plan' => $plan, 'modules' => $modules]]);
 
                 return $package;
             }, 3);

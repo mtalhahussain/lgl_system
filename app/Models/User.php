@@ -9,7 +9,14 @@ use Illuminate\Notifications\Notifiable;
 
 class User extends Authenticatable
 {
+    /** Roles that can sign in. */
     public const ROLES = ['admin', 'teacher', 'student'];
+
+    /** Every stored role; staff (receptionist, cleaner, guard, …) is paid and may use the machine but never signs in. */
+    public const ALL_ROLES = ['admin', 'teacher', 'student', 'staff'];
+
+    /** People who are paid and may punch the attendance machine. */
+    public const PAID_ROLES = ['teacher', 'staff'];
 
     public function getStudentIdAttribute(): ?string
     {
@@ -21,6 +28,9 @@ class User extends Authenticatable
         static::created(fn (User $user) => $user->recordAccountAudit('user.created', $user->only(['name', 'email', 'role', 'is_active'])));
         static::updated(fn (User $user) => $user->recordAccountAudit('user.updated',
             array_intersect_key($user->getChanges(), array_flip(['name', 'email', 'role', 'is_active']))));
+        // Auto machine employee number and Hikvision user sync for Students and Teachers.
+        static::created(fn (User $user) => app(\App\Biometric\MachineUserSync::class)->userChanged($user, true));
+        static::updated(fn (User $user) => app(\App\Biometric\MachineUserSync::class)->userChanged($user, false));
     }
 
     private function recordAccountAudit(string $action, array $fields): void
@@ -71,6 +81,7 @@ class User extends Authenticatable
         'bio',
         'salary_type',
         'monthly_salary',
+        'designation',
         'per_batch_amount',
         'per_student_amount',
     ];
@@ -186,6 +197,11 @@ class User extends Authenticatable
     public function isStudent()
     {
         return $this->role === 'student';
+    }
+
+    public function isStaff()
+    {
+        return $this->role === 'staff';
     }
 
 }

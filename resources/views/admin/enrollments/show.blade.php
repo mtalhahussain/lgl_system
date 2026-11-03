@@ -17,7 +17,7 @@
 </x-show.hero>
 
 @if($enrollment->enrollment_package_id)
-    <div class="alert alert-info">Part of a full-payment A1 + A2 package. <a href="{{ route('enrollment-packages.show', $enrollment->enrollment_package_id) }}">View combined receipt</a>. Module prices are fixed by the package agreement.</div>
+    <div class="alert alert-info">Part of a multi-level package. <a href="{{ route('enrollment-packages.show', $enrollment->enrollment_package_id) }}">View package agreement</a>. Module prices are fixed by the package agreement.</div>
 @endif
 
 @if($enrollment->status === 'dropped')

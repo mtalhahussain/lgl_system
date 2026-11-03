@@ -74,6 +74,7 @@ class TeacherDue extends Model
     {
         return $this->kind === 'salary'
             ? 'Salary '.\Illuminate\Support\Carbon::createFromFormat('Y-m-d', $this->period.'-01')->format('M Y')
-            : 'Batch '.($this->batch?->name ?? '#'.$this->batch_id);
+            : 'Batch '.($this->batch?->name ?? '#'.$this->batch_id)
+                .($this->period ? ' · '.\Illuminate\Support\Carbon::createFromFormat('Y-m-d', $this->period.'-01')->format('M Y') : '');
     }
 }

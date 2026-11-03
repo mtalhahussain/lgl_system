@@ -64,7 +64,7 @@ class PayrollTest extends TestCase
         $this->assertSame('50000.00', $due->amount);
         $this->assertSame($period, $due->period);
 
-        $this->post('/payroll/salaries', ['period' => $period])->assertSessionHas('success', 'Salaries generated: 0 created, 1 already existed.');
+        $this->post('/payroll/salaries', ['period' => $period])->assertSessionHas('success', 'Salaries: 0 created, 1 already existed. Per-student batch earnings: 0 created, 0 skipped (already generated, no students or no rate).');
         $this->assertDatabaseCount('teacher_dues', 1);
 
         $this->salaried->update(['monthly_salary' => 60000]);
@@ -73,29 +73,64 @@ class PayrollTest extends TestCase
         $this->postJson('/payroll/salaries', ['period' => now()->addMonth()->format('Y-m')])->assertUnprocessable();
     }
 
-    public function test_batch_earning_counts_active_and_completed_students_once(): void
+    public function test_batch_earning_is_monthly_for_students_enrolled_that_month(): void
     {
         $batch = $this->batch($this->perStudent);
         foreach (['active', 'active', 'completed', 'dropped', 'transferred'] as $status) {
             $this->enroll($batch, $status);
         }
+        // Enrolled last month and left this month: counts in both months.
+        Enrollment::create(['student_id' => User::factory()->create(['role' => 'student'])->id, 'batch_id' => $batch->id,
+            'enrollment_date' => today()->startOfMonth()->subMonth(), 'total_fee' => 10000, 'status' => 'dropped', 'dropout_date' => today()]);
         $this->actingAs($this->admin);
+        $month = now()->format('Y-m');
+        $previous = now()->startOfMonth()->subMonth()->format('Y-m');
 
-        $this->post('/payroll/batches', ['batch_id' => $batch->id])->assertRedirect();
+        $this->post('/payroll/batches', ['batch_id' => $batch->id, 'period' => $month])->assertRedirect();
         $due = TeacherDue::sole();
-        $this->assertSame([3, '1500.00', '4500.00', $this->perStudent->id], [$due->student_count, $due->rate, $due->amount, $due->teacher_id]);
+        $this->assertSame([4, '1500.00', '6000.00', $this->perStudent->id, $month],
+            [$due->student_count, $due->rate, $due->amount, $due->teacher_id, $due->period]);
+        $this->post('/payroll/batches', ['batch_id' => $batch->id, 'period' => $previous])->assertRedirect();
+        $this->assertSame([1, '1500.00'], [TeacherDue::where('period', $previous)->sole()->student_count, TeacherDue::where('period', $previous)->sole()->amount]);
 
         $this->course->update(['teacher_per_student_amount' => 9999]);
-        $this->assertSame('4500.00', $due->fresh()->amount);
-        $this->postJson('/payroll/batches', ['batch_id' => $batch->id])->assertUnprocessable();
+        $this->assertSame('6000.00', $due->fresh()->amount);
+        $this->postJson('/payroll/batches', ['batch_id' => $batch->id, 'period' => $month])->assertUnprocessable();
+        $this->postJson('/payroll/batches', ['batch_id' => $batch->id, 'period' => now()->addMonth()->format('Y-m')])->assertUnprocessable();
+        $this->postJson('/payroll/batches', ['batch_id' => $batch->id, 'period' => now()->subMonths(3)->format('Y-m')])->assertUnprocessable();
 
         $upcoming = $this->batch($this->perStudent, 'upcoming');
         $this->enroll($upcoming, 'active');
         $salaryBatch = $this->batch($this->salaried);
         $this->enroll($salaryBatch, 'active');
-        $this->postJson('/payroll/batches', ['batch_id' => $upcoming->id])->assertUnprocessable();
-        $this->postJson('/payroll/batches', ['batch_id' => $salaryBatch->id])->assertUnprocessable();
-        $this->assertDatabaseCount('teacher_dues', 1);
+        $this->postJson('/payroll/batches', ['batch_id' => $upcoming->id, 'period' => $month])->assertUnprocessable();
+        $this->postJson('/payroll/batches', ['batch_id' => $salaryBatch->id, 'period' => $month])->assertUnprocessable();
+        $this->assertDatabaseCount('teacher_dues', 2);
+    }
+
+    public function test_month_generation_creates_salaries_and_batch_earnings_and_respects_old_whole_batch_dues(): void
+    {
+        $batch = $this->batch($this->perStudent);
+        $this->enroll($batch, 'active');
+        $this->enroll($batch, 'active');
+        $legacy = Batch::create(['name' => 'Legacy batch', 'course_id' => $this->course->id, 'teacher_id' => $this->perStudent->id,
+            'start_date' => today()->subMonth(), 'max_students' => 20, 'status' => 'ongoing']);
+        $this->enroll($legacy, 'active');
+        TeacherDue::create(['teacher_id' => $this->perStudent->id, 'kind' => 'batch', 'batch_id' => $legacy->id, 'student_count' => 1,
+            'rate' => 1500, 'amount' => 1500, 'active_key' => 'batch:'.$legacy->id, 'created_by' => $this->admin->id, 'created_at' => now()]);
+        $this->actingAs($this->admin);
+        $month = now()->format('Y-m');
+
+        $this->post('/payroll/salaries', ['period' => $month])->assertRedirect('/payroll')->assertSessionHas('success',
+            'Salaries: 1 created, 0 already existed. Per-student batch earnings: 1 created, 1 skipped (already generated, no students or no rate).');
+        $this->assertSame(['3000.00'], TeacherDue::where('batch_id', $batch->id)->pluck('amount')->all());
+        $this->assertSame(1, TeacherDue::where('kind', 'salary')->count());
+        $this->assertSame('Batch '.$batch->name.' · '.now()->format('M Y'), TeacherDue::where('batch_id', $batch->id)->sole()->label());
+        $this->postJson('/payroll/batches', ['batch_id' => $legacy->id, 'period' => $month])->assertUnprocessable()->assertJsonValidationErrors('batch_id');
+
+        $this->post('/payroll/salaries', ['period' => $month]);
+        $this->assertDatabaseCount('teacher_dues', 3);
+        $this->get('/payroll')->assertOk()->assertDontSee('>Legacy batch</option>', false);
     }
 
     public function test_payouts_are_capped_idempotent_and_reversible(): void
@@ -147,14 +182,14 @@ class PayrollTest extends TestCase
         $this->actingAs($this->admin)->post('/payroll/salaries', ['period' => now()->format('Y-m')]);
         $batch = $this->batch($this->perStudent);
         $this->enroll($batch, 'active');
-        $this->post('/payroll/batches', ['batch_id' => $batch->id]);
+        $this->post('/payroll/batches', ['batch_id' => $batch->id, 'period' => now()->format('Y-m')]);
         $salaryDue = TeacherDue::where('kind', 'salary')->sole();
         $batchDue = TeacherDue::where('kind', 'batch')->sole();
         $this->post("/payroll/dues/{$batchDue->id}/payouts", $this->payload(['amount' => '500']));
         $payout = TeacherPayout::sole();
 
         $this->actingAs($this->perStudent)->get('/payroll')->assertOk()->assertSee('My Earnings')
-            ->assertSee($batch->name)->assertDontSee('Salary '.now()->format('M Y'))->assertDontSee('Generate monthly salaries');
+            ->assertSee($batch->name)->assertDontSee('Salary '.now()->format('M Y'))->assertDontSee('Generate month');
         $this->get("/payroll/dues/{$batchDue->id}")->assertOk()->assertDontSee('Record payout');
         $this->get("/payroll/payouts/{$payout->id}")->assertOk()->assertDontSee('Reverse payout');
         $this->get("/payroll/dues/{$salaryDue->id}")->assertForbidden();
@@ -169,11 +204,11 @@ class PayrollTest extends TestCase
     {
         $batch = $this->batch($this->perStudent);
         $this->enroll($batch, 'active');
-        $this->actingAs($this->admin)->post('/payroll/batches', ['batch_id' => $batch->id]);
+        $this->actingAs($this->admin)->post('/payroll/batches', ['batch_id' => $batch->id, 'period' => now()->format('Y-m')]);
 
         $this->get('/teachers/'.$this->perStudent->id)->assertOk()
             ->assertSee('Assigned batches')->assertSee($batch->name)->assertSee('1 / 20')
-            ->assertSee('Recent pay')->assertSee('Batch '.$batch->name)->assertSee('Per student per batch');
+            ->assertSee('Recent pay')->assertSee('Batch '.$batch->name)->assertSee('Per student per month');
         $this->get('/teachers/'.$this->salaried->id)->assertOk()->assertSee('No batches assigned yet.')->assertSee('No pay generated yet.');
 
         $student = Enrollment::sole()->student;
@@ -183,7 +218,7 @@ class PayrollTest extends TestCase
 
     public function test_admin_pages_render_and_teacher_form_saves_pay_settings(): void
     {
-        $this->actingAs($this->admin)->get('/payroll')->assertOk()->assertSee('Teacher Payroll');
+        $this->actingAs($this->admin)->get('/payroll')->assertOk()->assertSee('Payroll');
         $this->post('/payroll/salaries', ['period' => now()->format('Y-m')]);
         $this->get('/payroll/dues/'.TeacherDue::sole()->id)->assertOk()->assertSee('Record payout');
         $this->get('/payroll?state=outstanding')->assertOk()->assertSee($this->salaried->name);

@@ -65,10 +65,16 @@
                                     </tbody>
                                 </table>
                                 <p class="cell-sub mt-2">Agreed {{ currency_format($enrollment->total_fee) }}; discount {{ $enrollment->discount_percentage }}% ({{ currency_format($enrollment->discount_amount) }}).@if(auth()->user()->isAdmin() && $enrollment->status !== 'transferred' && ! $enrollment->enrollment_package_id) <a href="{{ route('enrollments.show', $enrollment) }}#fee-heading">Edit discount</a>@endif
-                                @if($enrollment->enrollment_package_id)<a href="{{ route('enrollment-packages.show', $enrollment->enrollment_package_id) }}">A1 + A2 package receipt</a>@endif</p>
+                                @if($enrollment->enrollment_package_id)<a href="{{ route('enrollment-packages.show', $enrollment->enrollment_package_id) }}">Package agreement</a>@endif</p>
                             </div>
                             @if($isAdmin && $enrollment->status !== 'transferred')
                                 <div class="col-lg-6">
+                                    @if(\App\Support\Money::minor($enrollment->remaining_fee) > 0)
+                                        <form method="post" action="{{ route('whatsapp.enrollment', $enrollment) }}" class="mb-3" data-confirm="Send a WhatsApp fee reminder to {{ $enrollment->student?->name }} for the earliest unpaid installment?">
+                                            @csrf
+                                            <button class="btn btn-outline-success btn-sm"><i class="fab fa-whatsapp me-1" aria-hidden="true"></i>Send WhatsApp reminder</button>
+                                        </form>
+                                    @endif
                                     <h2 class="h6">Record payment</h2>
                                     <form method="post" action="{{ route('payments.store', $enrollment) }}" class="row g-2">
                                         @csrf

@@ -72,7 +72,7 @@
                     <div class="finance-row"><span>Qualification</span><strong>{{ $person->qualification ?: '—' }}</strong></div>
                     <div class="finance-row"><span>Experience</span><strong>{{ $person->experience_years ? $person->experience_years.' '.\Illuminate\Support\Str::plural('year', $person->experience_years) : '—' }}</strong></div>
                     @if($isAdmin)
-                        <div class="finance-row"><span>Pay type</span><strong>{{ $person->salary_type === 'per_student' ? 'Per student per batch' : 'Fixed monthly salary' }}</strong></div>
+                        <div class="finance-row"><span>Pay type</span><strong>{{ $person->salary_type === 'per_student' ? 'Per student per month' : 'Fixed monthly salary' }}</strong></div>
                         @if($person->salary_type !== 'per_student')
                             <div class="finance-row"><span>Monthly salary</span><strong>{{ $person->monthly_salary ? currency_format($person->monthly_salary) : 'Not set' }}</strong></div>
                         @endif

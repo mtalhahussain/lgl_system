@@ -1,13 +1,13 @@
 @extends('layouts.admin')
-@section('title', $isAdmin ? 'Teacher Payroll' : 'My Earnings')
+@section('title', $isAdmin ? 'Payroll' : 'My Earnings')
 @section('content')
-<x-list.header :title="$isAdmin ? 'Teacher Payroll' : 'My Earnings'" eyebrow="Finance"
-    :subtitle="$isAdmin ? 'Monthly salaries, per-student batch earnings and payouts' : 'Your salary and batch earnings with payment slips'" />
+<x-list.header :title="$isAdmin ? 'Payroll' : 'My Earnings'" eyebrow="Finance"
+    :subtitle="$isAdmin ? 'Teacher and staff salaries, per-student batch earnings and payouts' : 'Your salary and batch earnings with payment slips'" />
 <x-list.kpis :items="$kpis" />
 @if($isAdmin)
     <div class="tw:grid tw:grid-cols-1 tw:gap-5 tw:lg:grid-cols-2 tw:mb-6 d-print-none">
         <section class="panel" aria-labelledby="generate-salaries">
-            <div class="panel-heading"><h2 id="generate-salaries">Generate monthly salaries</h2></div>
+            <div class="panel-heading"><h2 id="generate-salaries">Generate month</h2></div>
             <form method="post" action="{{ route('payroll.salaries') }}" class="row g-2 align-items-end" style="padding:18px 22px">
                 @csrf
                 <div class="col-sm-7">
@@ -15,14 +15,18 @@
                     <input class="form-control" type="month" id="period" name="period" max="{{ now()->format('Y-m') }}" value="{{ old('period', now()->format('Y-m')) }}" required>
                 </div>
                 <div class="col-sm-5"><button class="btn btn-primary w-100">Generate</button></div>
-                <p class="form-text mb-0">Active fixed-salary teachers with a salary set. Months already generated are skipped.</p>
+                <p class="form-text mb-0">Creates fixed monthly salaries for teachers and staff, and per-student earnings (rate × students in the batch that month) for per-student teachers. Anything already generated is skipped.</p>
             </form>
         </section>
         <section class="panel" aria-labelledby="generate-batch">
-            <div class="panel-heading"><h2 id="generate-batch">Per-student batch earning</h2></div>
+            <div class="panel-heading"><h2 id="generate-batch">One batch, one month</h2></div>
             <form method="post" action="{{ route('payroll.batches') }}" class="row g-2 align-items-end" style="padding:18px 22px">
                 @csrf
-                <div class="col-sm-7">
+                <div class="col-sm-4">
+                    <label class="form-label" for="batch_period">Month</label>
+                    <input class="form-control" type="month" id="batch_period" name="period" max="{{ now()->format('Y-m') }}" value="{{ old('period', now()->format('Y-m')) }}" required>
+                </div>
+                <div class="col-sm-5">
                     <label class="form-label" for="batch_id">Batch</label>
                     <select class="form-select" id="batch_id" name="batch_id" required @disabled($eligibleBatches->isEmpty())>
                         <option value="">{{ $eligibleBatches->isEmpty() ? 'No eligible batches' : 'Choose batch' }}</option>
@@ -31,18 +35,18 @@
                         @endforeach
                     </select>
                 </div>
-                <div class="col-sm-5"><button class="btn btn-primary w-100" @disabled($eligibleBatches->isEmpty())>Generate</button></div>
-                <p class="form-text mb-0">Ongoing or completed batches of per-student teachers; active and completed students count once.</p>
+                <div class="col-sm-3"><button class="btn btn-primary w-100" @disabled($eligibleBatches->isEmpty())>Generate</button></div>
+                <p class="form-text mb-0">Per-student teachers are paid monthly: course rate × students enrolled during that month (students who left count until they left).</p>
             </form>
         </section>
     </div>
 @endif
 <div class="panel list-panel">
-    <x-list.toolbar :filters="$filters" :search="$isAdmin ? 'Search teacher name or email…' : null" :csv="true" />
+    <x-list.toolbar :filters="$filters" :search="$isAdmin ? 'Search name or email…' : null" :csv="true" />
     <div class="table-responsive">
         <table class="table list-table">
             <thead><tr>
-                @if($isAdmin)<x-list.th sort="teacher" default="-created">Teacher</x-list.th>@endif
+                @if($isAdmin)<x-list.th sort="teacher" default="-created">Person</x-list.th>@endif
                 <th scope="col">For</th>
                 <x-list.th sort="amount" default="-created" class="num">Amount</x-list.th>
                 <th scope="col" class="num">Paid</th>
@@ -64,7 +68,7 @@
                     <td class="text-end"><a class="btn btn-icon" href="{{ route('payroll.show', $due) }}" aria-label="Open {{ $due->label() }}{{ $isAdmin ? ' for '.$due->teacher->name : '' }}"><i class="fas fa-arrow-right" aria-hidden="true"></i></a></td>
                 </tr>
             @empty
-                <x-list.empty :colspan="$isAdmin ? 8 : 7" :message="$isAdmin ? 'No teacher dues yet. Generate salaries or a batch earning above.' : 'No earnings recorded yet.'" />
+                <x-list.empty :colspan="$isAdmin ? 8 : 7" :message="$isAdmin ? 'No dues yet. Generate a month or a batch earning above.' : 'No earnings recorded yet.'" />
             @endforelse
             </tbody>
         </table>

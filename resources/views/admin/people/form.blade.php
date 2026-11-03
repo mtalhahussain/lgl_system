@@ -30,6 +30,17 @@
             </div>
         </div>
     </div>
+    <div class="form-section">
+        <h2 class="form-section-title">Attendance machine</h2>
+        <p class="form-section-note">The face/fingerprint machine uses this as the person's Employee No. Leave empty for an automatic number. Active students and teachers are sent to every machine automatically through the bridge PC; enroll their face and fingerprint on the machine afterwards.</p>
+        <div class="row g-3">
+            <div class="col-md-6">
+                <label class="form-label" for="device_employee_no">Machine Employee No.</label>
+                <input class="form-control" id="device_employee_no" name="device_employee_no" inputmode="numeric" maxlength="32" pattern="[A-Za-z0-9]{1,32}" value="{{ old('device_employee_no', $person?->device_employee_no) }}" aria-describedby="device_employee_no_help">
+                <div class="form-text" id="device_employee_no_help">Letters and digits only; must be unique. Changing it moves the person to the new number on the machines (enroll face/fingerprint again).@error('device_employee_no') <span class="text-danger">{{ $message }}</span>@enderror</div>
+            </div>
+        </div>
+    </div>
     @if($kind === 'teachers')
         <div class="form-section">
             <h2 class="form-section-title">Teaching profile</h2>
@@ -52,12 +63,12 @@
         </div>
         <div class="form-section">
             <h2 class="form-section-title">Pay</h2>
-            <p class="form-section-note">Per-student teachers earn the course's teacher amount for each student, once per batch. Changes apply to dues generated afterwards.</p>
+            <p class="form-section-note">Per-student teachers earn the course's teacher amount for each student in each batch, every month. Changes apply to dues generated afterwards.</p>
             <div class="row g-3">
                 <div class="col-md-6">
                     <label class="form-label required" for="salary_type">Pay type</label>
                     <select class="form-select" id="salary_type" name="salary_type" required>
-                        @foreach(['monthly' => 'Fixed monthly salary', 'per_student' => 'Per student per batch'] as $value => $label)
+                        @foreach(['monthly' => 'Fixed monthly salary', 'per_student' => 'Per student per month'] as $value => $label)
                             <option value="{{ $value }}" @selected(old('salary_type', $person?->salary_type === 'per_student' ? 'per_student' : 'monthly') === $value)>{{ $label }}</option>
                         @endforeach
                     </select>

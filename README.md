@@ -36,6 +36,6 @@ These five Markdown files are the current documentation. Deferred modules remain
 
 The login page fills the desktop viewport edge to edge and displays the institute logo uploaded in Settings, with an LGL fallback before upload. Its default branding is Land of German Language; Settings can override the institute name.
 
-Admin can sell the Rs 50,000 A1 + A2 full-advance package from Enrollments. Select both sequential batches; the system reserves both seats, splits fees exactly and issues a combined receipt. Normal module-wise admission and installments remain available. Package sales require PKR currency.
+Admin can sell a multi-level package (2–4 consecutive levels, e.g. A1 + A2, A1 to B1, A1 to B2) from Enrollments > Multi-level package. Admin enters the agreed price per sale (package or student-specific discount), chooses full payment now or monthly installments per level, and the system reserves every seat and splits the price exactly across level ledgers. Normal module-wise admission remains available. Per-student teachers are paid monthly per batch (rate × students that month) from Teacher Payroll > Generate month.
 
 Exam-based institute certificates are the next requested extension. Design is recorded under E01 in docs/TASKS.md; passing-rule clarification is pending and the legacy exam/certificate modules remain inactive.

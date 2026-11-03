@@ -2,42 +2,31 @@
 
 namespace App\Console\Commands;
 
-use App\Models\FeeInstallment;
-use App\Notifications\FeeReminderNotification;
+use App\Services\FeeReminderService;
+use App\Services\WhatsAppService;
 use Illuminate\Console\Command;
-use Carbon\Carbon;
 
 class SendFeeReminders extends Command
 {
-    protected $signature = 'fees:send-reminders {--days=3 : Days before due date to send reminder}';
-    protected $description = 'Send fee payment reminders to students';
+    protected $signature = 'fees:whatsapp-reminders';
 
-    public function handle()
+    protected $description = 'Send WhatsApp fee reminders for installments due soon or today (each reminder once)';
+
+    public function handle(FeeReminderService $reminders, WhatsAppService $whatsApp): int
     {
-        if (!config('services.fee_reminders_enabled', false)) {
-            $this->warn('Fee reminder delivery is deferred.');
+        if (! $reminders->settings()['enabled']) {
+            $this->warn('WhatsApp reminders are switched off (Admin > WhatsApp Reminders).');
+
             return self::FAILURE;
         }
-        $days = $this->option('days');
-        $reminderDate = Carbon::now()->addDays($days)->toDateString();
+        if (! $whatsApp->configured()) {
+            $this->error('WhatsApp is not configured. Set WHATSAPP_TOKEN and WHATSAPP_PHONE_NUMBER_ID in .env.');
 
-        $upcomingInstallments = FeeInstallment::with(['enrollment.student', 'enrollment.batch.course'])
-            ->where('status', 'pending')
-            ->whereDate('due_date', $reminderDate)
-            ->get();
-
-        $this->info("Found {$upcomingInstallments->count()} installments due in {$days} days");
-
-        foreach ($upcomingInstallments as $installment) {
-            $student = $installment->enrollment->student;
-            
-            // Send notification
-            $student->notify(new FeeReminderNotification($installment, $installment->enrollment));
-            
-            $courseName = $installment->enrollment->batch->course->name . ' - ' . $installment->enrollment->batch->course->level;
-            $this->line("✉ Reminder sent to {$student->name} for {$courseName} - " . currency_format($installment->amount));
+            return self::FAILURE;
         }
+        $totals = $reminders->sendDue();
+        $this->info("WhatsApp reminders: {$totals['sent']} sent, {$totals['failed']} failed, {$totals['skipped']} already sent.");
 
-        $this->info("✅ Fee reminders sent successfully!");
+        return $totals['failed'] > 0 ? self::FAILURE : self::SUCCESS;
     }
 }

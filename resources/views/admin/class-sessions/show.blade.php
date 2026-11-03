@@ -39,7 +39,7 @@
             @forelse($records as $record)
                 <tr>
                     <td><div class="person-cell"><span class="user-avatar" aria-hidden="true">{{ mb_substr($record->student->name, 0, 1) }}</span><strong>{{ $record->student->name }}</strong></div></td>
-                    <td><x-list.status :value="$record->status" /></td>
+                    <td><x-list.status :value="$record->status" />@if($record?->auto_marked)<span class="cell-sub"><i class="fas fa-fingerprint" aria-hidden="true"></i> Machine {{ $record->check_in_time?->format('H:i') }}</span>@endif</td>
                     <td class="cell-sub">{{ $record->notes ?: '—' }}</td>
                 </tr>
             @empty

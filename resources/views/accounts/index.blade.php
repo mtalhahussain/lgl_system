@@ -1,7 +1,9 @@
 @extends('layouts.admin')
 @section('title', 'Users')
 @section('content')
-<x-list.header title="Users" eyebrow="Administration" subtitle="Change a role or switch an account on or off; it saves immediately. Admins can manage the whole institute, and deactivation preserves history." />
+<x-list.header title="Users" eyebrow="Administration" subtitle="Change a role or switch an account on or off; it saves immediately. Admins can manage the whole institute, and deactivation preserves history. Staff are paid and use the machine but do not sign in.">
+    <a class="btn btn-primary" href="{{ route('staff.create') }}"><i class="fas fa-plus me-1" aria-hidden="true"></i>Add staff</a>
+</x-list.header>
 <x-list.kpis :items="$kpis" />
 <div class="panel list-panel">
     <x-list.toolbar :filters="$filters" search="Search name or email…" :csv="true" />
@@ -18,16 +20,20 @@
                 @php $formId = 'account_'.$account->id; @endphp
                 <tr>
                     <td><div class="person-cell"><span class="user-avatar" aria-hidden="true">{{ mb_substr($account->name, 0, 1) }}</span>
-                        <div><span class="cell-main">{{ $account->name }}</span><span class="cell-sub">{{ $account->email }}</span></div></div></td>
+                        <div><span class="cell-main">{{ $account->name }}</span><span class="cell-sub">{{ $account->isStaff() ? ($account->designation ?: 'Staff').($account->phone ? ' · '.$account->phone : '') : $account->email }}</span></div></div></td>
                     <td>
                         @if($account->role === 'admin')
                             {{-- Admin is not offered in the role list; keep the role fixed so the Active switch never demotes. --}}
                             <input type="hidden" name="role" value="admin" form="{{ $formId }}">
                             <span class="status-pill tone-info"><i class="fas fa-user-shield me-1" aria-hidden="true"></i>Admin</span>
+                        @elseif($account->isStaff())
+                            <input type="hidden" name="role" value="staff" form="{{ $formId }}">
+                            <span class="status-pill tone-muted"><i class="fas fa-id-badge me-1" aria-hidden="true"></i>Staff</span>
+                            <a class="d-block small mt-1" href="{{ route('staff.edit', $account) }}">Edit</a>
                         @else
                             <label class="visually-hidden" for="role_{{ $account->id }}">Role for {{ $account->name }}</label>
                             <select id="role_{{ $account->id }}" name="role" form="{{ $formId }}" class="form-select form-select-sm" required data-native>
-                                @foreach(\Illuminate\Support\Arr::except($roles, 'admin') as $role => $label)<option value="{{ $role }}" @selected($account->role === $role)>{{ $label }}</option>@endforeach
+                                @foreach(\Illuminate\Support\Arr::except($roles, ['admin', 'staff']) as $role => $label)<option value="{{ $role }}" @selected($account->role === $role)>{{ $label }}</option>@endforeach
                             </select>
                         @endif
                     </td>

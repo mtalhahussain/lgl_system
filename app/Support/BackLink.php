@@ -40,6 +40,8 @@ class BackLink
             in_array($name, ['fees.student', 'fees.reports', 'installments.create'], true) => ['fees.index', [], 'Fee ledger'],
             $name === 'fees.batch' => ['batches.show', [$param('batch')], 'Batch'],
             $name === 'reports.generate' => ['reports.index', [], 'Reports'],
+            in_array($name, ['whatsapp.index', 'biometric.index'], true) => ['settings.index', [], 'Settings'],
+            in_array($name, ['staff.create', 'staff.edit'], true) => ['accounts.index', ['role' => 'staff'], 'Users'],
             default => [null, [], null],
         };
 

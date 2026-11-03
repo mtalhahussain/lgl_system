@@ -7,7 +7,8 @@ use Carbon\Carbon;
 /** One punch read from a machine, already normalised to wall-clock time. */
 final class PunchLog
 {
-    public const IN  = 'in';
+    public const IN = 'in';
+
     public const OUT = 'out';
 
     public function __construct(

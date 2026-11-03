@@ -5,7 +5,7 @@
     $isAdmin = auth()->user()->isAdmin();
     $outstanding = \App\Support\Money::decimal($due->outstandingMinor());
 @endphp
-<x-show.hero :icon="$due->kind === 'salary' ? 'fa-money-check-alt' : 'fa-users'" eyebrow="Teacher payroll" :title="$due->label()"
+<x-show.hero :icon="$due->kind === 'salary' ? 'fa-money-check-alt' : 'fa-users'" eyebrow="Payroll" :title="$due->label()"
     :status="$due->state()" :status-label="$due->voided_at ? 'voided' : null">
     <x-slot:meta>
         <span><i class="fas fa-chalkboard-teacher" aria-hidden="true"></i>{{ $due->teacher->name }}{{ $due->teacher->employee_id ? ' · '.$due->teacher->employee_id : '' }}</span>

@@ -158,7 +158,7 @@
                         @if(auth()->user()->isAdmin() || auth()->user()->isTeacher())
                         <li class="nav-item">
                             <a class="nav-link {{ request()->is('payroll*') ? 'active' : '' }}" href="{{ route('payroll.index') }}">
-                                <i class="fas fa-hand-holding-usd me-2"></i>{{ auth()->user()->isTeacher() ? 'My Earnings' : 'Teacher Payroll' }}
+                                <i class="fas fa-hand-holding-usd me-2"></i>{{ auth()->user()->isTeacher() ? 'My Earnings' : 'Payroll' }}
                             </a>
                         </li>
                         @endif
@@ -171,6 +171,9 @@
                                 <i class="fas fa-clipboard-check me-2"></i>Attendance
                             </a>
                         </li>
+                        @endif
+                        @if(auth()->user()->isAdmin())
+                        <li class="nav-item"><a class="nav-link {{ request()->is('biometric/teachers') ? 'active' : '' }}" href="{{ route('biometric.teachers') }}"><i class="fas fa-user-clock me-2" aria-hidden="true"></i>Staff Attendance</a></li>
                         @endif
                         
                         @if(auth()->user()->isAdmin())
@@ -189,7 +192,7 @@
                         <li class="nav-item"><a class="nav-link {{ request()->is('accounts*') ? 'active' : '' }}" href="{{ route('accounts.index') }}"><i class="fas fa-users-cog me-2" aria-hidden="true"></i>Users</a></li>
                         <!-- Settings -->
                         <li class="nav-item">
-                            <a class="nav-link {{ request()->is('settings*') ? 'active' : '' }}" 
+                            <a class="nav-link {{ request()->is('settings*', 'whatsapp*', 'biometric') ? 'active' : '' }}" 
                                href="{{ route('settings.index') }}">
                                 <i class="fas fa-cog me-2"></i>Settings
                             </a>

@@ -49,6 +49,21 @@
     </section>
     <section class="panel" aria-labelledby="upcoming-heading">
         <div class="panel-heading"><h2 id="upcoming-heading">Upcoming sessions</h2><a href="{{ route('class-sessions.index', ['batch_id' => $batch->id]) }}" style="font-size:11px;color:#7956df">All <i class="fas fa-arrow-right ms-1" aria-hidden="true"></i></a></div>
+        @php $sched = $batch->orderedSchedules(); @endphp
+        @if($sched->isNotEmpty())
+            <div class="px-4 pt-3">
+                <div class="d-flex justify-content-between align-items-center mb-1">
+                    <strong class="small text-uppercase text-muted">Weekly schedule</strong>
+                    <span class="badge bg-primary">{{ $batch->weeklyHours() }} h / week</span>
+                </div>
+                <ul class="profile-facts mb-0">
+                    @foreach($sched as $s)
+                        <li><i class="fas fa-clock" aria-hidden="true"></i><div><small>{{ $s->weekdayLabel() }}</small>
+                            {{ \Illuminate\Support\Carbon::parse($s->getRawOriginal('start_time'))->format('H:i') }}–{{ \Illuminate\Support\Carbon::parse($s->getRawOriginal('end_time'))->format('H:i') }}</div></li>
+                    @endforeach
+                </ul>
+            </div>
+        @endif
         <ul class="profile-facts">
             @forelse($upcoming as $session)
                 <li><i class="fas fa-calendar-day" aria-hidden="true"></i><div><small>{{ $session->session_date->format('D, d M') }} · {{ $session->start_time?->format('H:i') }}–{{ $session->end_time?->format('H:i') }}</small>
@@ -58,8 +73,19 @@
             @endforelse
         </ul>
         @if(in_array($batch->status, ['upcoming', 'ongoing'], true) && (auth()->user()->isAdmin() || $batch->teacher_id === auth()->id()))
-            <details class="px-4 pb-4" @if($errors->hasAny(['days', 'start_time', 'end_time', 'from', 'to', 'topic'])) open @endif>
+            <details class="px-4 pb-4" @if($errors->hasAny(['days', 'start_time', 'end_time', 'from', 'to', 'topic', 'schedule'])) open @endif>
                 <summary class="fw-semibold">Generate sessions</summary>
+                @if($batch->schedules->isNotEmpty())
+                    <form method="post" action="{{ route('class-sessions.generate-from-schedule', $batch) }}" class="row g-2 mt-1 mb-2">
+                        @csrf
+                        <div class="col-6"><label class="form-label" for="sch_from">From</label><input class="form-control" type="date" id="sch_from" name="from" min="{{ today()->toDateString() }}" value="{{ max(today(), $batch->start_date)->toDateString() }}"></div>
+                        <div class="col-6"><label class="form-label" for="sch_to">To</label><input class="form-control" type="date" id="sch_to" name="to" value="{{ $batch->end_date?->toDateString() }}"></div>
+                        <div class="col-12"><button class="btn btn-success btn-sm"><i class="fas fa-calendar-plus me-1" aria-hidden="true"></i>Generate from weekly schedule</button></div>
+                        <p class="form-text mb-0">Uses the batch's weekly days and times above. Existing sessions are skipped.</p>
+                    </form>
+                    <hr class="my-2">
+                    <p class="form-text mb-1 fw-semibold">Or pick days manually:</p>
+                @endif
                 <form method="post" action="{{ route('class-sessions.generate', $batch) }}" class="row g-2 mt-1">
                     @csrf
                     <fieldset class="col-12">

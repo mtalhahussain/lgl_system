@@ -68,9 +68,88 @@
             </div>
         </div>
     </div>
+    <div class="form-section">
+        <h2 class="form-section-title">Class schedule <span class="text-muted fw-normal">(optional)</span></h2>
+        <div class="form-text mb-2">Weekly class days and times. Used to show planned hours and to generate sessions. Changing it later does not alter sessions already generated. Leave empty if the batch has no fixed weekly timing.</div>
+        @php
+            $weekdays = \App\Models\BatchSchedule::WEEKDAYS;
+            $scheduleRows = old('schedule', ($batch?->schedules ?? collect())->map(fn ($s) => [
+                'weekday' => $s->weekday,
+                'start' => \Illuminate\Support\Carbon::parse($s->getRawOriginal('start_time'))->format('H:i'),
+                'end' => \Illuminate\Support\Carbon::parse($s->getRawOriginal('end_time'))->format('H:i'),
+            ])->values()->all());
+        @endphp
+        @error('schedule')<div class="alert alert-danger py-2">{{ $message }}</div>@enderror
+        <div id="schedule-rows">
+            @foreach($scheduleRows as $i => $row)
+                <div class="row g-2 schedule-row align-items-end mb-2">
+                    <div class="col-5 col-sm-4">
+                        <label class="form-label">Day</label>
+                        <select class="form-select" name="schedule[{{ $i }}][weekday]" data-native>
+                            @foreach($weekdays as $value => $label)
+                                <option value="{{ $value }}" @selected(($row['weekday'] ?? '') === $value)>{{ $label }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="col-3 col-sm-3">
+                        <label class="form-label">Start</label>
+                        <input class="form-control" type="time" name="schedule[{{ $i }}][start]" value="{{ $row['start'] ?? '' }}">
+                    </div>
+                    <div class="col-3 col-sm-3">
+                        <label class="form-label">End</label>
+                        <input class="form-control" type="time" name="schedule[{{ $i }}][end]" value="{{ $row['end'] ?? '' }}">
+                    </div>
+                    <div class="col-1 col-sm-2">
+                        <button type="button" class="btn btn-outline-danger schedule-remove" aria-label="Remove class day">&times;</button>
+                    </div>
+                </div>
+            @endforeach
+        </div>
+        <template id="schedule-template">
+            <div class="row g-2 schedule-row align-items-end mb-2">
+                <div class="col-5 col-sm-4">
+                    <label class="form-label">Day</label>
+                    <select class="form-select" name="schedule[__i__][weekday]" data-native>
+                        @foreach($weekdays as $value => $label)<option value="{{ $value }}">{{ $label }}</option>@endforeach
+                    </select>
+                </div>
+                <div class="col-3 col-sm-3">
+                    <label class="form-label">Start</label>
+                    <input class="form-control" type="time" name="schedule[__i__][start]">
+                </div>
+                <div class="col-3 col-sm-3">
+                    <label class="form-label">End</label>
+                    <input class="form-control" type="time" name="schedule[__i__][end]">
+                </div>
+                <div class="col-1 col-sm-2">
+                    <button type="button" class="btn btn-outline-danger schedule-remove" aria-label="Remove class day">&times;</button>
+                </div>
+            </div>
+        </template>
+        <button type="button" class="btn btn-outline-primary btn-sm" id="schedule-add"><i class="fas fa-plus me-1"></i>Add class day</button>
+    </div>
     <div class="form-actions">
         <a class="btn btn-outline-secondary" href="{{ route('batches.index') }}">Cancel</a>
         <button class="btn btn-primary">Save</button>
     </div>
 </form>
+<script>
+(function () {
+    var rows = document.getElementById('schedule-rows');
+    var tpl = document.getElementById('schedule-template');
+    var add = document.getElementById('schedule-add');
+    if (!rows || !tpl || !add) return;
+    var next = rows.querySelectorAll('.schedule-row').length;
+    add.addEventListener('click', function () {
+        var html = tpl.innerHTML.replace(/__i__/g, String(next++));
+        var wrap = document.createElement('div');
+        wrap.innerHTML = html.trim();
+        rows.appendChild(wrap.firstChild);
+    });
+    rows.addEventListener('click', function (e) {
+        var btn = e.target.closest('.schedule-remove');
+        if (btn) { btn.closest('.schedule-row').remove(); }
+    });
+})();
+</script>
 @endsection

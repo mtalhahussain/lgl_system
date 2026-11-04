@@ -69,6 +69,31 @@ class Batch extends Model
         return $this->hasMany(ClassSession::class);
     }
 
+    public function schedules()
+    {
+        return $this->hasMany(BatchSchedule::class);
+    }
+
+    /** Ordered Mon..Sun then start time; safe to call after eager loading. */
+    public function orderedSchedules()
+    {
+        $order = array_flip(array_keys(BatchSchedule::WEEKDAYS));
+
+        return $this->schedules->sortBy(fn ($row) => [$order[$row->weekday] ?? 9, $row->getRawOriginal('start_time')])->values();
+    }
+
+    /** Planned class minutes per week from the schedule template. */
+    public function weeklyMinutes(): int
+    {
+        return (int) $this->schedules->sum(fn ($row) => $row->minutes());
+    }
+
+    /** Planned class hours per week (one decimal). */
+    public function weeklyHours(): float
+    {
+        return round($this->weeklyMinutes() / 60, 1);
+    }
+
     public function exams()
     {
         return $this->hasMany(Exam::class);

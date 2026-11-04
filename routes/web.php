@@ -82,6 +82,8 @@ Route::middleware(['auth', \App\Http\Middleware\EnsureActiveAccount::class])->gr
         ->middleware('role:admin,teacher');
     Route::post('/batches/{batch}/sessions/generate', [App\Http\Controllers\ClassSessionController::class, 'generate'])
         ->name('class-sessions.generate')->middleware('role:admin,teacher');
+    Route::post('/batches/{batch}/sessions/generate-from-schedule', [App\Http\Controllers\ClassSessionController::class, 'generateFromSchedule'])
+        ->name('class-sessions.generate-from-schedule')->middleware('role:admin,teacher');
     Route::post('/class-sessions/{classSession}/start', [App\Http\Controllers\ClassSessionController::class, 'start'])
         ->name('class-sessions.start')->middleware('role:admin,teacher');
     Route::post('/class-sessions/{classSession}/end', [App\Http\Controllers\ClassSessionController::class, 'end'])
@@ -220,5 +222,7 @@ Route::middleware(['auth', \App\Http\Middleware\EnsureActiveAccount::class])->gr
             ->name('student.dashboard');
         Route::get('/student/attendance', [App\Http\Controllers\AttendanceController::class, 'myAttendance'])
             ->name('student.attendance');
+        Route::get('/student/timetable', [App\Http\Controllers\StudentController::class, 'timetable'])
+            ->name('student.timetable');
     });
 });

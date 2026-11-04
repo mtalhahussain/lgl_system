@@ -121,6 +121,73 @@ class ClassSessionController extends Controller
         return redirect()->route('batches.show', $batch)->with('success', "{$created} sessions created".($skipped ? ", {$skipped} dates already had a session" : '').'.');
     }
 
+    /**
+     * Creates sessions from the batch's weekly schedule: one per scheduled weekday in the
+     * range, each at that day's own start/end time. Dates that already have a session at the
+     * same start time are skipped, so reruns and multiple slots per day are safe.
+     */
+    public function generateFromSchedule(Request $request, Batch $batch)
+    {
+        $this->authorize('view', $batch);
+        abort_if(auth()->user()->isTeacher() && $batch->teacher_id !== auth()->id(), 403);
+        $data = $request->validate([
+            'from' => 'nullable|date_format:Y-m-d',
+            'to' => 'nullable|date_format:Y-m-d',
+            'topic' => 'nullable|string|max:255',
+        ]);
+        if (! in_array($batch->status, ['upcoming', 'ongoing'], true)) {
+            throw ValidationException::withMessages(['schedule' => 'Sessions can only be generated for upcoming or ongoing batches.']);
+        }
+        $batch->load('schedules');
+        if ($batch->schedules->isEmpty()) {
+            throw ValidationException::withMessages(['schedule' => 'This batch has no weekly schedule yet. Add class days on the batch form first.']);
+        }
+        $from = max(Carbon::parse($data['from'] ?? today()->toDateString()), today(), $batch->start_date->copy());
+        $to = $data['to'] ?? ($batch->end_date?->toDateString());
+        if (! $to) {
+            throw ValidationException::withMessages(['to' => 'Choose an end date, or set the batch end date first.']);
+        }
+        $to = min(Carbon::parse($to), $batch->end_date ? $batch->end_date->copy() : Carbon::parse($to));
+        $byDay = $batch->schedules->groupBy('weekday');
+        $slots = collect();
+        foreach (collect($from->lte($to) ? CarbonPeriod::create($from->copy(), $to->copy()) : []) as $date) {
+            foreach ($byDay->get(strtolower($date->format('D')), collect()) as $row) {
+                $slots->push(['date' => $date->toDateString(), 'start' => $row->getRawOriginal('start_time'),
+                    'end' => $row->getRawOriginal('end_time')]);
+            }
+        }
+        if ($slots->isEmpty()) {
+            throw ValidationException::withMessages(['schedule' => 'No scheduled class day falls between these dates within the batch dates.']);
+        }
+        if ($slots->count() > self::MAX_GENERATED) {
+            throw ValidationException::withMessages(['to' => 'At most '.self::MAX_GENERATED.' sessions at a time; choose a shorter date range.']);
+        }
+        $created = DB::transaction(function () use ($batch, $slots, $data, $from, $to) {
+            Batch::lockForUpdate()->findOrFail($batch->id);
+            $existing = ClassSession::where('batch_id', $batch->id)->whereDate('session_date', '>=', $from->toDateString())
+                ->whereDate('session_date', '<=', $to->toDateString())->get(['session_date', 'start_time'])
+                ->map(fn ($session) => Carbon::parse($session->session_date)->toDateString().' '.Carbon::parse($session->getRawOriginal('start_time'))->format('H:i'))->all();
+            $new = 0;
+            foreach ($slots as $slot) {
+                $key = $slot['date'].' '.Carbon::parse($slot['start'])->format('H:i');
+                if (in_array($key, $existing, true)) {
+                    continue;
+                }
+                ClassSession::create(['batch_id' => $batch->id, 'session_date' => $slot['date'], 'start_time' => $slot['start'],
+                    'end_time' => $slot['end'], 'topic' => $data['topic'] ?? $batch->name.' class', 'status' => 'scheduled', 'meeting_link' => $batch->meeting_link]);
+                $existing[] = $key;
+                $new++;
+            }
+            AuditLog::create(['actor_id' => auth()->id(), 'action' => 'class_sessions.generated_from_schedule', 'subject_type' => 'batch',
+                'subject_id' => $batch->id, 'changes' => ['from' => $from->toDateString(), 'to' => $to->toDateString(), 'created' => $new], 'created_at' => now()]);
+
+            return $new;
+        });
+        $skipped = $slots->count() - $created;
+
+        return redirect()->route('batches.show', $batch)->with('success', "{$created} sessions created from schedule".($skipped ? ", {$skipped} already existed" : '').'.');
+    }
+
     public function store(Request $request)
     {
         $request->validate([

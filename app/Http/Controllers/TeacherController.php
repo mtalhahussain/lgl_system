@@ -151,7 +151,7 @@ class TeacherController extends Controller
 
     public function dashboard()
     {
-        $batches = auth()->user()->taughtBatches()->select('id', 'name', 'course_id', 'status')->with('course:id,name,level')->withCount('activeEnrollments')->get();
+        $batches = auth()->user()->taughtBatches()->select('id', 'name', 'course_id', 'status')->with(['course:id,name,level', 'schedules'])->withCount('activeEnrollments')->get();
         $sessions = \App\Models\ClassSession::whereHas('batch', fn ($query) => $query->where('teacher_id', auth()->id()))
             ->where('status', 'scheduled')->whereDate('session_date', '>=', today())->with('batch:id,name')->orderBy('session_date')->orderBy('start_time')->limit(10)->get();
 

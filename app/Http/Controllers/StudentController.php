@@ -4,14 +4,17 @@ namespace App\Http\Controllers;
 
 use App\Models\Attendance;
 use App\Models\Batch;
+use App\Models\ClassSession;
 use App\Models\Course;
 use App\Models\User;
+use App\Services\AttendanceService;
 use App\Services\EnrollmentService;
 use App\Services\FeeCalculatorService;
 use App\Support\ListQuery;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\Rule;
 
 class StudentController extends Controller
 {
@@ -89,7 +92,7 @@ class StudentController extends Controller
             'is_active' => 'sometimes|boolean',
             'batch_id' => 'nullable|exists:batches,id',
             'discount_percentage' => 'nullable|numeric|min:0|max:100',
-            'device_employee_no' => ['nullable', 'regex:/^[A-Za-z0-9]{1,32}$/D', \Illuminate\Validation\Rule::unique('users', 'device_employee_no')],
+            'device_employee_no' => ['nullable', 'regex:/^[A-Za-z0-9]{1,32}$/D', Rule::unique('users', 'device_employee_no')],
         ]);
 
         DB::beginTransaction();
@@ -188,7 +191,7 @@ class StudentController extends Controller
             'emergency_contact' => 'nullable|string|max:255',
             'password' => 'nullable|string|min:8|confirmed',
             'is_active' => 'sometimes|boolean',
-            'device_employee_no' => ['nullable', 'regex:/^[A-Za-z0-9]{1,32}$/D', \Illuminate\Validation\Rule::unique('users', 'device_employee_no')->ignore($student->id)],
+            'device_employee_no' => ['nullable', 'regex:/^[A-Za-z0-9]{1,32}$/D', Rule::unique('users', 'device_employee_no')->ignore($student->id)],
         ]);
 
         DB::transaction(function () use ($request, $student) {
@@ -220,12 +223,26 @@ class StudentController extends Controller
     public function dashboard()
     {
         $enrollments = auth()->user()->enrollments()->with('batch.course:id,name,level')->orderByDesc('id')->get();
-        $sessions = \App\Models\ClassSession::whereHas('batch.enrollments', fn ($query) => $query->where('student_id', auth()->id())->where('status', 'active'))
+        $sessions = ClassSession::whereHas('batch.enrollments', fn ($query) => $query->where('student_id', auth()->id())->where('status', 'active'))
             ->where('status', 'scheduled')->whereDate('session_date', '>=', today())->with('batch:id,name,meeting_link')->orderBy('session_date')->orderBy('start_time')->limit(10)->get();
         $attendance = Attendance::getAttendanceStats(auth()->id());
-        $unmarked = max(0, app(\App\Services\AttendanceService::class)->expectedStudentSessions(auth()->id()) - $attendance['total']);
+        $unmarked = max(0, app(AttendanceService::class)->expectedStudentSessions(auth()->id()) - $attendance['total']);
 
         return view('dashboards.student', compact('enrollments', 'sessions', 'attendance', 'unmarked'));
+    }
+
+    public function timetable()
+    {
+        $student = auth()->user();
+        $batches = Batch::whereHas('enrollments', fn ($query) => $query->where('student_id', $student->id)->where('status', 'active'))
+            ->whereIn('status', ['upcoming', 'ongoing'])
+            ->with(['course:id,name,level', 'teacher:id,name', 'schedules'])
+            ->orderBy('name')->get();
+        $sessions = ClassSession::whereHas('batch.enrollments', fn ($query) => $query->where('student_id', $student->id)->where('status', 'active'))
+            ->where('status', 'scheduled')->whereDate('session_date', '>=', today())
+            ->with('batch:id,name,meeting_link,meeting_platform')->orderBy('session_date')->orderBy('start_time')->limit(20)->get();
+
+        return view('dashboards.student-timetable', compact('batches', 'sessions'));
     }
 
     public function enroll(Request $request, User $student)

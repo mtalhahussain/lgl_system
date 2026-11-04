@@ -86,7 +86,13 @@
                                 </a>
                             </li>
                             <li class="nav-item">
-                                <a class="nav-link {{ request()->routeIs('student.attendance') ? 'active' : '' }}" 
+                                <a class="nav-link {{ request()->routeIs('student.timetable') ? 'active' : '' }}"
+                                   href="{{ route('student.timetable') }}">
+                                    <i class="fas fa-calendar-week me-2"></i>My Timetable
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link {{ request()->routeIs('student.attendance') ? 'active' : '' }}"
                                    href="{{ route('student.attendance') }}">
                                     <i class="fas fa-clipboard-check me-2"></i>My Attendance
                                 </a>

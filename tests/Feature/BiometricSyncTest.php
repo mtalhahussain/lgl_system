@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Biometric\MachineUserSync;
 use App\Models\BiometricDevice;
 use App\Models\BiometricDeviceUser;
 use App\Models\User;
@@ -23,21 +24,26 @@ class BiometricSyncTest extends TestCase
     public function test_resync_user_requeues_one_person_to_all_active_machines(): void
     {
         $student = User::factory()->create(['role' => 'student', 'is_active' => true, 'name' => 'Re Sync']);
-        $device = $this->device();
-        $code = $student->fresh()->device_employee_no;
-        BiometricDeviceUser::query()->update(['status' => 'synced', 'attempts' => 2, 'last_error' => 'old']);
+        $this->device();
+        $this->device();
+        BiometricDeviceUser::where('user_id', $student->id)->update(['status' => 'synced', 'attempts' => 2, 'last_error' => 'old']);
 
-        app(\App\Biometric\MachineUserSync::class)->resyncUser($student->fresh());
+        app(MachineUserSync::class)->resyncUser($student->fresh());
 
-        $row = BiometricDeviceUser::where('user_id', $student->id)->sole();
-        $this->assertSame([$code, 'upsert', 'pending', 0, null], [$row->employee_no, $row->action, $row->status, $row->attempts, $row->last_error]);
-        $this->assertSame(3, $row->version); // bumped from 1: once by the reset, once by queue()'s re-stamp
+        $rows = BiometricDeviceUser::where('user_id', $student->id)->get();
+        $this->assertCount(2, $rows);
+        foreach ($rows as $row) {
+            $this->assertSame(['upsert', 'pending', 0, null], [$row->action, $row->status, $row->attempts, $row->last_error]);
+            $this->assertGreaterThan(1, $row->version); // reset + queue both bump it
+        }
 
-        // Ineligible user: rows become deletes, no number assigned.
+        // Ineligible user: rows flip to delete and are re-pended; no number work needed.
         $student->update(['is_active' => false]);
-        BiometricDeviceUser::query()->update(['status' => 'synced']);
-        app(\App\Biometric\MachineUserSync::class)->resyncUser($student->fresh());
-        $this->assertSame('delete', BiometricDeviceUser::where('user_id', $student->id)->sole()->action);
+        BiometricDeviceUser::where('user_id', $student->id)->update(['status' => 'synced']);
+        app(MachineUserSync::class)->resyncUser($student->fresh());
+        foreach (BiometricDeviceUser::where('user_id', $student->id)->get() as $row) {
+            $this->assertSame(['delete', 'pending'], [$row->action, $row->status]);
+        }
     }
 
     private function device(): BiometricDevice

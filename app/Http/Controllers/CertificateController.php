@@ -8,6 +8,7 @@ use App\Models\User;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
 
 class CertificateController extends Controller
 {
@@ -41,7 +42,7 @@ class CertificateController extends Controller
     public function store(Request $request)
     {
         $data = $request->validate([
-            'student_id' => 'nullable|exists:users,id',
+            'student_id' => ['nullable', Rule::exists('users', 'id')->where('role', 'student')],
             'student_name' => 'required|string|max:255',
             'father_name' => 'nullable|string|max:255',
             'level' => 'required|in:A1,A2,B1,B2,C1,C2',

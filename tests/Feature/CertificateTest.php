@@ -135,6 +135,20 @@ class CertificateTest extends TestCase
             'student_name' => 'X', 'level' => 'A1', 'completion_date' => '2026-10-27'])->assertForbidden();
     }
 
+    public function test_non_admins_cannot_open_or_reprint_a_certificate(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+        $teacher = User::factory()->create(['role' => 'teacher']);
+        $student = User::factory()->create(['role' => 'student']);
+        $cert = StudentCertificate::create(['student_id' => $student->id, 'student_name' => 'Sara',
+            'father_name' => 'Imran', 'level' => 'A1', 'completion_date' => '2026-10-27',
+            'certificate_number' => 'LGL-A1-2026-050', 'issued_by' => $admin->id, 'issued_at' => now()]);
+
+        $this->actingAs($teacher)->get('/certificates/'.$cert->id.'/print')->assertForbidden();
+        $this->actingAs($student)->get('/certificates/'.$cert->id.'/print')->assertForbidden();
+        $this->actingAs($admin)->get('/certificates/'.$cert->id.'/print')->assertOk();
+    }
+
     public function test_index_shows_the_form_and_the_issued_list_with_reprint_links(): void
     {
         $admin = User::factory()->create(['role' => 'admin']);

@@ -1,8 +1,11 @@
 @php
     $templatePath = storage_path('app/public/settings/template.png');
-    $templateSrc = is_file($templatePath)
-        ? 'data:image/png;base64,'.base64_encode(file_get_contents($templatePath))
-        : null;
+    $templateSrc = null;
+    if (is_file($templatePath)) {
+        $templateSrc = 'data:image/png;base64,'.base64_encode(file_get_contents($templatePath));
+    } else {
+        \Illuminate\Support\Facades\Log::warning('Certificate template image missing; rendering on a plain background.', ['path' => $templatePath]);
+    }
     $soLine = trim($cert->student_name.($cert->father_name ? ' S/O '.$cert->father_name : ''));
     $dateDe = $cert->completion_date->format('d.m.Y');
 @endphp

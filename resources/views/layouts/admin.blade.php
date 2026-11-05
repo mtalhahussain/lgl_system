@@ -97,6 +97,7 @@
                                     <i class="fas fa-clipboard-check me-2"></i>My Attendance
                                 </a>
                             </li>
+                            <li class="nav-item"><a class="nav-link {{ request()->is('student/results*') ? 'active' : '' }}" href="{{ route('student.results') }}"><i class="fas fa-file-circle-check me-2" aria-hidden="true"></i>My Results</a></li>
                             <li class="nav-item">
                                 <a class="nav-link {{ request()->is('students/' . auth()->id()) ? 'active' : '' }}" 
                                    href="{{ route('students.show', auth()->user()) }}">
@@ -181,7 +182,15 @@
                         @if(auth()->user()->isAdmin())
                         <li class="nav-item"><a class="nav-link {{ request()->is('biometric/teachers') ? 'active' : '' }}" href="{{ route('biometric.teachers') }}"><i class="fas fa-user-clock me-2" aria-hidden="true"></i>Staff Attendance</a></li>
                         @endif
-                        
+
+                        @if(auth()->user()->isAdmin())
+                        <li class="nav-item"><a class="nav-link {{ request()->is('certificates*') ? 'active' : '' }}" href="{{ route('certificates.index') }}"><i class="fas fa-award me-2" aria-hidden="true"></i>Certificates</a></li>
+                        @endif
+
+                        @if(auth()->user()->isAdmin() || auth()->user()->isTeacher())
+                        <li class="nav-item"><a class="nav-link {{ request()->is('exams*') ? 'active' : '' }}" href="{{ route('exams.index') }}"><i class="fas fa-file-pen me-2" aria-hidden="true"></i>Exams</a></li>
+                        @endif
+
                         @if(auth()->user()->isAdmin())
                         <!-- Reports & Analytics -->
                         <li class="nav-item">

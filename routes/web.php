@@ -1,9 +1,30 @@
 <?php
 
-use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\AuthController;
+use App\Http\Controllers\AccountController;
 use App\Http\Controllers\AdminController;
-use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\AttendanceController;
+use App\Http\Controllers\AuthController;
+use App\Http\Controllers\BatchController;
+use App\Http\Controllers\BiometricController;
+use App\Http\Controllers\CertificateController;
+use App\Http\Controllers\ClassSessionController;
+use App\Http\Controllers\CourseController;
+use App\Http\Controllers\EnrollmentController;
+use App\Http\Controllers\EnrollmentPackageController;
+use App\Http\Controllers\ExamController;
+use App\Http\Controllers\FeeController;
+use App\Http\Controllers\InstallmentController;
+use App\Http\Controllers\PaymentController;
+use App\Http\Controllers\PayrollController;
+use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\ReportsController;
+use App\Http\Controllers\SettingController;
+use App\Http\Controllers\StaffController;
+use App\Http\Controllers\StudentController;
+use App\Http\Controllers\TeacherController;
+use App\Http\Controllers\WhatsAppReminderController;
+use App\Http\Middleware\EnsureActiveAccount;
+use Illuminate\Support\Facades\Route;
 
 // Authentication Routes
 Route::middleware('guest')->group(function () {
@@ -13,18 +34,18 @@ Route::middleware('guest')->group(function () {
 });
 
 // Authenticated Routes
-Route::middleware(['auth', \App\Http\Middleware\EnsureActiveAccount::class])->group(function () {
+Route::middleware(['auth', EnsureActiveAccount::class])->group(function () {
 
     Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
-    Route::get('/profile', [App\Http\Controllers\ProfileController::class, 'edit'])->name('profile.edit');
-    Route::put('/profile', [App\Http\Controllers\ProfileController::class, 'update'])->name('profile.update');
-    Route::get('/accounts', [App\Http\Controllers\AccountController::class, 'index'])->name('accounts.index')->middleware('role:admin');
-    Route::patch('/accounts/{user}', [App\Http\Controllers\AccountController::class, 'update'])->name('accounts.update')->middleware('role:admin');
-    
+    Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
+    Route::put('/profile', [ProfileController::class, 'update'])->name('profile.update');
+    Route::get('/accounts', [AccountController::class, 'index'])->name('accounts.index')->middleware('role:admin');
+    Route::patch('/accounts/{user}', [AccountController::class, 'update'])->name('accounts.update')->middleware('role:admin');
+
     // Dashboard Routes based on role
     Route::get('/dashboard', function () {
         $user = auth()->user();
-        
+
         switch ($user->role) {
             case 'admin':
                 return redirect()->route('admin.dashboard');
@@ -36,195 +57,222 @@ Route::middleware(['auth', \App\Http\Middleware\EnsureActiveAccount::class])->gr
                 return redirect()->route('login');
         }
     })->name('dashboard');
-    
+
     // Role-specific dashboards
-    Route::get('/admin/dashboard', [App\Http\Controllers\AdminController::class, 'dashboard'])
+    Route::get('/admin/dashboard', [AdminController::class, 'dashboard'])
         ->name('admin.dashboard')->middleware('role:admin');
-    
-    Route::get('/teacher/dashboard', [App\Http\Controllers\TeacherController::class, 'dashboard'])
+
+    Route::get('/teacher/dashboard', [TeacherController::class, 'dashboard'])
         ->name('teacher.dashboard')->middleware('role:teacher');
-    
-    
+
     // Student Management Routes
-    Route::resource('students', App\Http\Controllers\StudentController::class)
+    Route::resource('students', StudentController::class)
         ->middleware('role:admin')->except(['index', 'show']);
-    Route::get('/students', [App\Http\Controllers\StudentController::class, 'index'])
+    Route::get('/students', [StudentController::class, 'index'])
         ->name('students.index')->middleware('role:admin,teacher');
-    Route::get('/students/{student}', [App\Http\Controllers\StudentController::class, 'show'])
+    Route::get('/students/{student}', [StudentController::class, 'show'])
         ->name('students.show')->middleware('role:admin,teacher,student');
-    Route::post('/students/{student}/enroll', [App\Http\Controllers\StudentController::class, 'enroll'])
+    Route::post('/students/{student}/enroll', [StudentController::class, 'enroll'])
         ->name('students.enroll')->middleware('role:admin');
-    
-    // Teacher Management Routes  
-    Route::resource('teachers', App\Http\Controllers\TeacherController::class)
+
+    // Teacher Management Routes
+    Route::resource('teachers', TeacherController::class)
         ->middleware('role:admin');
-    
+
     // Course Management Routes
-    Route::resource('courses', App\Http\Controllers\CourseController::class)
+    Route::resource('courses', CourseController::class)
         ->middleware('role:admin')->except(['index', 'show']);
-    Route::get('/courses', [App\Http\Controllers\CourseController::class, 'index'])
+    Route::get('/courses', [CourseController::class, 'index'])
         ->name('courses.index')->middleware('role:admin,teacher');
-    Route::get('/courses/{course}', [App\Http\Controllers\CourseController::class, 'show'])
+    Route::get('/courses/{course}', [CourseController::class, 'show'])
         ->name('courses.show')->middleware('role:admin,teacher');
-    Route::post('/courses/{course}/toggle-status', [App\Http\Controllers\CourseController::class, 'toggleStatus'])
+    Route::post('/courses/{course}/toggle-status', [CourseController::class, 'toggleStatus'])
         ->name('courses.toggle-status')->middleware('role:admin');
-    
+
     // Batch Management Routes
-    Route::resource('batches', App\Http\Controllers\BatchController::class)
+    Route::resource('batches', BatchController::class)
         ->middleware('role:admin')->except(['index', 'show']);
-    Route::get('/batches', [App\Http\Controllers\BatchController::class, 'index'])
+    Route::get('/batches', [BatchController::class, 'index'])
         ->name('batches.index')->middleware('role:admin,teacher');
-    Route::get('/batches/{batch}', [App\Http\Controllers\BatchController::class, 'show'])
+    Route::get('/batches/{batch}', [BatchController::class, 'show'])
         ->name('batches.show')->middleware('role:admin,teacher');
-    
+
     // Class Session Management Routes
-    Route::resource('class-sessions', App\Http\Controllers\ClassSessionController::class)
+    Route::resource('class-sessions', ClassSessionController::class)
         ->middleware('role:admin,teacher');
-    Route::post('/batches/{batch}/sessions/generate', [App\Http\Controllers\ClassSessionController::class, 'generate'])
+    Route::post('/batches/{batch}/sessions/generate', [ClassSessionController::class, 'generate'])
         ->name('class-sessions.generate')->middleware('role:admin,teacher');
-    Route::post('/batches/{batch}/sessions/generate-from-schedule', [App\Http\Controllers\ClassSessionController::class, 'generateFromSchedule'])
+    Route::post('/batches/{batch}/sessions/generate-from-schedule', [ClassSessionController::class, 'generateFromSchedule'])
         ->name('class-sessions.generate-from-schedule')->middleware('role:admin,teacher');
-    Route::post('/class-sessions/{classSession}/start', [App\Http\Controllers\ClassSessionController::class, 'start'])
+    Route::post('/class-sessions/{classSession}/start', [ClassSessionController::class, 'start'])
         ->name('class-sessions.start')->middleware('role:admin,teacher');
-    Route::post('/class-sessions/{classSession}/end', [App\Http\Controllers\ClassSessionController::class, 'end'])
+    Route::post('/class-sessions/{classSession}/end', [ClassSessionController::class, 'end'])
         ->name('class-sessions.end')->middleware('role:admin,teacher');
-    Route::get('/class-sessions/{classSession}/attendance', [App\Http\Controllers\ClassSessionController::class, 'markAttendance'])
+    Route::get('/class-sessions/{classSession}/attendance', [ClassSessionController::class, 'markAttendance'])
         ->name('class-sessions.attendance')->middleware('role:admin,teacher');
-    Route::post('/class-sessions/{classSession}/attendance', [App\Http\Controllers\ClassSessionController::class, 'storeAttendance'])
+    Route::post('/class-sessions/{classSession}/attendance', [ClassSessionController::class, 'storeAttendance'])
         ->name('class-sessions.attendance.store')->middleware('role:admin,teacher');
-    
+
     // Enrollment Management Routes
-    Route::get('/enrollment-packages/create', [App\Http\Controllers\EnrollmentPackageController::class, 'create'])
+    Route::get('/enrollment-packages/create', [EnrollmentPackageController::class, 'create'])
         ->name('enrollment-packages.create')->middleware('role:admin');
-    Route::post('/enrollment-packages', [App\Http\Controllers\EnrollmentPackageController::class, 'store'])
+    Route::post('/enrollment-packages', [EnrollmentPackageController::class, 'store'])
         ->name('enrollment-packages.store')->middleware('role:admin');
-    Route::get('/enrollment-packages/{enrollmentPackage}', [App\Http\Controllers\EnrollmentPackageController::class, 'show'])
+    Route::get('/enrollment-packages/{enrollmentPackage}', [EnrollmentPackageController::class, 'show'])
         ->name('enrollment-packages.show')->middleware('role:admin,student');
-    Route::resource('enrollments', App\Http\Controllers\EnrollmentController::class)
+    Route::resource('enrollments', EnrollmentController::class)
         ->middleware('role:admin')->only(['index', 'create', 'store', 'show']);
-    Route::post('/enrollments/{enrollment}/transfer', [App\Http\Controllers\EnrollmentController::class, 'transfer'])
+    Route::post('/enrollments/{enrollment}/transfer', [EnrollmentController::class, 'transfer'])
         ->name('enrollments.transfer')->middleware('role:admin');
-    Route::patch('/enrollments/{enrollment}/withdraw', [App\Http\Controllers\EnrollmentController::class, 'drop'])
+    Route::patch('/enrollments/{enrollment}/withdraw', [EnrollmentController::class, 'drop'])
         ->name('enrollments.withdraw')->middleware('role:admin');
-    Route::patch('/enrollments/{enrollment}/discount', [App\Http\Controllers\EnrollmentController::class, 'updateDiscount'])
+    Route::patch('/enrollments/{enrollment}/discount', [EnrollmentController::class, 'updateDiscount'])
         ->name('enrollments.discount')->middleware('role:admin');
-    
+
     // Fee Management Routes
-    Route::post('/enrollments/{enrollment}/payments', [App\Http\Controllers\PaymentController::class, 'store'])
+    Route::post('/enrollments/{enrollment}/payments', [PaymentController::class, 'store'])
         ->name('payments.store')->middleware('role:admin');
-    Route::get('/payments/{payment}', [App\Http\Controllers\PaymentController::class, 'show'])
+    Route::get('/payments/{payment}', [PaymentController::class, 'show'])
         ->name('payments.show')->middleware('role:admin,student');
-    Route::post('/payments/{payment}/reverse', [App\Http\Controllers\PaymentController::class, 'reverse'])
+    Route::post('/payments/{payment}/reverse', [PaymentController::class, 'reverse'])
         ->name('payments.reverse')->middleware('role:admin');
-    Route::get('/refunds/{refund}', [App\Http\Controllers\PaymentController::class, 'refund'])
+    Route::get('/refunds/{refund}', [PaymentController::class, 'refund'])
         ->name('refunds.show')->middleware('role:admin,student');
-    Route::get('/fees', [App\Http\Controllers\FeeController::class, 'index'])
+    Route::get('/fees', [FeeController::class, 'index'])
         ->name('fees.index')->middleware('role:admin');
-    Route::post('/fees/{installment}/pay', [App\Http\Controllers\FeeController::class, 'pay'])
+    Route::post('/fees/{installment}/pay', [FeeController::class, 'pay'])
         ->name('fees.pay')->middleware('role:admin');
-    Route::get('/fees/reports', [App\Http\Controllers\FeeController::class, 'reports'])
+    Route::get('/fees/reports', [FeeController::class, 'reports'])
         ->name('fees.reports')->middleware('role:admin');
-    Route::get('/fees/student/{student}', [App\Http\Controllers\FeeController::class, 'studentFees'])
+    Route::get('/fees/student/{student}', [FeeController::class, 'studentFees'])
         ->name('fees.student')->middleware('role:admin,student');
-    Route::get('/fees/batch/{batch}', [App\Http\Controllers\FeeController::class, 'batchFees'])
+    Route::get('/fees/batch/{batch}', [FeeController::class, 'batchFees'])
         ->name('fees.batch')->middleware('role:admin');
-    
+
     // Teacher payroll: Admin manages; a Teacher sees only own dues and slips (scoped in the controller)
-    Route::get('/payroll', [App\Http\Controllers\PayrollController::class, 'index'])
+    Route::get('/payroll', [PayrollController::class, 'index'])
         ->name('payroll.index')->middleware('role:admin,teacher');
-    Route::post('/payroll/salaries', [App\Http\Controllers\PayrollController::class, 'storeSalaries'])
+    Route::post('/payroll/salaries', [PayrollController::class, 'storeSalaries'])
         ->name('payroll.salaries')->middleware('role:admin');
-    Route::post('/payroll/batches', [App\Http\Controllers\PayrollController::class, 'storeBatch'])
+    Route::post('/payroll/batches', [PayrollController::class, 'storeBatch'])
         ->name('payroll.batches')->middleware('role:admin');
-    Route::get('/payroll/dues/{due}', [App\Http\Controllers\PayrollController::class, 'show'])
+    Route::get('/payroll/dues/{due}', [PayrollController::class, 'show'])
         ->name('payroll.show')->middleware('role:admin,teacher');
-    Route::post('/payroll/dues/{due}/void', [App\Http\Controllers\PayrollController::class, 'void'])
+    Route::post('/payroll/dues/{due}/void', [PayrollController::class, 'void'])
         ->name('payroll.void')->middleware('role:admin');
-    Route::post('/payroll/dues/{due}/payouts', [App\Http\Controllers\PayrollController::class, 'pay'])
+    Route::post('/payroll/dues/{due}/payouts', [PayrollController::class, 'pay'])
         ->name('payroll.pay')->middleware('role:admin');
-    Route::get('/payroll/payouts/{payout}', [App\Http\Controllers\PayrollController::class, 'slip'])
+    Route::get('/payroll/payouts/{payout}', [PayrollController::class, 'slip'])
         ->name('payroll.slip')->middleware('role:admin,teacher');
-    Route::post('/payroll/payouts/{payout}/reverse', [App\Http\Controllers\PayrollController::class, 'reverse'])
+    Route::post('/payroll/payouts/{payout}/reverse', [PayrollController::class, 'reverse'])
         ->name('payroll.reverse')->middleware('role:admin');
 
     // Non-teaching staff (no sign-in): Admin only; listed on the Users page.
-    Route::get('/staff/create', [App\Http\Controllers\StaffController::class, 'create'])->name('staff.create')->middleware('role:admin');
-    Route::post('/staff', [App\Http\Controllers\StaffController::class, 'store'])->name('staff.store')->middleware('role:admin');
-    Route::get('/staff/{staff}/edit', [App\Http\Controllers\StaffController::class, 'edit'])->name('staff.edit')->middleware('role:admin');
-    Route::put('/staff/{staff}', [App\Http\Controllers\StaffController::class, 'update'])->name('staff.update')->middleware('role:admin');
+    Route::get('/staff/create', [StaffController::class, 'create'])->name('staff.create')->middleware('role:admin');
+    Route::post('/staff', [StaffController::class, 'store'])->name('staff.store')->middleware('role:admin');
+    Route::get('/staff/{staff}/edit', [StaffController::class, 'edit'])->name('staff.edit')->middleware('role:admin');
+    Route::put('/staff/{staff}', [StaffController::class, 'update'])->name('staff.update')->middleware('role:admin');
 
     // WhatsApp fee reminders (Meta Cloud API): Admin only.
-    Route::get('/whatsapp', [App\Http\Controllers\WhatsAppReminderController::class, 'index'])->name('whatsapp.index')->middleware('role:admin');
-    Route::put('/whatsapp/settings', [App\Http\Controllers\WhatsAppReminderController::class, 'updateSettings'])->name('whatsapp.settings')->middleware('role:admin');
-    Route::post('/whatsapp/test', [App\Http\Controllers\WhatsAppReminderController::class, 'test'])->name('whatsapp.test')->middleware(['role:admin', 'throttle:10,1']);
-    Route::post('/enrollments/{enrollment}/whatsapp-reminder', [App\Http\Controllers\WhatsAppReminderController::class, 'sendForEnrollment'])
+    Route::get('/whatsapp', [WhatsAppReminderController::class, 'index'])->name('whatsapp.index')->middleware('role:admin');
+    Route::put('/whatsapp/settings', [WhatsAppReminderController::class, 'updateSettings'])->name('whatsapp.settings')->middleware('role:admin');
+    Route::post('/whatsapp/test', [WhatsAppReminderController::class, 'test'])->name('whatsapp.test')->middleware(['role:admin', 'throttle:10,1']);
+    Route::post('/enrollments/{enrollment}/whatsapp-reminder', [WhatsAppReminderController::class, 'sendForEnrollment'])
         ->name('whatsapp.enrollment')->middleware(['role:admin', 'throttle:30,1']);
 
     // Installment Management Routes
-    Route::get('/installments/create', [App\Http\Controllers\InstallmentController::class, 'create'])
+    Route::get('/installments/create', [InstallmentController::class, 'create'])
         ->name('installments.create')->middleware('role:admin');
-    Route::post('/installments', [App\Http\Controllers\InstallmentController::class, 'store'])
+    Route::post('/installments', [InstallmentController::class, 'store'])
         ->name('installments.store')->middleware('role:admin');
-    Route::get('/enrollments/{enrollment}/details', [App\Http\Controllers\InstallmentController::class, 'getEnrollmentDetails'])
+    Route::get('/enrollments/{enrollment}/details', [InstallmentController::class, 'getEnrollmentDetails'])
         ->name('enrollments.details')->middleware('role:admin');
-    
+
     // Attendance Routes
-    Route::get('/attendance', [App\Http\Controllers\AttendanceController::class, 'index'])
+    Route::get('/attendance', [AttendanceController::class, 'index'])
         ->name('attendance.index')->middleware('role:admin,teacher');
-    Route::get('/attendance/create', [App\Http\Controllers\AttendanceController::class, 'create'])
+    Route::get('/attendance/create', [AttendanceController::class, 'create'])
         ->name('attendance.create')->middleware('role:admin,teacher');
-    Route::post('/attendance', [App\Http\Controllers\AttendanceController::class, 'store'])
+    Route::post('/attendance', [AttendanceController::class, 'store'])
         ->name('attendance.store')->middleware('role:admin,teacher');
-    Route::get('/attendance/{session}', [App\Http\Controllers\AttendanceController::class, 'show'])->whereNumber('session')
+    Route::get('/attendance/{session}', [AttendanceController::class, 'show'])->whereNumber('session')
         ->name('attendance.show')->middleware('role:admin,teacher');
-    Route::post('/attendance/mark', [App\Http\Controllers\AttendanceController::class, 'mark'])
+    Route::post('/attendance/mark', [AttendanceController::class, 'mark'])
         ->name('attendance.mark')->middleware('role:admin,teacher');
-    Route::get('/attendance/reports', [App\Http\Controllers\AttendanceController::class, 'reports'])
+    Route::get('/attendance/reports', [AttendanceController::class, 'reports'])
         ->name('attendance.reports')->middleware('role:admin,teacher');
-    Route::get('/attendance/student/{student}', [App\Http\Controllers\AttendanceController::class, 'studentAttendance'])
+    Route::get('/attendance/student/{student}', [AttendanceController::class, 'studentAttendance'])
         ->name('attendance.student')->middleware('role:admin,teacher,student');
-    
+
     // Attendance machine (Hikvision push): Admin only. The machine push endpoint is in routes/biometric.php.
-    Route::get('/biometric', [App\Http\Controllers\BiometricController::class, 'index'])
+    Route::get('/biometric', [BiometricController::class, 'index'])
         ->name('biometric.index')->middleware('role:admin');
-    Route::post('/biometric/devices', [App\Http\Controllers\BiometricController::class, 'store'])
+    Route::post('/biometric/devices', [BiometricController::class, 'store'])
         ->name('biometric.store')->middleware('role:admin');
-    Route::put('/biometric/devices/{device}', [App\Http\Controllers\BiometricController::class, 'update'])
+    Route::put('/biometric/devices/{device}', [BiometricController::class, 'update'])
         ->name('biometric.update')->middleware('role:admin');
-    Route::post('/biometric/devices/{device}/token', [App\Http\Controllers\BiometricController::class, 'regenerate'])
+    Route::post('/biometric/devices/{device}/token', [BiometricController::class, 'regenerate'])
         ->name('biometric.regenerate')->middleware('role:admin');
-    Route::get('/biometric/teachers', [App\Http\Controllers\BiometricController::class, 'teachers'])
+    Route::get('/biometric/teachers', [BiometricController::class, 'teachers'])
         ->name('biometric.teachers')->middleware('role:admin');
-    Route::post('/biometric/devices/{device}/resync', [App\Http\Controllers\BiometricController::class, 'resync'])
+    Route::post('/biometric/devices/{device}/resync', [BiometricController::class, 'resync'])
         ->name('biometric.resync')->middleware('role:admin');
-    Route::post('/biometric/devices/{device}/bridge-token', [App\Http\Controllers\BiometricController::class, 'regenerateBridge'])
+    Route::post('/biometric/devices/{device}/bridge-token', [BiometricController::class, 'regenerateBridge'])
         ->name('biometric.bridge-token')->middleware('role:admin');
-    Route::get('/biometric/devices/{device}/bridge-config', [App\Http\Controllers\BiometricController::class, 'bridgeConfig'])
+    Route::get('/biometric/devices/{device}/bridge-config', [BiometricController::class, 'bridgeConfig'])
         ->name('biometric.bridge-config')->middleware('role:admin');
-    Route::get('/biometric/bridge-script', [App\Http\Controllers\BiometricController::class, 'bridgeScript'])
+    Route::get('/biometric/bridge-script', [BiometricController::class, 'bridgeScript'])
         ->name('biometric.bridge-script')->middleware('role:admin');
-    Route::post('/people/{user}/resync-machine', [App\Http\Controllers\BiometricController::class, 'resyncUser'])
+    Route::post('/people/{user}/resync-machine', [BiometricController::class, 'resyncUser'])
         ->name('biometric.resync-user')->middleware('role:admin');
-    
+
+    // Certificate Routes
+    Route::get('/certificates', [CertificateController::class, 'create'])
+        ->name('certificates.index')->middleware('role:admin');
+    Route::post('/certificates', [CertificateController::class, 'store'])
+        ->name('certificates.store')->middleware('role:admin');
+    Route::get('/certificates/{certificate}/print', [CertificateController::class, 'print'])
+        ->name('certificates.print')->middleware('role:admin,student');
+    Route::post('/certificates/{certificate}/revoke', [CertificateController::class, 'revoke'])
+        ->name('certificates.revoke')->middleware('role:admin');
+
+    // Exam Routes
+    Route::get('/exams', [ExamController::class, 'index'])
+        ->name('exams.index')->middleware('role:admin,teacher');
+    Route::get('/exams/create', [ExamController::class, 'create'])
+        ->name('exams.create')->middleware('role:admin');
+    Route::post('/exams', [ExamController::class, 'store'])
+        ->name('exams.store')->middleware('role:admin');
+    Route::get('/exams/{exam}/edit', [ExamController::class, 'edit'])
+        ->name('exams.edit')->middleware('role:admin');
+    Route::put('/exams/{exam}', [ExamController::class, 'update'])
+        ->name('exams.update')->middleware('role:admin');
+    Route::get('/exams/{exam}', [ExamController::class, 'show'])
+        ->name('exams.show')->middleware('role:admin,teacher');
+    Route::post('/exams/{exam}/results', [ExamController::class, 'saveResults'])
+        ->name('exams.results.store')->middleware('role:admin,teacher');
+
     // Reports Routes
-    Route::get('/reports', [App\Http\Controllers\ReportsController::class, 'index'])
+    Route::get('/reports', [ReportsController::class, 'index'])
         ->name('reports.index')->middleware('role:admin');
-    Route::get('/reports/{type}', [App\Http\Controllers\ReportsController::class, 'generate'])
+    Route::get('/reports/{type}', [ReportsController::class, 'generate'])
         ->name('reports.generate')->middleware('role:admin');
-        
+
     // Settings Routes
-    Route::get('/settings', [App\Http\Controllers\SettingController::class, 'index'])
+    Route::get('/settings', [SettingController::class, 'index'])
         ->name('settings.index')->middleware('role:admin');
-    Route::put('/settings', [App\Http\Controllers\SettingController::class, 'update'])
+    Route::put('/settings', [SettingController::class, 'update'])
         ->name('settings.update')->middleware('role:admin');
-        
+
     // Student Routes (accessible only to students)
     Route::middleware('role:student')->group(function () {
-        Route::get('/student/dashboard', [App\Http\Controllers\StudentController::class, 'dashboard'])
+        Route::get('/student/dashboard', [StudentController::class, 'dashboard'])
             ->name('student.dashboard');
-        Route::get('/student/attendance', [App\Http\Controllers\AttendanceController::class, 'myAttendance'])
+        Route::get('/student/attendance', [AttendanceController::class, 'myAttendance'])
             ->name('student.attendance');
-        Route::get('/student/timetable', [App\Http\Controllers\StudentController::class, 'timetable'])
+        Route::get('/student/timetable', [StudentController::class, 'timetable'])
             ->name('student.timetable');
+        Route::get('/student/results', [ExamController::class, 'studentResults'])
+            ->name('student.results');
     });
 });

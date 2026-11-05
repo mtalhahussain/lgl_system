@@ -232,7 +232,7 @@ Route::middleware(['auth', EnsureActiveAccount::class])->group(function () {
     Route::post('/certificates', [CertificateController::class, 'store'])
         ->name('certificates.store')->middleware('role:admin');
     Route::get('/certificates/{certificate}/print', [CertificateController::class, 'print'])
-        ->name('certificates.print')->middleware('role:admin');
+        ->name('certificates.print')->middleware('role:admin,student');
 
     // Exam Routes
     Route::get('/exams', [ExamController::class, 'index'])

@@ -4,10 +4,13 @@ namespace Tests\Feature;
 
 use App\Models\AuditLog;
 use App\Models\Batch;
+use App\Models\BatchExam;
 use App\Models\Course;
 use App\Models\Enrollment;
 use App\Models\StudentCertificate;
+use App\Models\StudentExamResult;
 use App\Models\User;
+use App\Services\ExamGradingService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -145,7 +148,8 @@ class CertificateTest extends TestCase
             'certificate_number' => 'LGL-A1-2026-050', 'issued_by' => $admin->id, 'issued_at' => now()]);
 
         $this->actingAs($teacher)->get('/certificates/'.$cert->id.'/print')->assertForbidden();
-        $this->actingAs($student)->get('/certificates/'.$cert->id.'/print')->assertForbidden();
+        $otherStudent = User::factory()->create(['role' => 'student']);
+        $this->actingAs($otherStudent)->get('/certificates/'.$cert->id.'/print')->assertForbidden();
         $this->actingAs($admin)->get('/certificates/'.$cert->id.'/print')->assertOk();
     }
 
@@ -177,6 +181,88 @@ class CertificateTest extends TestCase
             ->assertSee('Syed Mehboob')
             ->assertSee('Niveau A1')
             ->assertSee('27.10.2026');
+    }
+
+    private function passingResult(User $admin, User $student, string $level = 'A1'): StudentExamResult
+    {
+        $course = Course::create(['name' => 'German '.$level, 'level' => $level, 'total_fee' => 30000,
+            'teacher_per_student_amount' => 0, 'duration_weeks' => 8]);
+        $batch = Batch::create(['name' => $level.' Morning', 'course_id' => $course->id, 'teacher_id' => $admin->id,
+            'start_date' => '2026-10-01', 'end_date' => '2026-12-31', 'status' => 'ongoing', 'max_students' => 20]);
+        Enrollment::create(['student_id' => $student->id, 'batch_id' => $batch->id,
+            'enrollment_date' => '2026-10-01', 'total_fee' => 30000, 'status' => 'active']);
+        $exam = BatchExam::create(['batch_id' => $batch->id, 'name' => $level.' Final', 'type' => 'final',
+            'exam_date' => '2026-12-20', 'status' => 'scheduled']);
+        $exam->seedDefaultSections(['Hören' => ['max' => 25, 'pass' => 15], 'Lesen' => ['max' => 25, 'pass' => 15],
+            'Schreiben' => ['max' => 25, 'pass' => 15], 'Sprechen' => ['max' => 25, 'pass' => 15]]);
+        $marks = $exam->load('sections')->sections->mapWithKeys(fn ($s) => [$s->id => 20])->all();
+
+        return app(ExamGradingService::class)->saveStudentResult($exam, $student->id, $marks, $admin);
+    }
+
+    public function test_issuing_from_a_passing_result_links_and_prefills_level(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+        $student = User::factory()->create(['role' => 'student', 'name' => 'Sara']);
+        $result = $this->passingResult($admin, $student, 'B1');
+
+        $response = $this->actingAs($admin)->post('/certificates', [
+            'student_id' => $student->id, 'student_exam_result_id' => $result->id,
+            'student_name' => 'Sara Khan', 'father_name' => 'Imran', 'level' => 'B1', 'completion_date' => '2026-12-20',
+        ]);
+
+        $cert = StudentCertificate::sole();
+        $response->assertRedirect('/certificates/'.$cert->id.'/print');
+        $this->assertSame($result->id, $cert->student_exam_result_id);
+        $this->assertSame('B1', $cert->level);
+    }
+
+    public function test_cannot_issue_a_second_active_certificate_for_same_student_and_level(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+        $student = User::factory()->create(['role' => 'student', 'name' => 'Sara']);
+
+        StudentCertificate::create(['student_id' => $student->id, 'student_name' => 'Sara', 'level' => 'A1',
+            'completion_date' => '2026-10-01', 'certificate_number' => 'LGL-A1-'.now()->year.'-001',
+            'issued_by' => $admin->id, 'issued_at' => now()]);
+
+        $this->actingAs($admin)->post('/certificates', ['student_id' => $student->id,
+            'student_name' => 'Sara', 'level' => 'A1', 'completion_date' => '2026-10-02'])
+            ->assertSessionHasErrors('student_id');
+
+        $this->assertSame(1, StudentCertificate::count());
+    }
+
+    public function test_a_revoked_certificate_does_not_block_reissue(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+        $student = User::factory()->create(['role' => 'student', 'name' => 'Sara']);
+
+        StudentCertificate::create(['student_id' => $student->id, 'student_name' => 'Sara', 'level' => 'A1',
+            'completion_date' => '2026-10-01', 'certificate_number' => 'LGL-A1-'.now()->year.'-001',
+            'issued_by' => $admin->id, 'issued_at' => now(), 'revoked_at' => now(),
+            'revoked_by' => $admin->id, 'revoke_reason' => 'error']);
+
+        $this->actingAs($admin)->post('/certificates', ['student_id' => $student->id,
+            'student_name' => 'Sara', 'level' => 'A1', 'completion_date' => '2026-10-02'])->assertRedirect();
+
+        $this->assertSame(2, StudentCertificate::count());
+    }
+
+    public function test_owning_student_can_view_their_certificate_but_not_others(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+        $owner = User::factory()->create(['role' => 'student']);
+        $stranger = User::factory()->create(['role' => 'student']);
+        $teacher = User::factory()->create(['role' => 'teacher']);
+        $cert = StudentCertificate::create(['student_id' => $owner->id, 'student_name' => 'Owner', 'level' => 'A1',
+            'completion_date' => '2026-10-01', 'certificate_number' => 'LGL-A1-'.now()->year.'-777',
+            'issued_by' => $admin->id, 'issued_at' => now()]);
+
+        $this->actingAs($owner)->get('/certificates/'.$cert->id.'/print')->assertOk();
+        $this->actingAs($stranger)->get('/certificates/'.$cert->id.'/print')->assertForbidden();
+        $this->actingAs($teacher)->get('/certificates/'.$cert->id.'/print')->assertForbidden();
+        $this->actingAs($admin)->get('/certificates/'.$cert->id.'/print')->assertOk();
     }
 
     public function test_student_profile_shows_issue_certificate_shortcut_for_admin_only(): void

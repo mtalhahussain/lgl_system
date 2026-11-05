@@ -6,6 +6,7 @@
 <section class="panel" style="padding:18px 22px;max-width:720px">
     <form method="post" action="{{ route('certificates.store') }}">
         @csrf
+        @if(! empty($preselectResultId))<input type="hidden" name="student_exam_result_id" value="{{ $preselectResultId }}">@endif
         <div class="mb-3">
             <label class="form-label" for="student_id">Student</label>
             <select class="form-select" id="student_id" name="student_id">

@@ -4,18 +4,20 @@ namespace App\Http\Controllers;
 
 use App\Models\AuditLog;
 use App\Models\StudentCertificate;
+use App\Models\StudentExamResult;
 use App\Models\User;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 class CertificateController extends Controller
 {
     public function __construct()
     {
         $this->middleware('auth');
-        $this->middleware('role:admin');
+        $this->middleware('role:admin')->except(['print']);
     }
 
     public function create(Request $request)
@@ -33,21 +35,48 @@ class CertificateController extends Controller
         $preselect = $request->filled('student') ? $studentMeta->get((int) $request->query('student')) : null;
         $preselectId = $preselect ? (int) $request->query('student') : null;
 
+        if ($request->filled('result')) {
+            $result = StudentExamResult::with('batchExam.batch.course:id,level', 'student:id,name')
+                ->where('overall_passed', true)->find((int) $request->query('result'));
+            if ($result) {
+                $preselect = [
+                    'name' => $result->student?->name ?? '',
+                    'level' => $result->batchExam?->batch?->course?->level ?? '',
+                ];
+                $preselectId = $result->student_id;
+                $preselectResultId = $result->id;
+            }
+        }
+        $preselectResultId ??= null;
+
         $certificates = StudentCertificate::with('student:id,name')
             ->orderByDesc('issued_at')->limit(50)->get();
 
-        return view('certificates.index', compact('students', 'studentMeta', 'preselect', 'preselectId', 'certificates'));
+        return view('certificates.index', compact('students', 'studentMeta', 'preselect', 'preselectId', 'preselectResultId', 'certificates'));
     }
 
     public function store(Request $request)
     {
         $data = $request->validate([
             'student_id' => ['nullable', Rule::exists('users', 'id')->where('role', 'student')],
+            'student_exam_result_id' => ['nullable', Rule::exists('student_exam_results', 'id')
+                ->where('overall_passed', true)],
             'student_name' => 'required|string|max:255',
             'father_name' => 'nullable|string|max:255',
             'level' => 'required|in:A1,A2,B1,B2,C1,C2',
             'completion_date' => 'required|date',
         ]);
+
+        // One active (non-revoked) certificate per student + level.
+        if (! empty($data['student_id'])) {
+            $exists = StudentCertificate::active()
+                ->where('student_id', $data['student_id'])->where('level', $data['level'])->exists();
+            if ($exists) {
+                throw ValidationException::withMessages([
+                    'student_id' => 'This student already has an active '.$data['level'].' certificate. Revoke it first to reissue.',
+                ]);
+            }
+        }
 
         // Retry on the rare race where two issues compute the same number: the
         // unique index rejects the loser, which then regenerates and retries.
@@ -57,6 +86,7 @@ class CertificateController extends Controller
                 $cert = DB::transaction(function () use ($data, $request) {
                     $cert = StudentCertificate::create([
                         'student_id' => $data['student_id'] ?? null,
+                        'student_exam_result_id' => $data['student_exam_result_id'] ?? null,
                         'student_name' => $data['student_name'],
                         'father_name' => $data['father_name'] ?? null,
                         'level' => $data['level'],
@@ -85,6 +115,9 @@ class CertificateController extends Controller
 
     public function print(StudentCertificate $certificate)
     {
+        $user = auth()->user();
+        abort_if($user->isStudent() && $certificate->student_id !== $user->id, 403);
+
         return view('certificates.print', ['cert' => $certificate]);
     }
 }

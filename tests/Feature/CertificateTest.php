@@ -393,4 +393,17 @@ class CertificateTest extends TestCase
             'completion_date' => '2026-12-20'])->assertSessionHasErrors('student_exam_result_id');
         $this->assertSame(0, StudentCertificate::count());
     }
+
+    public function test_level_is_taken_from_the_linked_result_not_the_request(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+        $student = User::factory()->create(['role' => 'student']);
+        $result = $this->passingResult($admin, $student, 'B1');
+
+        $this->actingAs($admin)->post('/certificates', ['student_id' => $student->id,
+            'student_exam_result_id' => $result->id, 'student_name' => 'X', 'level' => 'C2',
+            'completion_date' => '2026-12-20'])->assertRedirect();
+
+        $this->assertSame('B1', StudentCertificate::sole()->level);
+    }
 }

@@ -67,6 +67,15 @@ class CertificateController extends Controller
             'completion_date' => 'required|date',
         ]);
 
+        // When issuing from an exam result, the level is authoritative from that result's course.
+        if (! empty($data['student_exam_result_id'])) {
+            $resultLevel = StudentExamResult::whereKey($data['student_exam_result_id'])
+                ->with('batchExam.batch.course:id,level')->first()?->batchExam?->batch?->course?->level;
+            if ($resultLevel) {
+                $data['level'] = $resultLevel;
+            }
+        }
+
         // One active (non-revoked) certificate per student + level.
         if (! empty($data['student_id'])) {
             $exists = StudentCertificate::active()

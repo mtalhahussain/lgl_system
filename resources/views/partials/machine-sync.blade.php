@@ -1,11 +1,13 @@
 @php
+    $biometricReady = \Illuminate\Support\Facades\Schema::hasTable('biometric_devices') && \Illuminate\Support\Facades\Schema::hasTable('biometric_device_users');
     $eligibleRoles = ['student', 'teacher', 'staff'];
-    $devices = \App\Models\BiometricDevice::where('is_active', true)->orderBy('name')->get();
-    $rows = $person
+    $devices = $biometricReady ? \App\Models\BiometricDevice::where('is_active', true)->orderBy('name')->get() : collect();
+    $rows = $biometricReady && $person
         ? \App\Models\BiometricDeviceUser::where('user_id', $person->id)->get()->keyBy('biometric_device_id')
         : collect();
-    $canSync = $person && $person->is_active && in_array($person->role, $eligibleRoles, true) && $devices->isNotEmpty();
+    $canSync = $biometricReady && $person && $person->is_active && in_array($person->role, $eligibleRoles, true) && $devices->isNotEmpty();
 @endphp
+@if($biometricReady)
 <div class="form-section">
     <h2 class="form-section-title">Attendance machine</h2>
     @if(! $person)
@@ -44,3 +46,4 @@
         <div class="form-text">Re-sends this person to the machines on the bridge PC's next run.</div>
     @endif
 </div>
+@endif

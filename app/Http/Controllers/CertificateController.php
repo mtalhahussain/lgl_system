@@ -58,7 +58,7 @@ class CertificateController extends Controller
     public function store(Request $request)
     {
         $data = $request->validate([
-            'student_id' => ['nullable', Rule::exists('users', 'id')->where('role', 'student')],
+            'student_id' => ['required_with:student_exam_result_id', 'nullable', Rule::exists('users', 'id')->where('role', 'student')],
             'student_exam_result_id' => ['nullable', Rule::exists('student_exam_results', 'id')
                 ->where('overall_passed', true)],
             'student_name' => 'required|string|max:255',
@@ -132,19 +132,20 @@ class CertificateController extends Controller
 
     public function revoke(Request $request, StudentCertificate $certificate)
     {
-        if ($certificate->isRevoked()) {
-            throw ValidationException::withMessages([
-                'reason' => 'This certificate is already revoked.',
-            ]);
-        }
-
         $data = $request->validate(['reason' => 'required|string|min:5|max:1000']);
 
         DB::transaction(function () use ($certificate, $data, $request) {
-            $certificate->update(['revoked_at' => now(), 'revoked_by' => $request->user()->id,
+            $locked = StudentCertificate::whereKey($certificate->id)->lockForUpdate()->first();
+            if ($locked->isRevoked()) {
+                throw ValidationException::withMessages([
+                    'reason' => 'This certificate is already revoked.',
+                ]);
+            }
+            $locked->update(['revoked_at' => now(), 'revoked_by' => $request->user()->id,
                 'revoke_reason' => $data['reason']]);
             AuditLog::create(['actor_id' => $request->user()->id, 'action' => 'certificate.revoked',
-                'subject_type' => 'student_certificate', 'subject_id' => $certificate->id, 'changes' => []]);
+                'subject_type' => 'student_certificate', 'subject_id' => $locked->id,
+                'changes' => ['revoke_reason' => $data['reason']]]);
         });
 
         return back()->with('success', 'Certificate '.$certificate->certificate_number.' revoked.');

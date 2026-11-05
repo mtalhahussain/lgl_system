@@ -316,10 +316,43 @@ class CertificateTest extends TestCase
 
         $this->actingAs($admin)->post('/certificates/'.$cert->id.'/revoke', ['reason' => 'no'])
             ->assertSessionHasErrors('reason');
+        $this->assertFalse($cert->fresh()->isRevoked());
 
-        $cert->update(['revoked_at' => now(), 'revoked_by' => $admin->id, 'revoke_reason' => 'already gone']);
-        $this->actingAs($admin)->post('/certificates/'.$cert->id.'/revoke', ['reason' => 'A valid second reason here.'])
+        $this->actingAs($admin)->post('/certificates/'.$cert->id.'/revoke', ['reason' => 'First valid revoke reason.'])
+            ->assertRedirect();
+
+        $this->actingAs($admin)->post('/certificates/'.$cert->id.'/revoke', ['reason' => 'A different second reason.'])
             ->assertSessionHasErrors('reason');
+
+        $cert->refresh();
+        $this->assertSame('First valid revoke reason.', $cert->revoke_reason);
+        $this->assertSame(1, AuditLog::where('action', 'certificate.revoked')->where('subject_id', $cert->id)->count());
+    }
+
+    public function test_non_admins_cannot_revoke(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+        $teacher = User::factory()->create(['role' => 'teacher']);
+        $student = User::factory()->create(['role' => 'student']);
+        $cert = StudentCertificate::create(['student_id' => $student->id, 'student_name' => 'Owner', 'level' => 'A1',
+            'completion_date' => '2026-10-01', 'certificate_number' => 'LGL-A1-'.now()->year.'-010',
+            'issued_by' => $admin->id, 'issued_at' => now()]);
+
+        $this->actingAs($teacher)->post('/certificates/'.$cert->id.'/revoke', ['reason' => 'A valid reason here.'])->assertForbidden();
+        $this->actingAs($student)->post('/certificates/'.$cert->id.'/revoke', ['reason' => 'A valid reason here.'])->assertForbidden();
+        $this->assertFalse($cert->fresh()->isRevoked());
+    }
+
+    public function test_issue_requires_a_student_when_a_result_is_linked(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+        $student = User::factory()->create(['role' => 'student']);
+        $result = $this->passingResult($admin, $student, 'A1');
+
+        $this->actingAs($admin)->post('/certificates', ['student_exam_result_id' => $result->id,
+            'student_name' => 'X', 'level' => 'A1', 'completion_date' => '2026-12-20'])
+            ->assertSessionHasErrors('student_id');
+        $this->assertSame(0, StudentCertificate::count());
     }
 
     public function test_revoked_certificate_print_shows_the_revoked_stamp(): void

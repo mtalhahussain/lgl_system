@@ -51,6 +51,7 @@
 
 <section class="panel mt-4" aria-labelledby="issued-heading">
     <div class="panel-heading"><h2 id="issued-heading">Issued certificates</h2><span class="page-subtitle">{{ $certificates->count() }} shown</span></div>
+    @error('reason')<div class="alert alert-danger">{{ $message }}</div>@enderror
     <div class="table-responsive"><table class="table list-table">
         <thead><tr><th scope="col">Number</th><th scope="col">Student</th><th scope="col">Level</th><th scope="col">Completed</th><th scope="col">Issued</th><th scope="col" class="d-print-none">&nbsp;</th></tr></thead>
         <tbody>
@@ -78,7 +79,6 @@
                         <input class="form-control form-control-sm" name="reason" placeholder="Reason for revoking (min 5 chars)" maxlength="1000" required>
                         <button class="btn btn-danger btn-sm" type="submit">Confirm revoke</button>
                     </form>
-                    @error('reason')<div class="text-danger small mt-1">{{ $message }}</div>@enderror
                 </td>
             </tr>
             @endunless

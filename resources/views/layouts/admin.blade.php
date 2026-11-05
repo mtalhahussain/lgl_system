@@ -192,9 +192,8 @@
                         </li>
                         @endif
                         
-                        <li class="sidebar-heading">MANAGEMENT</li>
-                        
                         @if(auth()->user()->isAdmin())
+                        <li class="sidebar-heading">MANAGEMENT</li>
                         <li class="nav-item"><a class="nav-link {{ request()->is('accounts*') ? 'active' : '' }}" href="{{ route('accounts.index') }}"><i class="fas fa-users-cog me-2" aria-hidden="true"></i>Users</a></li>
                         <!-- Settings -->
                         <li class="nav-item">

@@ -499,11 +499,23 @@ class BatchExamTest extends TestCase
         $this->enroll($batch, $other);
         $svc = app(ExamGradingService::class);
         $svc->saveStudentResult($exam, $mine->id, $this->marksFor($exam, 20), $admin);
-        $svc->saveStudentResult($exam, $other->id, $this->marksFor($exam, 20), $admin);
+        $svc->saveStudentResult($exam, $other->id, $this->marksFor($exam, 5), $admin);
 
-        $this->actingAs($mine)->get('/student/results')->assertOk()
+        $response = $this->actingAs($mine)->get('/student/results')->assertOk()
             ->assertSee($exam->name)
             ->assertSee('Passed')
-            ->assertDontSee('Other');
+            ->assertDontSee('Failed');
+
+        $response->assertViewHas('results', fn ($results) => $results->count() === 1
+            && $results->first()->student_id === $mine->id);
+    }
+
+    public function test_teacher_and_admin_cannot_open_student_results(): void
+    {
+        $teacher = User::factory()->create(['role' => 'teacher']);
+        $admin = User::factory()->create(['role' => 'admin']);
+
+        $this->actingAs($teacher)->get('/student/results')->assertForbidden();
+        $this->actingAs($admin)->get('/student/results')->assertForbidden();
     }
 }

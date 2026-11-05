@@ -129,6 +129,15 @@ class BiometricController extends Controller
         return view('biometric.teachers', ['days' => $days, 'teachers' => $teachers, 'roles' => $roles, 'month' => $month, 'teacherId' => $teacherId]);
     }
 
+    public function resyncUser(Request $request, User $user, MachineUserSync $sync)
+    {
+        $sync->resyncUser($user);
+        AuditLog::create(['actor_id' => $request->user()->id, 'action' => 'biometric_device_user.resync',
+            'subject_type' => 'user', 'subject_id' => $user->id, 'changes' => [], 'created_at' => now()]);
+
+        return back()->with('success', "{$user->name} queued again for the attendance machines. The bridge PC sends them on its next run.");
+    }
+
     private function audit(Request $request, string $action, BiometricDevice $device, array $changes): void
     {
         AuditLog::create(['actor_id' => $request->user()->id, 'action' => $action, 'subject_type' => 'biometric_device',

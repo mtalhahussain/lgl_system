@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Biometric\MachineUserSync;
 use App\Models\BiometricDevice;
 use App\Models\BiometricDeviceUser;
 use App\Models\User;
@@ -18,6 +19,31 @@ class BiometricSyncTest extends TestCase
     {
         parent::setUp();
         $this->admin = User::factory()->create(['role' => 'admin', 'is_active' => true]);
+    }
+
+    public function test_resync_user_requeues_one_person_to_all_active_machines(): void
+    {
+        $student = User::factory()->create(['role' => 'student', 'is_active' => true, 'name' => 'Re Sync']);
+        $this->device();
+        $this->device();
+        BiometricDeviceUser::where('user_id', $student->id)->update(['status' => 'synced', 'attempts' => 2, 'last_error' => 'old']);
+
+        app(MachineUserSync::class)->resyncUser($student->fresh());
+
+        $rows = BiometricDeviceUser::where('user_id', $student->id)->get();
+        $this->assertCount(2, $rows);
+        foreach ($rows as $row) {
+            $this->assertSame(['upsert', 'pending', 0, null], [$row->action, $row->status, $row->attempts, $row->last_error]);
+            $this->assertGreaterThan(1, $row->version); // reset + queue both bump it
+        }
+
+        // Ineligible user: rows flip to delete and are re-pended; no number work needed.
+        $student->update(['is_active' => false]);
+        BiometricDeviceUser::where('user_id', $student->id)->update(['status' => 'synced']);
+        app(MachineUserSync::class)->resyncUser($student->fresh());
+        foreach (BiometricDeviceUser::where('user_id', $student->id)->get() as $row) {
+            $this->assertSame(['delete', 'pending'], [$row->action, $row->status]);
+        }
     }
 
     private function device(): BiometricDevice
@@ -55,13 +81,13 @@ class BiometricSyncTest extends TestCase
         $next = User::factory()->create(['role' => 'student', 'is_active' => true]);
         $this->assertSame((string) ($taken->id + 2), $next->fresh()->device_employee_no);
 
+        // A posted device_employee_no is ignored; the teacher still gets an automatic number.
         $this->post('/teachers', ['name' => 'Manual Number', 'email' => 'manual@example.test', 'phone' => '0300', 'address' => 'Karachi',
             'password' => 'password123', 'password_confirmation' => 'password123', 'device_employee_no' => '5005'])->assertSessionHasNoErrors();
         $manual = User::where('email', 'manual@example.test')->sole();
-        $this->assertSame('5005', $manual->device_employee_no);
-        $this->assertSame('upsert', BiometricDeviceUser::where('employee_no', '5005')->sole()->action);
-        // The automatic number given at creation is removed from the machine again.
-        $this->assertSame(['delete'], BiometricDeviceUser::where('user_id', $manual->id)->where('employee_no', '!=', '5005')->pluck('action')->all());
+        // The id is already taken as a number by the earlier fixture, so it falls back to the highest number + 1.
+        $this->assertSame((string) ($manual->id + 1), $manual->device_employee_no);
+        $this->assertSame(0, BiometricDeviceUser::where('employee_no', '5005')->count());
     }
 
     public function test_profile_changes_queue_updates_moves_and_removals(): void
@@ -150,5 +176,30 @@ class BiometricSyncTest extends TestCase
         $this->actingAs($teacher)->get('/biometric/bridge-script')->assertForbidden();
         $this->get('/biometric/devices/'.$device->id.'/bridge-config')->assertForbidden();
         $this->post('/biometric/devices/'.$device->id.'/resync')->assertForbidden();
+    }
+
+    public function test_admin_can_resync_one_user_from_their_form(): void
+    {
+        $teacher = User::factory()->create(['role' => 'teacher', 'is_active' => true]);
+        $device = $this->device();
+        BiometricDeviceUser::query()->update(['status' => 'failed', 'attempts' => 3, 'last_error' => 'nope']);
+
+        $this->actingAs($this->admin)->post('/people/'.$teacher->id.'/resync-machine')->assertRedirect();
+        $this->assertSame(['pending', 0, null], [BiometricDeviceUser::sole()->status, BiometricDeviceUser::sole()->attempts, BiometricDeviceUser::sole()->last_error]);
+        $this->assertDatabaseHas('audit_logs', ['action' => 'biometric_device_user.resync', 'subject_type' => 'user', 'subject_id' => $teacher->id]);
+
+        $other = User::factory()->create(['role' => 'teacher', 'is_active' => true]);
+        $this->actingAs($other)->post('/people/'.$teacher->id.'/resync-machine')->assertForbidden();
+    }
+
+    public function test_person_form_shows_number_and_status_not_an_input(): void
+    {
+        $teacher = User::factory()->create(['role' => 'teacher', 'is_active' => true]);
+        $device = $this->device();
+        $code = $teacher->fresh()->device_employee_no;
+
+        $html = $this->actingAs($this->admin)->get('/teachers/'.$teacher->id.'/edit')->assertOk();
+        $html->assertSee('Machine Employee No.')->assertSee($code)->assertSee('Sync now')->assertSee('Waiting');
+        $html->assertDontSee('name="device_employee_no"', false);
     }
 }

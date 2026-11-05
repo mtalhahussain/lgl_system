@@ -164,21 +164,23 @@ class BiometricAttendanceTest extends TestCase
         BiometricPunch::first()->delete();
     }
 
-    public function test_profiles_save_unique_machine_employee_numbers(): void
+    public function test_profiles_ignore_posted_machine_number_and_keep_the_automatic_one(): void
     {
         $this->actingAs($this->admin);
+        $studentCode = $this->student->fresh()->device_employee_no;
+        $teacherCode = $this->teacher->fresh()->device_employee_no;
+        $this->assertNotNull($studentCode);
+        $this->assertNotNull($teacherCode);
+
+        // The Machine Employee No. is automatic; a posted value is ignored and never errors.
         $base = ['name' => 'Student Sara', 'email' => $this->student->email, 'phone' => '0300', 'address' => 'Karachi'];
-        $this->put('/students/'.$this->student->id, $base + ['device_employee_no' => '900'])->assertSessionHasErrors('device_employee_no');
-        $this->put('/students/'.$this->student->id, $base + ['device_employee_no' => '4 2'])->assertSessionHasErrors('device_employee_no');
-        $this->put('/students/'.$this->student->id, $base + ['device_employee_no' => '1001'])->assertSessionHasNoErrors();
-        $this->assertSame('1001', $this->student->fresh()->device_employee_no);
-        // Empty keeps the existing (automatic or typed) number.
-        $this->put('/students/'.$this->student->id, $base + ['device_employee_no' => ''])->assertSessionHasNoErrors();
-        $this->assertSame('1001', $this->student->fresh()->device_employee_no);
+        $this->put('/students/'.$this->student->id, $base + ['device_employee_no' => '900'])->assertSessionHasNoErrors();
+        $this->put('/students/'.$this->student->id, $base + ['device_employee_no' => '4 2'])->assertSessionHasNoErrors();
+        $this->assertSame($studentCode, $this->student->fresh()->device_employee_no);
 
         $this->put('/teachers/'.$this->teacher->id, ['name' => 'Teacher Tina', 'email' => $this->teacher->email, 'phone' => '0300',
             'address' => 'Karachi', 'device_employee_no' => '901'])->assertSessionHasNoErrors();
-        $this->assertSame('901', $this->teacher->fresh()->device_employee_no);
-        $this->get('/teachers/'.$this->teacher->id.'/edit')->assertOk()->assertSee('Machine Employee No.')->assertSee('901');
+        $this->assertSame($teacherCode, $this->teacher->fresh()->device_employee_no);
+        $this->get('/teachers/'.$this->teacher->id.'/edit')->assertOk()->assertSee('Machine Employee No.')->assertSee($teacherCode);
     }
 }

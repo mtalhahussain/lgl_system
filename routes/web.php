@@ -203,6 +203,8 @@ Route::middleware(['auth', \App\Http\Middleware\EnsureActiveAccount::class])->gr
         ->name('biometric.bridge-config')->middleware('role:admin');
     Route::get('/biometric/bridge-script', [App\Http\Controllers\BiometricController::class, 'bridgeScript'])
         ->name('biometric.bridge-script')->middleware('role:admin');
+    Route::post('/people/{user}/resync-machine', [App\Http\Controllers\BiometricController::class, 'resyncUser'])
+        ->name('biometric.resync-user')->middleware('role:admin');
     
     // Reports Routes
     Route::get('/reports', [App\Http\Controllers\ReportsController::class, 'index'])

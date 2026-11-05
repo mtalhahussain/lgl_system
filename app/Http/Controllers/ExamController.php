@@ -7,6 +7,7 @@ use App\Models\BatchExam;
 use App\Models\User;
 use App\Services\ExamGradingService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
@@ -42,14 +43,18 @@ class ExamController extends Controller
     {
         $data = $this->validateExam($request);
 
-        $exam = BatchExam::create([
-            'batch_id' => $data['batch_id'], 'name' => $data['name'],
-            'type' => $data['type'], 'exam_date' => $data['exam_date'], 'status' => 'scheduled',
-        ]);
-        foreach ($data['sections'] as $i => $s) {
-            $exam->sections()->create(['name' => $s['name'], 'max_marks' => $s['max_marks'],
-                'passing_marks' => $s['passing_marks'], 'sort' => $i + 1]);
-        }
+        $exam = DB::transaction(function () use ($data) {
+            $exam = BatchExam::create([
+                'batch_id' => $data['batch_id'], 'name' => $data['name'],
+                'type' => $data['type'], 'exam_date' => $data['exam_date'], 'status' => 'scheduled',
+            ]);
+            foreach ($data['sections'] as $i => $s) {
+                $exam->sections()->create(['name' => $s['name'], 'max_marks' => $s['max_marks'],
+                    'passing_marks' => $s['passing_marks'], 'sort' => $i + 1]);
+            }
+
+            return $exam;
+        });
 
         return redirect()->route('exams.show', $exam)->with('success', 'Exam created.');
     }
@@ -66,20 +71,40 @@ class ExamController extends Controller
     {
         $data = $this->validateExam($request);
 
-        $exam->update(['batch_id' => $data['batch_id'], 'name' => $data['name'],
-            'type' => $data['type'], 'exam_date' => $data['exam_date']]);
-        foreach ($data['sections'] as $i => $s) {
-            $exam->sections()->updateOrCreate(['name' => $s['name']],
-                ['max_marks' => $s['max_marks'], 'passing_marks' => $s['passing_marks'], 'sort' => $i + 1]);
+        if ($exam->results()->exists()) {
+            if ((int) $data['batch_id'] !== $exam->batch_id) {
+                throw ValidationException::withMessages([
+                    'batch_id' => 'Cannot change the batch after results have been recorded.',
+                ]);
+            }
+            $exam->load('sections');
+            foreach ($data['sections'] as $s) {
+                $section = $exam->sections->firstWhere('name', $s['name']);
+                if ($section && ((float) $section->max_marks !== (float) $s['max_marks']
+                    || (float) $section->passing_marks !== (float) $s['passing_marks'])) {
+                    throw ValidationException::withMessages([
+                        'sections' => 'Cannot change section marks after results have been recorded.',
+                    ]);
+                }
+            }
         }
+
+        DB::transaction(function () use ($exam, $data) {
+            $exam->update(['batch_id' => $data['batch_id'], 'name' => $data['name'],
+                'type' => $data['type'], 'exam_date' => $data['exam_date']]);
+            foreach ($data['sections'] as $i => $s) {
+                $exam->sections()->updateOrCreate(['name' => $s['name']],
+                    ['max_marks' => $s['max_marks'], 'passing_marks' => $s['passing_marks'], 'sort' => $i + 1]);
+            }
+        });
 
         return redirect()->route('exams.show', $exam)->with('success', 'Exam updated.');
     }
 
     public function show(BatchExam $exam)
     {
-        $exam->load(['batch.course', 'sections', 'results.sectionMarks', 'results.certificate']);
         $this->authorizeTeacher($exam);
+        $exam->load(['batch.course', 'sections', 'results.sectionMarks', 'results.certificate']);
 
         $students = User::students()
             ->whereHas('enrollments', fn ($q) => $q->where('batch_id', $exam->batch_id)
@@ -116,7 +141,7 @@ class ExamController extends Controller
             'type' => ['required', Rule::in(['final', 'mid', 'retake', 'other'])],
             'exam_date' => ['required', 'date'],
             'sections' => ['required', 'array', 'size:4'],
-            'sections.*.name' => ['required', Rule::in(BatchExam::SECTIONS)],
+            'sections.*.name' => ['required', 'distinct', Rule::in(BatchExam::SECTIONS)],
             'sections.*.max_marks' => ['required', 'numeric', 'min:1'],
             'sections.*.passing_marks' => ['required', 'numeric', 'min:0'],
         ]);

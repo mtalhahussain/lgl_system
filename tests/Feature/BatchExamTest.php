@@ -23,7 +23,7 @@ class BatchExamTest extends TestCase
     private function batch(?User $teacher = null): Batch
     {
         $teacher ??= User::factory()->create(['role' => 'teacher']);
-        $course = Course::create(['name' => 'German A1', 'level' => 'A1', 'total_fee' => 30000,
+        $course = Course::firstOrCreate(['name' => 'German A1', 'level' => 'A1'], ['total_fee' => 30000,
             'teacher_per_student_amount' => 0, 'duration_weeks' => 8]);
 
         return Batch::create(['name' => 'A1 Morning', 'course_id' => $course->id, 'teacher_id' => $teacher->id,
@@ -324,6 +324,101 @@ class BatchExamTest extends TestCase
 
         $this->actingAs($admin)->post("/exams/{$exam->id}/results",
             ['student_id' => $outsider->id, 'marks' => $this->marksFor($exam, 20)])
+            ->assertSessionHasErrors('student_id');
+        $this->assertSame(0, StudentExamResult::count());
+    }
+
+    public function test_show_is_forbidden_for_another_teacher(): void
+    {
+        $owner = User::factory()->create(['role' => 'teacher']);
+        $other = User::factory()->create(['role' => 'teacher']);
+        $batch = $this->batch($owner);
+        $exam = $this->examWithSections($batch);
+
+        $this->actingAs($other)->get("/exams/{$exam->id}")->assertForbidden();
+        $this->actingAs($owner)->get("/exams/{$exam->id}")->assertOk();
+    }
+
+    public function test_passing_marks_cannot_exceed_max_marks(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+        $batch = $this->batch();
+
+        $this->actingAs($admin)->post('/exams', [
+            'batch_id' => $batch->id, 'name' => 'Bad', 'type' => 'final', 'exam_date' => '2026-12-20',
+            'sections' => [
+                ['name' => 'Hören', 'max_marks' => 20, 'passing_marks' => 25],
+                ['name' => 'Lesen', 'max_marks' => 25, 'passing_marks' => 15],
+                ['name' => 'Schreiben', 'max_marks' => 25, 'passing_marks' => 15],
+                ['name' => 'Sprechen', 'max_marks' => 25, 'passing_marks' => 15],
+            ],
+        ])->assertSessionHasErrors('sections.0.passing_marks');
+        $this->assertSame(0, BatchExam::count());
+    }
+
+    public function test_duplicate_section_names_are_rejected(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+        $batch = $this->batch();
+
+        $this->actingAs($admin)->post('/exams', [
+            'batch_id' => $batch->id, 'name' => 'Dup', 'type' => 'final', 'exam_date' => '2026-12-20',
+            'sections' => [
+                ['name' => 'Hören', 'max_marks' => 25, 'passing_marks' => 15],
+                ['name' => 'Hören', 'max_marks' => 25, 'passing_marks' => 15],
+                ['name' => 'Schreiben', 'max_marks' => 25, 'passing_marks' => 15],
+                ['name' => 'Sprechen', 'max_marks' => 25, 'passing_marks' => 15],
+            ],
+        ])->assertSessionHasErrors('sections.0.name');
+        $this->assertSame(0, BatchExam::count());
+    }
+
+    public function test_structural_edits_are_locked_once_results_exist(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+        $batch = $this->batch();
+        $exam = $this->examWithSections($batch);
+        $student = User::factory()->create(['role' => 'student']);
+        $this->enroll($batch, $student);
+        app(ExamGradingService::class)->saveStudentResult($exam, $student->id, $this->marksFor($exam, 20), $admin);
+
+        $otherBatch = $this->batch();
+        $keep = $exam->sections->map(fn ($s) => ['name' => $s->name,
+            'max_marks' => $s->max_marks, 'passing_marks' => $s->passing_marks])->all();
+        $changed = $exam->sections->map(fn ($s) => ['name' => $s->name,
+            'max_marks' => $s->name === 'Hören' ? 50 : $s->max_marks, 'passing_marks' => $s->passing_marks])->all();
+
+        // Section-marks change after results exist is rejected.
+        $this->actingAs($admin)->put("/exams/{$exam->id}", [
+            'batch_id' => $batch->id, 'name' => 'A1 Final', 'type' => 'final', 'exam_date' => '2026-12-20',
+            'sections' => $changed,
+        ])->assertSessionHasErrors('sections');
+
+        // Batch change after results exist is rejected.
+        $this->actingAs($admin)->put("/exams/{$exam->id}", [
+            'batch_id' => $otherBatch->id, 'name' => 'A1 Final', 'type' => 'final', 'exam_date' => '2026-12-20',
+            'sections' => $keep,
+        ])->assertSessionHasErrors('batch_id');
+
+        // Name/date-only edit is allowed.
+        $this->actingAs($admin)->put("/exams/{$exam->id}", [
+            'batch_id' => $batch->id, 'name' => 'A1 Final (renamed)', 'type' => 'final', 'exam_date' => '2026-12-22',
+            'sections' => $keep,
+        ])->assertRedirect();
+        $this->assertSame('A1 Final (renamed)', $exam->fresh()->name);
+    }
+
+    public function test_withdrawn_enrollee_cannot_be_graded(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+        $batch = $this->batch();
+        $exam = $this->examWithSections($batch);
+        $student = User::factory()->create(['role' => 'student']);
+        Enrollment::create(['student_id' => $student->id, 'batch_id' => $batch->id,
+            'enrollment_date' => '2026-10-01', 'total_fee' => 30000, 'status' => 'withdrawn']);
+
+        $this->actingAs($admin)->post("/exams/{$exam->id}/results",
+            ['student_id' => $student->id, 'marks' => $this->marksFor($exam, 20)])
             ->assertSessionHasErrors('student_id');
         $this->assertSame(0, StudentExamResult::count());
     }

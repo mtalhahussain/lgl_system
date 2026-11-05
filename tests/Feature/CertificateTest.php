@@ -134,4 +134,19 @@ class CertificateTest extends TestCase
         $this->actingAs($teacher)->post('/certificates', ['student_id' => $student->id,
             'student_name' => 'X', 'level' => 'A1', 'completion_date' => '2026-10-27'])->assertForbidden();
     }
+
+    public function test_index_shows_the_form_and_the_issued_list_with_reprint_links(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+        $student = User::factory()->create(['role' => 'student', 'name' => 'Sara']);
+        $cert = StudentCertificate::create(['student_id' => $student->id, 'student_name' => 'Sara Khan',
+            'father_name' => 'Imran', 'level' => 'A1', 'completion_date' => '2026-10-27',
+            'certificate_number' => 'LGL-A1-2026-007', 'issued_by' => $admin->id, 'issued_at' => now()]);
+
+        $this->actingAs($admin)->get('/certificates')->assertOk()
+            ->assertSee('Issue Certificate')
+            ->assertSee('LGL-A1-2026-007')
+            ->assertSee('Sara Khan')
+            ->assertSee(route('certificates.print', $cert), false);
+    }
 }

@@ -2,6 +2,10 @@
 
 namespace Tests\Feature;
 
+use App\Models\AuditLog;
+use App\Models\Batch;
+use App\Models\Course;
+use App\Models\Enrollment;
 use App\Models\StudentCertificate;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -55,5 +59,79 @@ class CertificateTest extends TestCase
         // A different level starts its own sequence. Numbering is by the
         // certificate_number prefix, and no LGL-A2-... number exists yet, so A2 starts at 001.
         $this->assertSame('LGL-A2-'.now()->year.'-001', StudentCertificate::nextNumber('A2'));
+    }
+
+    public function test_admin_issues_a_certificate_and_is_redirected_to_print(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+        $student = User::factory()->create(['role' => 'student', 'name' => 'Sara']);
+
+        $response = $this->actingAs($admin)->post('/certificates', [
+            'student_id' => $student->id,
+            'student_name' => 'Sara Khan',
+            'father_name' => 'Imran Khan',
+            'level' => 'A1',
+            'completion_date' => '2026-10-27',
+        ]);
+
+        $cert = StudentCertificate::sole();
+        $response->assertRedirect('/certificates/'.$cert->id.'/print');
+        $this->assertSame('Sara Khan', $cert->student_name);
+        $this->assertSame('Imran Khan', $cert->father_name);
+        $this->assertSame('A1', $cert->level);
+        $this->assertSame($admin->id, $cert->issued_by);
+        $this->assertSame('LGL-A1-'.now()->year.'-001', $cert->certificate_number);
+        $this->assertSame(1, AuditLog::where('action', 'certificate.issued')
+            ->where('subject_type', 'student_certificate')->where('subject_id', $cert->id)->count());
+    }
+
+    public function test_issue_form_prefills_level_from_the_students_enrollment(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+        $student = User::factory()->create(['role' => 'student', 'name' => 'Sara']);
+        $course = Course::create(['name' => 'German B1', 'level' => 'B1', 'total_fee' => 30000,
+            'teacher_per_student_amount' => 0, 'duration_weeks' => 8]);
+        $batch = Batch::create(['name' => 'B1 Morning', 'course_id' => $course->id, 'teacher_id' => $admin->id,
+            'start_date' => '2026-10-01', 'end_date' => '2026-12-31', 'status' => 'ongoing', 'max_students' => 20]);
+        Enrollment::create(['student_id' => $student->id, 'batch_id' => $batch->id,
+            'enrollment_date' => '2026-10-01', 'total_fee' => 30000, 'status' => 'active']);
+
+        $this->actingAs($admin)->get('/certificates?student='.$student->id)
+            ->assertOk()->assertSee('Sara')->assertSee('B1');
+    }
+
+    public function test_store_validates_level_and_required_fields(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+        $student = User::factory()->create(['role' => 'student']);
+
+        $this->actingAs($admin)->post('/certificates', [
+            'student_id' => $student->id, 'student_name' => '', 'level' => 'Z9', 'completion_date' => 'nope',
+        ])->assertSessionHasErrors(['student_name', 'level', 'completion_date']);
+
+        $this->assertSame(0, StudentCertificate::count());
+    }
+
+    public function test_snapshot_survives_a_later_student_name_change(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+        $student = User::factory()->create(['role' => 'student', 'name' => 'Old Name']);
+
+        $this->actingAs($admin)->post('/certificates', ['student_id' => $student->id,
+            'student_name' => 'Old Name', 'father_name' => 'Dad', 'level' => 'A1', 'completion_date' => '2026-10-27']);
+        $student->update(['name' => 'Renamed']);
+
+        $this->assertSame('Old Name', StudentCertificate::sole()->student_name);
+    }
+
+    public function test_non_admins_cannot_issue_or_view_certificates(): void
+    {
+        $teacher = User::factory()->create(['role' => 'teacher']);
+        $student = User::factory()->create(['role' => 'student']);
+
+        $this->actingAs($teacher)->get('/certificates')->assertForbidden();
+        $this->actingAs($student)->get('/certificates')->assertForbidden();
+        $this->actingAs($teacher)->post('/certificates', ['student_id' => $student->id,
+            'student_name' => 'X', 'level' => 'A1', 'completion_date' => '2026-10-27'])->assertForbidden();
     }
 }

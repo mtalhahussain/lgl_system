@@ -205,7 +205,15 @@ Route::middleware(['auth', \App\Http\Middleware\EnsureActiveAccount::class])->gr
         ->name('biometric.bridge-script')->middleware('role:admin');
     Route::post('/people/{user}/resync-machine', [App\Http\Controllers\BiometricController::class, 'resyncUser'])
         ->name('biometric.resync-user')->middleware('role:admin');
-    
+
+    // Certificate Routes
+    Route::get('/certificates', [App\Http\Controllers\CertificateController::class, 'create'])
+        ->name('certificates.index')->middleware('role:admin');
+    Route::post('/certificates', [App\Http\Controllers\CertificateController::class, 'store'])
+        ->name('certificates.store')->middleware('role:admin');
+    Route::get('/certificates/{certificate}/print', [App\Http\Controllers\CertificateController::class, 'print'])
+        ->name('certificates.print')->middleware('role:admin');
+
     // Reports Routes
     Route::get('/reports', [App\Http\Controllers\ReportsController::class, 'index'])
         ->name('reports.index')->middleware('role:admin');

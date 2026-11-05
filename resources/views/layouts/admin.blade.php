@@ -181,7 +181,11 @@
                         @if(auth()->user()->isAdmin())
                         <li class="nav-item"><a class="nav-link {{ request()->is('biometric/teachers') ? 'active' : '' }}" href="{{ route('biometric.teachers') }}"><i class="fas fa-user-clock me-2" aria-hidden="true"></i>Staff Attendance</a></li>
                         @endif
-                        
+
+                        @if(auth()->user()->isAdmin())
+                        <li class="nav-item"><a class="nav-link {{ request()->is('certificates*') ? 'active' : '' }}" href="{{ route('certificates.index') }}"><i class="fas fa-award me-2" aria-hidden="true"></i>Certificates</a></li>
+                        @endif
+
                         @if(auth()->user()->isAdmin())
                         <!-- Reports & Analytics -->
                         <li class="nav-item">

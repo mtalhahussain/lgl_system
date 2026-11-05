@@ -48,6 +48,7 @@
         @elseif(! $isTeacherProfile)
             @if($isAdmin || $viewer->id === $person->id)<a class="btn btn-outline-primary" href="{{ route('fees.student', $person) }}"><i class="fas fa-receipt me-1" aria-hidden="true"></i>Fees and receipts</a>@endif
             <a class="btn btn-outline-primary" href="{{ route('attendance.student', $person) }}"><i class="fas fa-clipboard-check me-1" aria-hidden="true"></i>Attendance</a>
+            @if($isAdmin)<a class="btn btn-outline-primary" href="{{ route('certificates.index', ['student' => $person->id]) }}"><i class="fas fa-award me-1" aria-hidden="true"></i>Issue Certificate</a>@endif
         @endif
     </div>
 </div>

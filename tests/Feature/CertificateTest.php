@@ -164,4 +164,27 @@ class CertificateTest extends TestCase
             ->assertSee('Niveau A1')
             ->assertSee('27.10.2026');
     }
+
+    public function test_student_profile_shows_issue_certificate_shortcut_for_admin_only(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+        $student = User::factory()->create(['role' => 'student']);
+
+        $this->actingAs($admin)->get('/students/'.$student->id)
+            ->assertOk()
+            ->assertSee('Issue Certificate')
+            ->assertSee(route('certificates.index', ['student' => $student->id]), false);
+
+        $teacherViewer = User::factory()->create(['role' => 'teacher']);
+        // Enroll the student in the teacher's batch so the teacher may view the profile.
+        $course = Course::create(['name' => 'German A1', 'level' => 'A1', 'total_fee' => 30000,
+            'teacher_per_student_amount' => 0, 'duration_weeks' => 8]);
+        $batch = Batch::create(['name' => 'A1', 'course_id' => $course->id, 'teacher_id' => $teacherViewer->id,
+            'start_date' => '2026-10-01', 'end_date' => '2026-12-31', 'status' => 'ongoing', 'max_students' => 20]);
+        Enrollment::create(['student_id' => $student->id, 'batch_id' => $batch->id,
+            'enrollment_date' => '2026-10-01', 'total_fee' => 30000, 'status' => 'active']);
+
+        $this->actingAs($teacherViewer)->get('/students/'.$student->id)
+            ->assertOk()->assertDontSee('Issue Certificate');
+    }
 }

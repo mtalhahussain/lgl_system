@@ -186,6 +186,10 @@
                         <li class="nav-item"><a class="nav-link {{ request()->is('certificates*') ? 'active' : '' }}" href="{{ route('certificates.index') }}"><i class="fas fa-award me-2" aria-hidden="true"></i>Certificates</a></li>
                         @endif
 
+                        @if(auth()->user()->isAdmin() || auth()->user()->isTeacher())
+                        <li class="nav-item"><a class="nav-link {{ request()->is('exams*') ? 'active' : '' }}" href="{{ route('exams.index') }}"><i class="fas fa-file-pen me-2" aria-hidden="true"></i>Exams</a></li>
+                        @endif
+
                         @if(auth()->user()->isAdmin())
                         <!-- Reports & Analytics -->
                         <li class="nav-item">

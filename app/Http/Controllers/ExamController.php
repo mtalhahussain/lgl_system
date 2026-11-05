@@ -104,7 +104,7 @@ class ExamController extends Controller
     public function show(BatchExam $exam)
     {
         $this->authorizeTeacher($exam);
-        $exam->load(['batch.course', 'sections', 'results.sectionMarks', 'results.certificate']);
+        $exam->load(['batch.course', 'sections', 'results.sectionMarks', 'results.activeCertificate']);
 
         $students = User::students()
             ->whereHas('enrollments', fn ($q) => $q->where('batch_id', $exam->batch_id)

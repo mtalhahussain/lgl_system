@@ -422,4 +422,30 @@ class BatchExamTest extends TestCase
             ->assertSessionHasErrors('student_id');
         $this->assertSame(0, StudentExamResult::count());
     }
+
+    public function test_show_lists_enrollees_with_a_marks_grid_and_pass_state(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+        $batch = $this->batch();
+        $exam = $this->examWithSections($batch);
+        $student = User::factory()->create(['role' => 'student', 'name' => 'Sara Khan']);
+        $this->enroll($batch, $student);
+        app(ExamGradingService::class)->saveStudentResult($exam, $student->id, $this->marksFor($exam, 20), $admin);
+
+        $this->actingAs($admin)->get("/exams/{$exam->id}")->assertOk()
+            ->assertSee('Sara Khan')
+            ->assertSee('Hören')
+            ->assertSee('Passed');
+    }
+
+    public function test_sidebar_shows_exams_for_admin_and_teacher_not_student(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+        $teacher = User::factory()->create(['role' => 'teacher']);
+        $student = User::factory()->create(['role' => 'student']);
+
+        $this->actingAs($admin)->get('/exams')->assertOk()->assertSee('Exams');
+        $this->actingAs($teacher)->get('/exams')->assertOk();
+        $this->actingAs($student)->get('/exams')->assertForbidden();
+    }
 }

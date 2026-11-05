@@ -38,6 +38,12 @@ class StudentExamResult extends Model
         return $this->hasOne(StudentCertificate::class, 'student_exam_result_id');
     }
 
+    public function activeCertificate()
+    {
+        return $this->hasOne(StudentCertificate::class, 'student_exam_result_id')
+            ->whereNull('revoked_at')->latestOfMany();
+    }
+
     /**
      * True only when every one of the exam's sections has a recorded,
      * passing mark. A missing section counts as not passed.

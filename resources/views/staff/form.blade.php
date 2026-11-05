@@ -38,16 +38,11 @@
     </div>
     <div class="form-section">
         <h2 class="form-section-title">Pay and attendance machine</h2>
-        <p class="form-section-note">Payroll &gt; Generate month creates this salary every month. The machine number is sent to the attendance machine automatically; punches appear in Staff Attendance and do not change pay.</p>
+        <p class="form-section-note">Payroll &gt; Generate month creates this salary every month.</p>
         <div class="row g-3">
             <div class="col-md-6">
                 <label class="form-label required" for="monthly_salary">Monthly salary</label>
                 <input class="form-control" type="number" id="monthly_salary" name="monthly_salary" min="0" step="0.01" value="{{ old('monthly_salary', $person?->monthly_salary) }}" required>
-            </div>
-            <div class="col-md-6">
-                <label class="form-label" for="device_employee_no">Machine Employee No.</label>
-                <input class="form-control" id="device_employee_no" name="device_employee_no" inputmode="numeric" maxlength="32" pattern="[A-Za-z0-9]{1,32}" value="{{ old('device_employee_no', $person?->device_employee_no) }}">
-                <div class="form-text">Leave empty for an automatic number.</div>
             </div>
             <div class="col-12">
                 <input type="hidden" name="is_active" value="0">
@@ -58,6 +53,7 @@
             </div>
         </div>
     </div>
+    @include('partials.machine-sync')
     <div class="form-actions">
         <a class="btn btn-outline-secondary" href="{{ route('accounts.index', ['role' => 'staff']) }}">Cancel</a>
         <button class="btn btn-primary">Save</button>

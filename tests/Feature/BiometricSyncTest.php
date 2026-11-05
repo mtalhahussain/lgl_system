@@ -191,4 +191,15 @@ class BiometricSyncTest extends TestCase
         $other = User::factory()->create(['role' => 'teacher', 'is_active' => true]);
         $this->actingAs($other)->post('/people/'.$teacher->id.'/resync-machine')->assertForbidden();
     }
+
+    public function test_person_form_shows_number_and_status_not_an_input(): void
+    {
+        $teacher = User::factory()->create(['role' => 'teacher', 'is_active' => true]);
+        $device = $this->device();
+        $code = $teacher->fresh()->device_employee_no;
+
+        $html = $this->actingAs($this->admin)->get('/teachers/'.$teacher->id.'/edit')->assertOk();
+        $html->assertSee('Machine Employee No.')->assertSee($code)->assertSee('Sync now')->assertSee('Waiting');
+        $html->assertDontSee('name="device_employee_no"', false);
+    }
 }

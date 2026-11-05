@@ -10,11 +10,13 @@ class StudentCertificate extends Model
     protected $fillable = [
         'student_id', 'student_name', 'father_name', 'level',
         'completion_date', 'certificate_number', 'issued_by', 'issued_at',
+        'student_exam_result_id', 'revoked_at', 'revoked_by', 'revoke_reason',
     ];
 
     protected function casts(): array
     {
-        return ['completion_date' => 'date', 'issued_at' => 'datetime'];
+        return ['completion_date' => 'date', 'issued_at' => 'datetime',
+            'revoked_at' => 'datetime'];
     }
 
     public function student()
@@ -25,6 +27,21 @@ class StudentCertificate extends Model
     public function issuer()
     {
         return $this->belongsTo(User::class, 'issued_by');
+    }
+
+    public function result()
+    {
+        return $this->belongsTo(StudentExamResult::class, 'student_exam_result_id');
+    }
+
+    public function scopeActive($query)
+    {
+        return $query->whereNull('revoked_at');
+    }
+
+    public function isRevoked(): bool
+    {
+        return $this->revoked_at !== null;
     }
 
     /**

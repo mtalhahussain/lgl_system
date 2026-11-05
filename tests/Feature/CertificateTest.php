@@ -149,4 +149,19 @@ class CertificateTest extends TestCase
             ->assertSee('Sara Khan')
             ->assertSee(route('certificates.print', $cert), false);
     }
+
+    public function test_print_view_renders_the_snapshot_text(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+        $cert = StudentCertificate::create(['student_id' => null, 'student_name' => 'Syed Saad',
+            'father_name' => 'Syed Mehboob', 'level' => 'A1', 'completion_date' => '2026-10-27',
+            'certificate_number' => 'LGL-A1-2026-009', 'issued_by' => $admin->id, 'issued_at' => now()]);
+
+        $this->actingAs($admin)->get('/certificates/'.$cert->id.'/print')->assertOk()
+            ->assertSee('Teilnahmebescheinigung')
+            ->assertSee('Syed Saad')
+            ->assertSee('Syed Mehboob')
+            ->assertSee('Niveau A1')
+            ->assertSee('27.10.2026');
+    }
 }

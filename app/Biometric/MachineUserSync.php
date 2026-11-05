@@ -56,6 +56,28 @@ class MachineUserSync
         return $count;
     }
 
+    /** Re-send one person to every active machine (per-user analogue of queueAll). */
+    public function resyncUser(User $user): void
+    {
+        if (! $this->ready()) {
+            return;
+        }
+        if ($this->eligible($user)) {
+            $this->codes->ensure($user);
+        }
+        DB::transaction(function () use ($user) {
+            BiometricDeviceUser::where('user_id', $user->id)->get()->each(function (BiometricDeviceUser $row) {
+                $row->forceFill(['status' => 'pending', 'attempts' => 0, 'last_error' => null, 'version' => $row->version + 1])->save();
+            });
+            if (! $user->device_employee_no) {
+                return;
+            }
+            foreach (BiometricDevice::where('is_active', true)->orderBy('id')->get() as $device) {
+                $this->queue($device, $user->device_employee_no, $user, $this->eligible($user) ? 'upsert' : 'delete');
+            }
+        });
+    }
+
     private function eligible(User $user): bool
     {
         return $user->is_active && in_array($user->role, ['student', ...User::PAID_ROLES], true);

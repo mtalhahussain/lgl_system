@@ -20,6 +20,26 @@ class BiometricSyncTest extends TestCase
         $this->admin = User::factory()->create(['role' => 'admin', 'is_active' => true]);
     }
 
+    public function test_resync_user_requeues_one_person_to_all_active_machines(): void
+    {
+        $student = User::factory()->create(['role' => 'student', 'is_active' => true, 'name' => 'Re Sync']);
+        $device = $this->device();
+        $code = $student->fresh()->device_employee_no;
+        BiometricDeviceUser::query()->update(['status' => 'synced', 'attempts' => 2, 'last_error' => 'old']);
+
+        app(\App\Biometric\MachineUserSync::class)->resyncUser($student->fresh());
+
+        $row = BiometricDeviceUser::where('user_id', $student->id)->sole();
+        $this->assertSame([$code, 'upsert', 'pending', 0, null], [$row->employee_no, $row->action, $row->status, $row->attempts, $row->last_error]);
+        $this->assertSame(3, $row->version); // bumped from 1: once by the reset, once by queue()'s re-stamp
+
+        // Ineligible user: rows become deletes, no number assigned.
+        $student->update(['is_active' => false]);
+        BiometricDeviceUser::query()->update(['status' => 'synced']);
+        app(\App\Biometric\MachineUserSync::class)->resyncUser($student->fresh());
+        $this->assertSame('delete', BiometricDeviceUser::where('user_id', $student->id)->sole()->action);
+    }
+
     private function device(): BiometricDevice
     {
         $this->actingAs($this->admin)->post('/biometric/devices', ['name' => 'Main gate', 'timezone' => 'Asia/Karachi'])->assertRedirect('/biometric');

@@ -41,7 +41,7 @@ class StudentExamResult extends Model
     public function activeCertificate()
     {
         return $this->hasOne(StudentCertificate::class, 'student_exam_result_id')
-            ->whereNull('revoked_at')->latestOfMany();
+            ->ofMany(['id' => 'max'], fn ($q) => $q->whereNull('revoked_at'));
     }
 
     /**

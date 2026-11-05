@@ -444,8 +444,47 @@ class BatchExamTest extends TestCase
         $teacher = User::factory()->create(['role' => 'teacher']);
         $student = User::factory()->create(['role' => 'student']);
 
-        $this->actingAs($admin)->get('/exams')->assertOk()->assertSee('Exams');
+        $this->actingAs($admin)->get('/exams')->assertOk()->assertSee('Exams')->assertSee('fa-file-pen');
         $this->actingAs($teacher)->get('/exams')->assertOk();
         $this->actingAs($student)->get('/exams')->assertForbidden();
+    }
+
+    public function test_grid_inputs_reference_external_row_forms(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+        $batch = $this->batch();
+        $exam = $this->examWithSections($batch);
+        $student = User::factory()->create(['role' => 'student', 'name' => 'Sara']);
+        $this->enroll($batch, $student);
+
+        $html = $this->actingAs($admin)->get("/exams/{$exam->id}")->assertOk()->getContent();
+
+        $this->assertStringContainsString('form="res-'.$student->id.'"', $html);
+        $this->assertStringContainsString('id="res-'.$student->id.'"', $html);
+    }
+
+    public function test_issue_certificate_button_shows_for_a_passed_result(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+        $batch = $this->batch();
+        $exam = $this->examWithSections($batch);
+        $student = User::factory()->create(['role' => 'student', 'name' => 'Sara']);
+        $this->enroll($batch, $student);
+        app(ExamGradingService::class)->saveStudentResult($exam, $student->id, $this->marksFor($exam, 20), $admin);
+
+        $this->actingAs($admin)->get("/exams/{$exam->id}")->assertOk()
+            ->assertSee('Issue certificate')
+            ->assertSee(route('certificates.index', ['result' => StudentExamResult::sole()->id]), false);
+    }
+
+    public function test_own_batch_teacher_can_view_the_grid(): void
+    {
+        $teacher = User::factory()->create(['role' => 'teacher']);
+        $batch = $this->batch($teacher);
+        $exam = $this->examWithSections($batch);
+        $student = User::factory()->create(['role' => 'student', 'name' => 'Sara']);
+        $this->enroll($batch, $student);
+
+        $this->actingAs($teacher)->get("/exams/{$exam->id}")->assertOk()->assertSee('Sara');
     }
 }

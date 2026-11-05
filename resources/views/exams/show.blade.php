@@ -8,6 +8,10 @@
     @endif
 </div>
 
+@if($errors->any())
+    <div class="alert alert-danger">{{ $errors->first() }}</div>
+@endif
+
 <section class="panel" style="padding:14px 18px">
     <div>{{ $exam->batch->name }} &middot; Level {{ $exam->batch->course->level }} &middot; {{ $exam->exam_date->format('d M Y') }} &middot; {{ ucfirst($exam->type) }}</div>
 </section>
@@ -27,39 +31,44 @@
         @forelse($students as $student)
             @php $result = $resultsByStudent->get($student->id); $marks = $result?->sectionMarks->keyBy('exam_section_id'); @endphp
             <tr>
-                <form method="post" action="{{ route('exams.results.store', $exam) }}">
-                    @csrf
-                    <input type="hidden" name="student_id" value="{{ $student->id }}">
-                    <td class="cell-main">{{ $student->name }}</td>
-                    @foreach($exam->sections as $section)
-                        @php $m = $marks?->get($section->id); @endphp
-                        <td><input class="form-control form-control-sm" type="number" step="0.01" min="0" max="{{ $section->max_marks }}"
-                                   name="marks[{{ $section->id }}]" value="{{ $m?->marks_obtained }}" style="width:5.5rem"
-                                   @class(['is-invalid' => $m && ! $m->passed])></td>
-                    @endforeach
-                    <td>
-                        @if($result)
-                            <span class="badge {{ $result->overall_passed ? 'bg-success' : 'bg-danger' }}">{{ $result->overall_passed ? 'Passed' : 'Failed' }}</span>
+                <td class="cell-main">{{ $student->name }}</td>
+                @foreach($exam->sections as $section)
+                    @php $m = $marks?->get($section->id); @endphp
+                    <td><input class="form-control form-control-sm" type="number" step="0.01" min="0" max="{{ $section->max_marks }}"
+                               form="res-{{ $student->id }}" name="marks[{{ $section->id }}]" value="{{ $m?->marks_obtained }}"
+                               aria-label="{{ $student->name }} – {{ $section->name }} marks" style="width:5.5rem"
+                               @class(['is-invalid' => $m && ! $m->passed])></td>
+                @endforeach
+                <td>
+                    @if($result)
+                        <span class="badge {{ $result->overall_passed ? 'bg-success' : 'bg-danger' }}">{{ $result->overall_passed ? 'Passed' : 'Failed' }}</span>
+                    @else
+                        <span class="text-muted">—</span>
+                    @endif
+                </td>
+                <td class="d-print-none text-nowrap">
+                    <button class="btn btn-primary btn-sm" type="submit" form="res-{{ $student->id }}">Save</button>
+                    @if($result && $result->overall_passed && auth()->user()->isAdmin())
+                        @if($result->activeCertificate)
+                            <a class="btn btn-outline-success btn-sm" href="{{ route('certificates.print', $result->activeCertificate) }}" target="_blank" rel="noopener">Cert {{ $result->activeCertificate->certificate_number }}</a>
                         @else
-                            <span class="text-muted">—</span>
+                            <a class="btn btn-outline-primary btn-sm" href="{{ route('certificates.index', ['result' => $result->id]) }}">Issue certificate</a>
                         @endif
-                    </td>
-                    <td class="d-print-none text-nowrap">
-                        <button class="btn btn-primary btn-sm" type="submit">Save</button>
-                        @if($result && $result->overall_passed && auth()->user()->isAdmin())
-                            @if($result->activeCertificate)
-                                <a class="btn btn-outline-success btn-sm" href="{{ route('certificates.print', $result->activeCertificate) }}" target="_blank" rel="noopener">Cert {{ $result->activeCertificate->certificate_number }}</a>
-                            @else
-                                <a class="btn btn-outline-primary btn-sm" href="{{ route('certificates.index', ['result' => $result->id]) }}">Issue certificate</a>
-                            @endif
-                        @endif
-                    </td>
-                </form>
+                    @endif
+                </td>
             </tr>
         @empty
             <tr><td colspan="{{ $exam->sections->count() + 3 }}" class="empty-state">No students enrolled in this batch.</td></tr>
         @endforelse
         </tbody>
     </table></div>
+
+    {{-- Row forms live OUTSIDE the table; inputs/buttons reference them via form="res-{id}" (valid HTML5). --}}
+    @foreach($students as $student)
+        <form id="res-{{ $student->id }}" method="post" action="{{ route('exams.results.store', $exam) }}" class="d-none">
+            @csrf
+            <input type="hidden" name="student_id" value="{{ $student->id }}">
+        </form>
+    @endforeach
 </section>
 @endsection

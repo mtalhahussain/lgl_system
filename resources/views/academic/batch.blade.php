@@ -72,9 +72,11 @@
                 <li class="page-subtitle">No upcoming sessions scheduled.</li>
             @endforelse
         </ul>
-        @if(in_array($batch->status, ['upcoming', 'ongoing'], true) && (auth()->user()->isAdmin() || $batch->teacher_id === auth()->id()))
+        <p class="form-section-note px-4">Regular classes are created automatically when Admin saves the batch schedule. Attendance belongs to each dated class.</p>
+        <div class="px-4 pb-3"><a class="btn btn-outline-secondary btn-sm" href="{{ route('class-sessions.create', ['batch_id' => $batch->id]) }}">Extra / makeup class</a></div>
+        @if(in_array($batch->status, ['upcoming', 'ongoing'], true) && $isAdmin)
             <details class="px-4 pb-4" @if($errors->hasAny(['days', 'start_time', 'end_time', 'from', 'to', 'topic', 'schedule'])) open @endif>
-                <summary class="fw-semibold">Generate sessions</summary>
+                <summary class="fw-semibold">Advanced: generate missing classes</summary>
                 @if($batch->schedules->isNotEmpty())
                     <form method="post" action="{{ route('class-sessions.generate-from-schedule', $batch) }}" class="row g-2 mt-1 mb-2">
                         @csrf

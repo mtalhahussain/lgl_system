@@ -7,7 +7,7 @@
     $meeting = $classSession->meeting_link ?: $classSession->batch->meeting_link;
     $cancelled = $classSession->status === 'cancelled';
 @endphp
-<x-show.hero icon="fa-chalkboard" :eyebrow="'Class session · '.$classSession->batch->name" :title="$classSession->topic" :status="$classSession->status">
+<x-show.hero icon="fa-chalkboard" :eyebrow="'Class session · '.$classSession->batch->name" :title="$classSession->topic" :status="$classSession->teaching_status === 'missed' ? 'missed' : $classSession->status">
     <x-slot:meta>
         <span><i class="fas fa-calendar" aria-hidden="true"></i>{{ $classSession->session_date->format('D, d M Y') }}</span>
         <span><i class="fas fa-clock" aria-hidden="true"></i>{{ $classSession->start_time?->format('H:i') }}–{{ $classSession->end_time?->format('H:i') }}</span>
@@ -18,10 +18,56 @@
     @endif
     @unless($cancelled)
         <a class="btn btn-primary" href="{{ route('class-sessions.attendance', $classSession) }}"><i class="fas fa-clipboard-check me-1" aria-hidden="true"></i>Mark attendance</a>
-        <a class="btn btn-outline-primary" href="{{ route('class-sessions.edit', $classSession) }}"><i class="fas fa-pen me-1" aria-hidden="true"></i>Edit</a>
+        @if(!$classSession->teaching_status && !$classSession->makeup_for_id)<a class="btn btn-outline-primary" href="{{ route('class-sessions.edit', $classSession) }}"><i class="fas fa-pen me-1" aria-hidden="true"></i>Edit</a>@endif
     @endunless
     <a class="btn btn-outline-secondary" href="{{ route('batches.show', $classSession->batch) }}"><i class="fas fa-layer-group me-1" aria-hidden="true"></i>Batch</a>
 </x-show.hero>
+
+<section class="panel mb-4" aria-labelledby="teaching-heading">
+    <div class="panel-heading"><h2 id="teaching-heading">Teaching record · {{ $classSession->teachingLabel() }}</h2></div>
+    <div class="form-section">
+        <p class="form-section-note">Teacher confirmation is separate from student attendance. This is a self-reported class record for online and in-person teaching.</p>
+        @if($classSession->batch->meeting_platform === 'in_person')
+            <p class="small text-muted">Assigned teacher's machine punches for this date: {{ $teacherPunches->count() }}.
+                @if($teacherPunches->isNotEmpty())First {{ $teacherPunches->first()->punched_at->format('H:i') }}, last {{ $teacherPunches->last()->punched_at->format('H:i') }}.@endif
+                Presence at the institute does not confirm this specific class was taken.
+            </p>
+        @endif
+        @if($classSession->teaching_recorded_at)
+            <p class="small">Recorded by <strong>{{ $classSession->teachingRecorder?->name ?? 'Recorded user' }}</strong> on {{ $classSession->teaching_recorded_at->format('d M Y H:i') }}.</p>
+        @endif
+        @if($classSession->teaching_started_at)<p class="small">Start recorded: {{ $classSession->teaching_started_at->format('d M Y H:i') }}</p>@endif
+        @if($classSession->teaching_reason)<p class="small">Reason: {{ $classSession->teaching_reason }}</p>@endif
+        @if($classSession->makeupFor)
+            <p class="small"><a href="{{ route('class-sessions.show', $classSession->makeupFor) }}">Original missed class: {{ $classSession->makeupFor->session_date->format('d M Y') }} · {{ $classSession->makeupFor->topic }}</a></p>
+            @if(!$classSession->teaching_status && !$cancelled)<p class="form-section-note">To change this makeup date, cancel this class below, then schedule a replacement from the original missed class.</p>@endif
+        @endif
+        @foreach($classSession->makeupClasses as $makeup)
+            <p class="small"><a href="{{ route('class-sessions.show', $makeup) }}">Makeup: {{ $makeup->session_date->format('d M Y') }} {{ $makeup->start_time?->format('H:i') }}</a> · {{ $makeup->teachingLabel() }}</p>
+        @endforeach
+        @if(!$classSession->teaching_status && !$cancelled && $classSession->batch->status !== 'cancelled' && $classSession->session_date->lte(today()))
+            <div class="d-flex flex-wrap gap-2">
+                @unless($classSession->teaching_started_at)
+                    <form method="post" action="{{ route('class-sessions.start', $classSession) }}">@csrf<button class="btn btn-outline-primary">Start class</button></form>
+                @endunless
+                <form method="post" action="{{ route('class-sessions.end', $classSession) }}" data-confirm="Confirm you took this class? Your name and confirmation time will be recorded.">@csrf<button class="btn btn-primary">Class taken</button></form>
+            </div>
+            @unless($records->isNotEmpty())
+                <details class="mt-3"><summary class="fw-semibold">Class missed / teacher on leave</summary>
+                    <form method="post" class="mt-3" action="{{ route('class-sessions.missed', $classSession) }}">
+                        @csrf
+                        <label class="form-label" for="missed-reason">Reason</label>
+                        <textarea class="form-control mb-2" id="missed-reason" name="reason" minlength="5" maxlength="1000" required placeholder="e.g. Teacher on leave">{{ old('reason') }}</textarea>
+                        <button class="btn btn-outline-danger">Record missed class</button>
+                    </form>
+                </details>
+            @endunless
+        @endif
+        @if($classSession->teaching_status === 'missed' && !$classSession->makeup_for_id && !$classSession->makeupClasses->contains(fn ($class) => $class->status !== 'cancelled' || $class->teaching_status === 'taken'))
+            <a class="btn btn-primary" href="{{ route('class-sessions.create', ['makeup_for_id' => $classSession->id]) }}">Schedule linked makeup</a>
+        @endif
+    </div>
+</section>
 
 <x-list.kpis :items="[
     ['label' => 'Present', 'value' => $counts['present'] ?? 0, 'icon' => 'fa-user-check'],
@@ -57,7 +103,7 @@
                 @if($classSession->description)<p class="mt-3 mb-0" style="font-size:13px;white-space:pre-line">{{ $classSession->description }}</p>@endif
             </div>
         </section>
-        @unless($cancelled)
+        @if(!$cancelled && !$classSession->teaching_status)
             <details class="panel d-print-none" style="padding:16px 22px">
                 <summary class="fw-semibold" style="cursor:pointer">Cancel this session</summary>
                 <form class="mt-3" method="post" action="{{ route('class-sessions.destroy', $classSession) }}" data-confirm="Cancel this session? Attendance history will be preserved.">
@@ -66,7 +112,7 @@
                     <button class="btn btn-outline-danger">Cancel session</button>
                 </form>
             </details>
-        @endunless
+        @endif
     </div>
 </div>
 @endsection

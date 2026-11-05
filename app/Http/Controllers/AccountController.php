@@ -24,14 +24,13 @@ class AccountController extends Controller
                 'Role' => fn ($user) => $user->role, 'Job' => fn ($user) => $user->designation, 'Status' => fn ($user) => $user->is_active ? 'Active' : 'Inactive',
                 'Created' => fn ($user) => $user->created_at?->toDateString()]);
         }
-        $counts = $list->counts(['admin' => "users.role = 'admin'", 'teacher' => "users.role = 'teacher'",
+        $counts = $list->counts(['teacher' => "users.role = 'teacher'",
             'student' => "users.role = 'student'", 'staff' => "users.role = 'staff'", 'inactive' => 'users.is_active = 0']);
-        $kpis = [['label' => 'Admins', 'value' => $counts['admin'], 'icon' => 'fa-user-shield'],
-            ['label' => 'Teachers', 'value' => $counts['teacher'], 'icon' => 'fa-chalkboard-teacher'],
+        $kpis = [['label' => 'Teachers', 'value' => $counts['teacher'], 'icon' => 'fa-chalkboard-teacher'],
             ['label' => 'Students', 'value' => $counts['student'], 'icon' => 'fa-users'],
             ['label' => 'Staff', 'value' => $counts['staff'], 'icon' => 'fa-id-badge'],
             ['label' => 'Inactive', 'value' => $counts['inactive'], 'icon' => 'fa-user-slash']];
-        $filters = [['name' => 'role', 'label' => 'Role', 'options' => array_map(fn ($label) => $label === 'Staff' ? $label : $label.'s', $roles)],
+        $filters = [['name' => 'role', 'label' => 'Role', 'options' => array_map(fn ($label) => $label === 'Staff' ? $label : $label.'s', array_diff_key($roles, ['admin' => true]))],
             ['name' => 'status', 'label' => 'Status', 'options' => ['active' => 'Active', 'inactive' => 'Inactive']]];
 
         return view('accounts.index', ['accounts' => $list->paginate(), 'roles' => $roles, 'kpis' => $kpis, 'filters' => $filters]);

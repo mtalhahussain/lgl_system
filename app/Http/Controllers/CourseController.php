@@ -78,8 +78,8 @@ class CourseController extends Controller
         if (auth()->user()->isTeacher()) {
             abort_unless($course->batches()->where('teacher_id', auth()->id())->exists(), 403);
             $course = Course::select('id', 'name', 'level', 'description', 'duration_weeks')->findOrFail($course->id);
-            $batches = $course->batches()->select('id', 'name', 'course_id', 'start_date', 'status', 'max_students')
-                ->where('teacher_id', auth()->id())->withCount('activeEnrollments')->paginate(15);
+            $batches = $course->batches()->select('id', 'name', 'course_id', 'start_date', 'end_date', 'status', 'max_students')
+                ->where('teacher_id', auth()->id())->with('schedules')->withCount('activeEnrollments')->paginate(15);
 
             return view('academic.batches', compact('course', 'batches'));
         }

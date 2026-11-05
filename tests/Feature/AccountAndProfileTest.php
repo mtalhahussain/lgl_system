@@ -42,7 +42,7 @@ class AccountAndProfileTest extends TestCase
         $user = User::factory()->create(['role' => 'student', 'is_active' => true, 'name' => 'Zara']);
         $this->actingAs($admin)->get('/accounts')->assertOk()->assertSee('Users')->assertDontSee('Account Access')
             ->assertSee('data-autosave', false)->assertDontSee('Choose a supported role')
-            ->assertSee('>Students</option>', false)->assertSee('>Admins</option>', false)->assertSee('>Student</option>', false)
+            ->assertSee('>Students</option>', false)->assertDontSee('>Admins</option>', false)->assertSee('>Student</option>', false)
             ->assertDontSee('>Admin</option>', false)->assertSee('name="role" value="admin" form="account_'.$admin->id.'"', false);
 
         $this->patchJson('/accounts/'.$user->id, ['role' => 'student', 'is_active' => 0])->assertOk()

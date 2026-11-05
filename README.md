@@ -4,7 +4,7 @@ Laravel 12 / PHP 8.2+ institute management using Eloquent, Blade, Tailwind 4 wit
 
 ## Local use
 
-The configured clean demo is separate from the preserved original `lgl_system` database. Do not reset either database to resume work.
+The owner confirmed on 5 November 2026 that the currently configured local `lgl_system` is the working database. Use additive migrations; do not reset it or overwrite preserved databases/backups to resume work.
 
 ```powershell
 npm ci
@@ -39,3 +39,9 @@ The login page fills the desktop viewport edge to edge and displays the institut
 Admin can sell a multi-level package (2–4 consecutive levels, e.g. A1 + A2, A1 to B1, A1 to B2) from Enrollments > Multi-level package. Admin enters the agreed price per sale (package or student-specific discount), chooses full payment now or monthly installments per level, and the system reserves every seat and splits the price exactly across level ledgers. Normal module-wise admission remains available. Per-student teachers are paid monthly per batch (rate × students that month) from Teacher Payroll > Generate month.
 
 Exam-based institute certificates are the next requested extension. Design is recorded under E01 in docs/TASKS.md; passing-rule clarification is pending and the legacy exam/certificate modules remain inactive.
+
+Admin batch save now automatically creates regular dated classes from weekly days/times through the batch end date, starting today or the batch start date. Set an end date when supplying a weekly schedule. Teachers see assigned batch dates/timings and today’s direct attendance links; use Extra / makeup class only for additional classes. Existing dated classes and attendance are preserved. For an older batch, Admin can edit and save to fill missing future dates.
+
+Class Sessions now separates teacher confirmation from student attendance. Open a class to record Class taken or Class missed with a reason, then use Schedule linked makeup on an original missed class. This week’s teaching shows missed classes as makeup needed, pending or covered; coverage requires the makeup’s explicit Class taken confirmation. The additive teaching-record migration was applied to the owner-authorized local `lgl_system` on 5 November 2026.
+
+Teacher Dashboard class names and dates/times open class details; assigned weekly timing opens the batch-filtered dated class list. For online teaching, Admin can enter one recurring meeting link on the batch, which regular class generation copies into new sessions. Separate meeting URLs require individual session links; meeting creation is manual. Changing a batch link does not overwrite links already stored on existing sessions.

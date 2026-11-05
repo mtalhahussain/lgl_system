@@ -108,6 +108,8 @@ Route::middleware(['auth', EnsureActiveAccount::class])->group(function () {
         ->name('class-sessions.start')->middleware('role:admin,teacher');
     Route::post('/class-sessions/{classSession}/end', [ClassSessionController::class, 'end'])
         ->name('class-sessions.end')->middleware('role:admin,teacher');
+    Route::post('/class-sessions/{classSession}/missed', [ClassSessionController::class, 'markMissed'])
+        ->name('class-sessions.missed')->middleware('role:admin,teacher');
     Route::get('/class-sessions/{classSession}/attendance', [ClassSessionController::class, 'markAttendance'])
         ->name('class-sessions.attendance')->middleware('role:admin,teacher');
     Route::post('/class-sessions/{classSession}/attendance', [ClassSessionController::class, 'storeAttendance'])

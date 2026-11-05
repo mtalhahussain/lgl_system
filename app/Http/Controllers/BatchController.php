@@ -8,6 +8,7 @@ use App\Models\ClassSession;
 use App\Models\Course;
 use App\Models\Enrollment;
 use App\Models\User;
+use App\Services\BatchSessionScheduler;
 use App\Support\ListQuery;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -28,8 +29,8 @@ class BatchController extends Controller
         $statuses = ['upcoming' => 'Upcoming', 'ongoing' => 'Ongoing', 'completed' => 'Completed', 'cancelled' => 'Cancelled'];
         if (auth()->user()->isTeacher()) {
             $list = ListQuery::for(Batch::where('teacher_id', auth()->id())
-                ->select('id', 'name', 'course_id', 'start_date', 'status', 'max_students')
-                ->with('course:id,name,level')->withCount('activeEnrollments'), $request)
+                ->select('id', 'name', 'course_id', 'start_date', 'end_date', 'status', 'max_students')
+                ->with(['course:id,name,level', 'schedules'])->withCount('activeEnrollments'), $request)
                 ->search(['name'])
                 ->filter('status', fn ($query, $status) => $query->where('status', $status), array_keys($statuses))
                 ->sorts(['name' => 'name', 'start' => 'start_date'], '-start');
@@ -78,10 +79,14 @@ class BatchController extends Controller
     public function store(Request $request)
     {
         [$data, $schedule] = $this->validatedBatch($request);
-        $batch = Batch::create($data);
-        $this->saveSchedule($batch, $schedule);
+        $created = DB::transaction(function () use ($data, $schedule) {
+            $batch = Batch::create($data);
+            $this->saveSchedule($batch, $schedule);
 
-        return redirect()->route('batches.index')->with('success', 'Batch created successfully.');
+            return app(BatchSessionScheduler::class)->generate($batch, auth()->id());
+        });
+
+        return redirect()->route('batches.index')->with('success', "Batch created successfully. {$created} regular classes scheduled automatically.");
     }
 
     public function show(Batch $batch)
@@ -111,7 +116,7 @@ class BatchController extends Controller
     public function update(Request $request, Batch $batch)
     {
         [$data, $schedule] = $this->validatedBatch($request);
-        DB::transaction(function () use ($batch, $data, $schedule) {
+        $created = DB::transaction(function () use ($batch, $data, $schedule) {
             $batch = Batch::lockForUpdate()->findOrFail($batch->id);
             if ((int) $data['course_id'] !== $batch->course_id && $batch->enrollments()->exists()) {
                 throw ValidationException::withMessages(['course_id' => 'An enrolled batch must keep its original course.']);
@@ -126,9 +131,11 @@ class BatchController extends Controller
             AuditLog::create(['actor_id' => auth()->id(), 'action' => 'batch.updated',
                 'subject_type' => 'batch', 'subject_id' => $batch->id,
                 'changes' => ['before' => $before, 'after' => $batch->only(['teacher_id', 'max_students', 'status'])]]);
+
+            return app(BatchSessionScheduler::class)->generate($batch, auth()->id());
         }, 3);
 
-        return redirect()->route('batches.show', $batch)->with('success', 'Batch updated successfully.');
+        return redirect()->route('batches.show', $batch)->with('success', "Batch updated successfully. {$created} missing regular classes scheduled; existing classes unchanged.");
     }
 
     private function validatedBatch(Request $request): array
@@ -155,6 +162,9 @@ class BatchController extends Controller
             ? 'cancelled' : Batch::statusForDates($data['start_date'], $data['end_date'] ?? null);
 
         $schedule = $this->cleanSchedule($request->input('schedule', []));
+        if ($schedule && empty($data['end_date'])) {
+            throw ValidationException::withMessages(['end_date' => 'Set an end date to create regular classes from the weekly schedule.']);
+        }
         unset($data['schedule']);
 
         return [$data, $schedule];
@@ -178,6 +188,11 @@ class BatchController extends Controller
                 throw ValidationException::withMessages(['schedule' => 'Class end time must be after start time.']);
             }
             $clean[] = ['weekday' => $weekday, 'start_time' => $start, 'end_time' => $end];
+        }
+
+        $keys = array_map(fn ($row) => $row['weekday'].' '.$row['start_time'], $clean);
+        if (count($keys) !== count(array_unique($keys))) {
+            throw ValidationException::withMessages(['schedule' => 'The same day and start time cannot be entered twice.']);
         }
 
         return $clean;

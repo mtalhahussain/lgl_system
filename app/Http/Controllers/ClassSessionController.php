@@ -6,6 +6,7 @@ use App\Models\AuditLog;
 use App\Models\Batch;
 use App\Models\ClassSession;
 use App\Services\AttendanceService;
+use App\Services\ClassTeachingService;
 use App\Support\ListQuery;
 use Carbon\Carbon;
 use Carbon\CarbonPeriod;
@@ -23,20 +24,23 @@ class ClassSessionController extends Controller
 
     public function index(Request $request)
     {
+        $defaultSort = 'date';
         $batches = Batch::query()->when(auth()->user()->isTeacher(), fn ($query) => $query->where('teacher_id', auth()->id()))
             ->orderBy('name')->pluck('name', 'id');
         $statuses = ['scheduled' => 'Scheduled', 'ongoing' => 'Ongoing', 'completed' => 'Completed', 'cancelled' => 'Cancelled'];
-        $list = ListQuery::for(ClassSession::with(['batch:id,name,course_id,teacher_id', 'batch.course:id,name'])
+        $list = ListQuery::for(ClassSession::with(['batch:id,name,course_id,teacher_id', 'batch.course:id,name', 'batch.teacher:id,name', 'makeupClasses', 'makeupFor'])
             ->whereIn('batch_id', $batches->keys()), $request)
             ->search(['topic', 'batch.name'])
             ->filter('batch_id', fn ($query, $id) => $query->where('batch_id', $id), $batches->keys()->all())
             ->filter('status', fn ($query, $status) => $query->where('status', $status), array_keys($statuses))
             ->dateRange('session_date')
             ->sorts(['date' => fn ($query, $direction) => $query->orderBy('session_date', $direction)->orderBy('start_time', $direction),
-                'topic' => 'topic'], '-date');
+                'topic' => 'topic'], $defaultSort);
         if ($list->wantsCsv()) {
             return $list->csv('class-sessions', ['Batch' => fn ($session) => $session->batch?->name, 'Date' => fn ($session) => $session->session_date?->toDateString(),
-                'Start' => fn ($session) => $session->start_time?->format('H:i'), 'Topic' => fn ($session) => $session->topic, 'Status' => fn ($session) => $session->status]);
+                'Start' => fn ($session) => $session->start_time?->format('H:i'), 'Topic' => fn ($session) => $session->topic, 'Status' => fn ($session) => $session->status,
+                'Teaching / coverage' => fn ($session) => $session->teachingLabel(),
+                'Makeup for date' => fn ($session) => $session->makeupFor?->session_date?->toDateString()]);
         }
         $counts = $list->counts(['today' => ['DATE(class_sessions.session_date) = ?', [today()->toDateString()]],
             'week' => ['DATE(class_sessions.session_date) BETWEEN ? AND ?', [today()->startOfWeek()->toDateString(), today()->endOfWeek()->toDateString()]],
@@ -48,26 +52,32 @@ class ClassSessionController extends Controller
         $filters = [['name' => 'batch_id', 'label' => 'Batch', 'options' => $batches], ['name' => 'status', 'label' => 'Status', 'options' => $statuses],
             ['name' => 'from', 'label' => 'From', 'type' => 'date'], ['name' => 'to', 'label' => 'To', 'type' => 'date']];
 
-        return view('admin.class-sessions.index', ['sessions' => $list->paginate(), 'kpis' => $kpis, 'filters' => $filters]);
+        return view('admin.class-sessions.index', ['sessions' => $list->paginate(), 'kpis' => $kpis, 'filters' => $filters, 'defaultSort' => $defaultSort]);
     }
 
-    public function create()
+    public function create(Request $request)
     {
+        $makeupFor = null;
+        if ($request->filled('makeup_for_id')) {
+            $makeupFor = ClassSession::findOrFail($request->integer('makeup_for_id'));
+            $this->authorize('view', $makeupFor->batch);
+            abort_unless($makeupFor->teaching_status === 'missed' && ! $makeupFor->makeup_for_id, 422);
+        }
         // Get available batches based on role
         if (auth()->user()->role === 'teacher') {
             $batches = Batch::where('teacher_id', auth()->id())
                 ->with('course')
-                ->where('status', 'ongoing')
+                ->whereIn('status', ['upcoming', 'ongoing', 'completed'])
                 ->orderBy('name')
                 ->get();
         } else {
             $batches = Batch::with('course')
-                ->where('status', 'ongoing')
+                ->whereIn('status', ['upcoming', 'ongoing', 'completed'])
                 ->orderBy('name')
                 ->get();
         }
 
-        return view('admin.class-sessions.form', ['batches' => $batches, 'classSession' => null]);
+        return view('admin.class-sessions.form', ['batches' => $batches, 'classSession' => null, 'makeupFor' => $makeupFor]);
     }
 
     public const WEEKDAYS = ['mon' => 'Mon', 'tue' => 'Tue', 'wed' => 'Wed', 'thu' => 'Thu', 'fri' => 'Fri', 'sat' => 'Sat', 'sun' => 'Sun'];
@@ -200,6 +210,7 @@ class ClassSessionController extends Controller
             'meeting_link' => 'nullable|url:http,https|max:2000',
             'meeting_id' => 'nullable|string|max:100',
             'meeting_password' => 'nullable|string|max:100',
+            'makeup_for_id' => 'nullable|integer|exists:class_sessions,id',
         ]);
 
         $batch = Batch::findOrFail($request->batch_id);
@@ -209,7 +220,7 @@ class ClassSessionController extends Controller
             abort(403, 'You can only create sessions for your assigned batches.');
         }
 
-        $session = ClassSession::create([
+        $session = app(ClassTeachingService::class)->create([
             'batch_id' => $request->batch_id,
             'session_date' => $request->session_date,
             'start_time' => $request->start_time,
@@ -222,6 +233,7 @@ class ClassSessionController extends Controller
             'meeting_password' => $request->meeting_password,
             'status' => 'scheduled',
             'created_by' => auth()->id(),
+            'makeup_for_id' => $request->input('makeup_for_id'),
         ]);
 
         return redirect()->route('class-sessions.index')
@@ -235,13 +247,21 @@ class ClassSessionController extends Controller
             abort(403, 'You can only view sessions for your assigned batches.');
         }
 
-        $classSession->load(['batch.course:id,name,level', 'batch.teacher:id,name', 'attendances.student:id,name']);
+        $classSession->load(['batch.course:id,name,level', 'batch.teacher:id,name', 'attendances.student:id,name', 'makeupClasses', 'makeupFor', 'teachingRecorder:id,name']);
 
-        return view('admin.class-sessions.show', compact('classSession'));
+        $teacherPunches = \App\Models\BiometricPunch::where('user_id', $classSession->batch->teacher_id)
+            ->where('result', 'teacher')->whereDate('punched_at', $classSession->session_date->toDateString())
+            ->orderBy('punched_at')->get(['punched_at']);
+
+        return view('admin.class-sessions.show', compact('classSession', 'teacherPunches'));
     }
 
     public function edit(ClassSession $classSession)
     {
+        $this->authorize('view', $classSession->batch);
+        if ($classSession->teaching_status || $classSession->makeup_for_id) {
+            return redirect()->route('class-sessions.show', $classSession)->with('success', 'Recorded and linked makeup classes retain their original details. Cancel an unconfirmed makeup to schedule a replacement.');
+        }
         // Check access permission
         if (auth()->user()->role === 'teacher' && $classSession->batch->teacher_id !== auth()->id()) {
             abort(403, 'You can only edit sessions for your assigned batches.');
@@ -266,50 +286,57 @@ class ClassSessionController extends Controller
 
     public function update(Request $request, ClassSession $classSession)
     {
-        // Check access permission
-        if (auth()->user()->role === 'teacher' && $classSession->batch->teacher_id !== auth()->id()) {
-            abort(403, 'You can only update sessions for your assigned batches.');
-        }
+        return DB::transaction(function () use ($request, $classSession) {
+            $classSession = ClassSession::lockForUpdate()->findOrFail($classSession->id);
+            $this->authorize('view', $classSession->batch);
+            if ($classSession->teaching_status || $classSession->makeup_for_id) {
+                throw ValidationException::withMessages(['teaching' => 'Recorded and linked makeup classes retain their original details. Cancel an unconfirmed makeup and schedule a replacement from the original missed class.']);
+            }
+            // Check access permission
+            if (auth()->user()->role === 'teacher' && $classSession->batch->teacher_id !== auth()->id()) {
+                abort(403, 'You can only update sessions for your assigned batches.');
+            }
 
-        $request->validate([
-            'batch_id' => 'required|exists:batches,id',
-            'session_date' => 'required|date',
-            'start_time' => 'required|date_format:H:i',
-            'end_time' => 'required|date_format:H:i|after:start_time',
-            'topic' => 'required|string|max:255',
-            'description' => 'nullable|string',
-            'meeting_link' => 'nullable|url:http,https|max:2000',
-            'meeting_id' => 'nullable|string|max:100',
-            'meeting_password' => 'nullable|string|max:100',
-        ]);
+            $request->validate([
+                'batch_id' => 'required|exists:batches,id',
+                'session_date' => 'required|date',
+                'start_time' => 'required|date_format:H:i',
+                'end_time' => 'required|date_format:H:i|after:start_time',
+                'topic' => 'required|string|max:255',
+                'description' => 'nullable|string',
+                'meeting_link' => 'nullable|url:http,https|max:2000',
+                'meeting_id' => 'nullable|string|max:100',
+                'meeting_password' => 'nullable|string|max:100',
+            ]);
 
-        $batch = Batch::findOrFail($request->batch_id);
+            $batch = Batch::findOrFail($request->batch_id);
 
-        // Check if teacher can update session for this batch
-        if (auth()->user()->role === 'teacher' && $batch->teacher_id !== auth()->id()) {
-            abort(403, 'You can only update sessions for your assigned batches.');
-        }
+            // Check if teacher can update session for this batch
+            if (auth()->user()->role === 'teacher' && $batch->teacher_id !== auth()->id()) {
+                abort(403, 'You can only update sessions for your assigned batches.');
+            }
 
-        if ($batch->id !== $classSession->batch_id && $classSession->attendances()->exists()) {
-            throw ValidationException::withMessages(['batch_id' => 'A session with attendance cannot move to another batch.']);
-        }
+            if ($batch->id !== $classSession->batch_id && $classSession->attendances()->exists()) {
+                throw ValidationException::withMessages(['batch_id' => 'A session with attendance cannot move to another batch.']);
+            }
 
-        $classSession->update([
-            'batch_id' => $request->batch_id,
-            'session_date' => $request->session_date,
-            'start_time' => $request->start_time,
-            'end_time' => $request->end_time,
-            'topic' => $request->topic,
-            'description' => $request->description,
-            'is_online' => $request->is_online,
-            'meeting_link' => $request->meeting_link,
-            'meeting_id' => $request->meeting_id,
-            'meeting_password' => $request->meeting_password,
-            'updated_by' => auth()->id(),
-        ]);
+            $classSession->update([
+                'batch_id' => $request->batch_id,
+                'session_date' => $request->session_date,
+                'start_time' => $request->start_time,
+                'end_time' => $request->end_time,
+                'topic' => $request->topic,
+                'description' => $request->description,
+                'is_online' => $request->is_online,
+                'meeting_link' => $request->meeting_link,
+                'meeting_id' => $request->meeting_id,
+                'meeting_password' => $request->meeting_password,
+                'updated_by' => auth()->id(),
+            ]);
 
-        return redirect()->route('class-sessions.index')
-            ->with('success', 'Class session updated successfully!');
+            return redirect()->route('class-sessions.index')
+                ->with('success', 'Class session updated successfully!');
+        });
     }
 
     public function destroy(ClassSession $classSession)
@@ -319,7 +346,19 @@ class ClassSessionController extends Controller
             abort(403, 'You can only delete sessions for your assigned batches.');
         }
 
-        $classSession->update(['status' => 'cancelled']);
+        DB::transaction(function () use ($classSession) {
+            $locked = ClassSession::lockForUpdate()->findOrFail($classSession->id);
+            $this->authorize('view', $locked->batch);
+            if ($locked->teaching_status) {
+                throw ValidationException::withMessages(['teaching' => 'Taken and missed teaching records cannot be cancelled.']);
+            }
+            $locked->update(['status' => 'cancelled']);
+            if ($locked->makeup_for_id) {
+                AuditLog::create(['actor_id' => auth()->id(), 'action' => 'class.makeup_cancelled',
+                    'subject_type' => 'class_session', 'subject_id' => $locked->id,
+                    'changes' => ['makeup_for_id' => $locked->makeup_for_id]]);
+            }
+        });
 
         return redirect()->route('class-sessions.index')
             ->with('success', 'Class session cancelled. Attendance history preserved.');
@@ -332,15 +371,9 @@ class ClassSessionController extends Controller
             abort(403, 'You can only start sessions for your assigned batches.');
         }
 
-        if ($classSession->status !== 'scheduled') {
-            throw ValidationException::withMessages(['status' => 'Only scheduled sessions can start.']);
-        }
-        $classSession->update([
-            'status' => 'ongoing',
-            'actual_start_time' => now(),
-        ]);
+        app(ClassTeachingService::class)->record($classSession, 'start');
 
-        if ($classSession->is_online && $classSession->meeting_link) {
+        if ($classSession->isOnline() && $classSession->meeting_link) {
             return redirect()->away($classSession->meeting_link);
         }
 
@@ -355,16 +388,19 @@ class ClassSessionController extends Controller
             abort(403, 'You can only end sessions for your assigned batches.');
         }
 
-        if (! in_array($classSession->status, ['ongoing', 'completed'], true)) {
-            throw ValidationException::withMessages(['status' => 'Only ongoing sessions can end.']);
-        }
-        $classSession->update([
-            'status' => 'completed',
-            'actual_end_time' => now(),
-        ]);
+        app(ClassTeachingService::class)->record($classSession, 'taken');
 
         return redirect()->route('class-sessions.show', $classSession)
             ->with('success', 'Class session ended!');
+    }
+
+    public function markMissed(Request $request, ClassSession $classSession)
+    {
+        $this->authorize('view', $classSession->batch);
+        $data = $request->validate(['reason' => 'required|string|min:5|max:1000']);
+        app(ClassTeachingService::class)->record($classSession, 'missed', $data['reason']);
+
+        return redirect()->route('class-sessions.show', $classSession)->with('success', 'Class recorded as missed. Schedule a linked makeup to cover it.');
     }
 
     public function markAttendance(ClassSession $classSession)

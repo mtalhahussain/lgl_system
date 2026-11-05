@@ -2,7 +2,7 @@
 
 ## Authorization and scope
 
-The owner authorized incremental local implementation on 31 October 2026: "yes krte rahoo step by step auto". Exactly Admin, Teacher and Student; Admin handles accounting. The owner confirmed original records were demo-only. The original `lgl_system` database remains unchanged; a clean demo is active. Do not request routine task-to-task approval again.
+The owner authorized incremental local implementation on 31 October 2026: "yes krte rahoo step by step auto". Exactly Admin, Teacher and Student; Admin handles accounting. The owner confirmed original records were demo-only. Earlier work preserved the original database and used a separate demo. On 5 November 2026 the owner clarified that the currently configured local `lgl_system` is the working database and authorized using it for incremental implementation, including additive migrations. This does not authorize resets, seeding, deletion or overwriting backups. Do not request routine task-to-task approval again.
 
 The owner separately authorized redundant project Markdown deletion and consolidation into README.md, AGENTS.md, CLAUDE.md, docs/PROJECT.md and docs/TASKS.md. This does not authorize deleting application modules, historical records, databases or private backups. Deployment is owner-managed; do not request server access or pursue hosting work without a new request.
 

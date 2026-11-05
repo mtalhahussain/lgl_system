@@ -39,6 +39,8 @@
                 <div class="col-md-6">
                     <label class="form-label {{ $field === 'start_date' ? 'required' : '' }}" for="{{ $field }}">{{ $label }}</label>
                     <input class="form-control" type="date" id="{{ $field }}" name="{{ $field }}" value="{{ old($field, $batch?->$field?->format('Y-m-d')) }}" @required($field === 'start_date')>
+                    @error($field)<div class="text-danger small">{{ $message }}</div>@enderror
+                    @if($field === 'end_date')<div class="form-text">Required when weekly class days are set; regular classes are scheduled through this date.</div>@endif
                 </div>
             @endforeach
             <div class="col-md-6">
@@ -70,7 +72,7 @@
     </div>
     <div class="form-section">
         <h2 class="form-section-title">Class schedule <span class="text-muted fw-normal">(optional)</span></h2>
-        <div class="form-text mb-2">Weekly class days and times. Used to show planned hours and to generate sessions. Changing it later does not alter sessions already generated. Leave empty if the batch has no fixed weekly timing.</div>
+        <div class="form-text mb-2">Set this batch's weekly days and times and an end date. Saving automatically creates regular classes from today (or the batch start date) through the end date, ready for teacher attendance. Existing dated classes, including cancelled classes, stay unchanged. A schedule change adds classes only on dates with no class; edit individual existing classes separately. Leave empty if there is no fixed weekly timing.</div>
         @php
             $weekdays = \App\Models\BatchSchedule::WEEKDAYS;
             $scheduleRows = old('schedule', ($batch?->schedules ?? collect())->map(fn ($s) => [

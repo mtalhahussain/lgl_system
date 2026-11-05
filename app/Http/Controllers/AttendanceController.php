@@ -102,7 +102,12 @@ class AttendanceController extends Controller
         $this->authorize('view', $session->batch);
         $session->load(['batch.course:id,name,level', 'attendances.student:id,name']);
 
-        return view('admin.class-sessions.show', ['classSession' => $session]);
+        $session->load(['makeupFor', 'makeupClasses', 'teachingRecorder:id,name']);
+        $teacherPunches = \App\Models\BiometricPunch::where('user_id', $session->batch->teacher_id)
+            ->where('result', 'teacher')->whereDate('punched_at', $session->session_date->toDateString())
+            ->orderBy('punched_at')->get(['punched_at']);
+
+        return view('admin.class-sessions.show', ['classSession' => $session, 'teacherPunches' => $teacherPunches]);
     }
 
     public function reports(Request $request)

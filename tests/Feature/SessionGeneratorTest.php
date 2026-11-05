@@ -43,7 +43,7 @@ class SessionGeneratorTest extends TestCase
     {
         ClassSession::create(['batch_id' => $this->batch->id, 'session_date' => '2026-11-09', 'start_time' => '10:00',
             'end_time' => '12:00', 'topic' => 'Already planned', 'status' => 'scheduled']);
-        $this->actingAs($this->admin)->get('/batches/'.$this->batch->id)->assertOk()->assertSee('Generate sessions');
+        $this->actingAs($this->admin)->get('/batches/'.$this->batch->id)->assertOk()->assertSee('Advanced: generate missing classes');
 
         // The end date is clamped to the batch end (29 Nov): Mondays and Wednesdays give 8 dates, 9 Nov already exists.
         $this->post('/batches/'.$this->batch->id.'/sessions/generate', $this->form())
@@ -87,7 +87,8 @@ class SessionGeneratorTest extends TestCase
         $this->actingAs($student)->post($url, $this->form())->assertForbidden();
         $this->assertDatabaseCount('class_sessions', 0);
 
-        $this->actingAs($this->teacher)->get('/batches/'.$this->batch->id)->assertOk()->assertSee('Generate sessions');
+        $this->actingAs($this->teacher)->get('/batches/'.$this->batch->id)->assertOk()->assertSee('Extra / makeup class')
+            ->assertDontSee('Advanced: generate missing classes');
         $this->post($url, $this->form(['days' => ['fri']]))->assertSessionHas('success', '4 sessions created.');
     }
 }

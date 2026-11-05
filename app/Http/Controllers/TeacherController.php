@@ -141,11 +141,14 @@ class TeacherController extends Controller
 
     public function dashboard()
     {
-        $batches = auth()->user()->taughtBatches()->select('id', 'name', 'course_id', 'status')->with(['course:id,name,level', 'schedules'])->withCount('activeEnrollments')->get();
+        $batches = auth()->user()->taughtBatches()->select('id', 'name', 'course_id', 'status', 'start_date', 'end_date')->with(['course:id,name,level', 'schedules'])->withCount('activeEnrollments')->get();
+        $todaySessions = \App\Models\ClassSession::whereHas('batch', fn ($query) => $query->where('teacher_id', auth()->id())->where('status', '!=', 'cancelled'))
+            ->where('status', '!=', 'cancelled')->whereDate('session_date', today())
+            ->with('batch:id,name')->orderBy('start_time')->get();
         $sessions = \App\Models\ClassSession::whereHas('batch', fn ($query) => $query->where('teacher_id', auth()->id()))
             ->where('status', 'scheduled')->whereDate('session_date', '>=', today())->with('batch:id,name')->orderBy('session_date')->orderBy('start_time')->limit(10)->get();
 
-        return view('dashboards.teacher', compact('batches', 'sessions'));
+        return view('dashboards.teacher', compact('batches', 'sessions', 'todaySessions'));
     }
 
     public function calculateSalary(User $teacher, $month = null, $year = null)

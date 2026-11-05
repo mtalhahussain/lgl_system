@@ -1,9 +1,16 @@
 @extends('layouts.admin')
-@section('title', $classSession ? 'Edit Session' : 'Add Session')
+@section('title', $classSession ? 'Edit Session' : 'Extra / makeup class')
 @section('content')
-<x-list.header :title="$classSession ? 'Edit Session' : 'Add Session'" eyebrow="Timetable" subtitle="Schedule a class for one batch" />
+<x-list.header :title="$classSession ? 'Edit Session' : 'Extra / makeup class'" eyebrow="Timetable" subtitle="Regular classes are created from the batch schedule. Use this form for an extra class or a makeup date." />
 <form method="post" class="panel form-panel" action="{{ $formAction ?? ($classSession ? route('class-sessions.update', $classSession) : route('class-sessions.store')) }}">
     @csrf
+    @if(!empty($makeupFor))
+        <input type="hidden" name="makeup_for_id" value="{{ $makeupFor->id }}">
+        <div class="alert alert-warning m-3">Makeup for {{ $makeupFor->batch->name }} · {{ $makeupFor->session_date->format('d M Y') }} · {{ $makeupFor->topic }}. The original missed class stays on record.</div>
+    @elseif(old('makeup_for_id'))
+        <input type="hidden" name="makeup_for_id" value="{{ old('makeup_for_id') }}">
+    @endif
+    @error('makeup_for_id')<div class="alert alert-danger m-3">{{ $message }}</div>@enderror
     @if($classSession) @method('PUT') @endif
     <div class="form-section">
         <h2 class="form-section-title">Session</h2>
@@ -12,7 +19,7 @@
                 <label class="form-label required" for="batch_id">Batch</label>
                 <select class="form-select" id="batch_id" name="batch_id" required>
                     @foreach($batches as $batch)
-                        <option value="{{ $batch->id }}" @selected(old('batch_id', $classSession?->batch_id ?? ($selectedBatch->id ?? request('batch_id'))) == $batch->id)>{{ $batch->name }}</option>
+                        <option value="{{ $batch->id }}" @selected(old('batch_id', $classSession?->batch_id ?? ($makeupFor->batch_id ?? ($selectedBatch->id ?? request('batch_id')))) == $batch->id)>{{ $batch->name }}</option>
                     @endforeach
                 </select>
             </div>

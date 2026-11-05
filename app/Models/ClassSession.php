@@ -23,6 +23,12 @@ class ClassSession extends Model
         'recording_link',
         'materials',
         'homework',
+        'makeup_for_id',
+        'teaching_status',
+        'teaching_started_at',
+        'teaching_recorded_at',
+        'teaching_recorded_by',
+        'teaching_reason',
     ];
 
     protected function casts(): array
@@ -32,6 +38,8 @@ class ClassSession extends Model
             'start_time' => 'datetime:H:i',
             'end_time' => 'datetime:H:i',
             'materials' => 'array',
+            'teaching_started_at' => 'datetime',
+            'teaching_recorded_at' => 'datetime',
         ];
     }
 
@@ -44,6 +52,41 @@ class ClassSession extends Model
     public function attendances()
     {
         return $this->hasMany(Attendance::class);
+    }
+
+    public function makeupFor()
+    {
+        return $this->belongsTo(self::class, 'makeup_for_id');
+    }
+
+    public function makeupClasses()
+    {
+        return $this->hasMany(self::class, 'makeup_for_id');
+    }
+
+    public function teachingRecorder()
+    {
+        return $this->belongsTo(User::class, 'teaching_recorded_by');
+    }
+
+    public function teachingLabel(): string
+    {
+        if ($this->teaching_status === 'missed') {
+            $makeups = $this->makeupClasses;
+            if ($makeups->contains(fn ($class) => $class->teaching_status === 'taken')) {
+                return 'Missed · Covered';
+            }
+
+            return $makeups->contains(fn ($class) => $class->status !== 'cancelled') ? 'Missed · Makeup pending' : 'Missed · Makeup needed';
+        }
+        if ($this->teaching_status === 'taken') {
+            return 'Taken';
+        }
+        if ($this->status === 'cancelled') {
+            return 'Cancelled';
+        }
+
+        return $this->session_date->copy()->setTimeFromTimeString($this->getRawOriginal('end_time'))->lt(now()) ? 'Not confirmed' : 'Scheduled';
     }
 
     public function validateAttendanceStudents(array $studentIds): void

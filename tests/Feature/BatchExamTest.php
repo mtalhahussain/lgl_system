@@ -487,4 +487,23 @@ class BatchExamTest extends TestCase
 
         $this->actingAs($teacher)->get("/exams/{$exam->id}")->assertOk()->assertSee('Sara');
     }
+
+    public function test_student_sees_own_results_only(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+        $batch = $this->batch();
+        $exam = $this->examWithSections($batch);
+        $mine = User::factory()->create(['role' => 'student', 'name' => 'Mine']);
+        $other = User::factory()->create(['role' => 'student', 'name' => 'Other']);
+        $this->enroll($batch, $mine);
+        $this->enroll($batch, $other);
+        $svc = app(ExamGradingService::class);
+        $svc->saveStudentResult($exam, $mine->id, $this->marksFor($exam, 20), $admin);
+        $svc->saveStudentResult($exam, $other->id, $this->marksFor($exam, 20), $admin);
+
+        $this->actingAs($mine)->get('/student/results')->assertOk()
+            ->assertSee($exam->name)
+            ->assertSee('Passed')
+            ->assertDontSee('Other');
+    }
 }

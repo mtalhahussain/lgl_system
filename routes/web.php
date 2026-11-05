@@ -270,5 +270,7 @@ Route::middleware(['auth', EnsureActiveAccount::class])->group(function () {
             ->name('student.attendance');
         Route::get('/student/timetable', [StudentController::class, 'timetable'])
             ->name('student.timetable');
+        Route::get('/student/results', [ExamController::class, 'studentResults'])
+            ->name('student.results');
     });
 });

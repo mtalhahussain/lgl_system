@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Batch;
 use App\Models\BatchExam;
+use App\Models\StudentExamResult;
 use App\Models\User;
 use App\Services\ExamGradingService;
 use Illuminate\Http\Request;
@@ -16,8 +17,17 @@ class ExamController extends Controller
     public function __construct()
     {
         $this->middleware('auth');
-        $this->middleware('role:admin,teacher');
+        $this->middleware('role:admin,teacher')->except(['studentResults']);
         $this->middleware('role:admin')->only(['create', 'store', 'edit', 'update']);
+    }
+
+    public function studentResults(Request $request)
+    {
+        $results = StudentExamResult::where('student_id', $request->user()->id)
+            ->with(['batchExam.batch.course:id,level', 'sectionMarks.section', 'activeCertificate'])
+            ->orderByDesc('graded_at')->get();
+
+        return view('exams.student-results', compact('results'));
     }
 
     public function index(Request $request)

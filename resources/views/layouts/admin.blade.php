@@ -97,6 +97,7 @@
                                     <i class="fas fa-clipboard-check me-2"></i>My Attendance
                                 </a>
                             </li>
+                            <li class="nav-item"><a class="nav-link {{ request()->is('student/results*') ? 'active' : '' }}" href="{{ route('student.results') }}"><i class="fas fa-file-circle-check me-2" aria-hidden="true"></i>My Results</a></li>
                             <li class="nav-item">
                                 <a class="nav-link {{ request()->is('students/' . auth()->id()) ? 'active' : '' }}" 
                                    href="{{ route('students.show', auth()->user()) }}">

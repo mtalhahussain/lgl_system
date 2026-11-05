@@ -152,8 +152,8 @@ class ExamController extends Controller
             'exam_date' => ['required', 'date'],
             'sections' => ['required', 'array', 'size:4'],
             'sections.*.name' => ['required', 'distinct', Rule::in(BatchExam::SECTIONS)],
-            'sections.*.max_marks' => ['required', 'numeric', 'min:1'],
-            'sections.*.passing_marks' => ['required', 'numeric', 'min:0'],
+            'sections.*.max_marks' => ['required', 'numeric', 'min:1', 'max:9999.99'],
+            'sections.*.passing_marks' => ['required', 'numeric', 'min:0', 'max:9999.99'],
         ]);
 
         foreach ($request->input('sections', []) as $i => $s) {

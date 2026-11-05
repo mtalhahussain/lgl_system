@@ -518,4 +518,21 @@ class BatchExamTest extends TestCase
         $this->actingAs($teacher)->get('/student/results')->assertForbidden();
         $this->actingAs($admin)->get('/student/results')->assertForbidden();
     }
+
+    public function test_section_marks_cannot_exceed_the_column_limit(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+        $batch = $this->batch();
+
+        $this->actingAs($admin)->post('/exams', [
+            'batch_id' => $batch->id, 'name' => 'Big', 'type' => 'final', 'exam_date' => '2026-12-20',
+            'sections' => [
+                ['name' => 'Hören', 'max_marks' => 100000, 'passing_marks' => 15],
+                ['name' => 'Lesen', 'max_marks' => 25, 'passing_marks' => 15],
+                ['name' => 'Schreiben', 'max_marks' => 25, 'passing_marks' => 15],
+                ['name' => 'Sprechen', 'max_marks' => 25, 'passing_marks' => 15],
+            ],
+        ])->assertSessionHasErrors('sections.0.max_marks');
+        $this->assertSame(0, BatchExam::count());
+    }
 }

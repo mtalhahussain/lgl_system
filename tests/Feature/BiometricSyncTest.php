@@ -177,4 +177,18 @@ class BiometricSyncTest extends TestCase
         $this->get('/biometric/devices/'.$device->id.'/bridge-config')->assertForbidden();
         $this->post('/biometric/devices/'.$device->id.'/resync')->assertForbidden();
     }
+
+    public function test_admin_can_resync_one_user_from_their_form(): void
+    {
+        $teacher = User::factory()->create(['role' => 'teacher', 'is_active' => true]);
+        $device = $this->device();
+        BiometricDeviceUser::query()->update(['status' => 'failed', 'attempts' => 3, 'last_error' => 'nope']);
+
+        $this->actingAs($this->admin)->post('/people/'.$teacher->id.'/resync-machine')->assertRedirect();
+        $this->assertSame(['pending', 0, null], [BiometricDeviceUser::sole()->status, BiometricDeviceUser::sole()->attempts, BiometricDeviceUser::sole()->last_error]);
+        $this->assertDatabaseHas('audit_logs', ['action' => 'biometric_device_user.resync', 'subject_type' => 'user', 'subject_id' => $teacher->id]);
+
+        $other = User::factory()->create(['role' => 'teacher', 'is_active' => true]);
+        $this->actingAs($other)->post('/people/'.$teacher->id.'/resync-machine')->assertForbidden();
+    }
 }

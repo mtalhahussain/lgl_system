@@ -81,13 +81,13 @@ class BiometricSyncTest extends TestCase
         $next = User::factory()->create(['role' => 'student', 'is_active' => true]);
         $this->assertSame((string) ($taken->id + 2), $next->fresh()->device_employee_no);
 
+        // A posted device_employee_no is ignored; the teacher still gets an automatic number.
         $this->post('/teachers', ['name' => 'Manual Number', 'email' => 'manual@example.test', 'phone' => '0300', 'address' => 'Karachi',
             'password' => 'password123', 'password_confirmation' => 'password123', 'device_employee_no' => '5005'])->assertSessionHasNoErrors();
         $manual = User::where('email', 'manual@example.test')->sole();
-        $this->assertSame('5005', $manual->device_employee_no);
-        $this->assertSame('upsert', BiometricDeviceUser::where('employee_no', '5005')->sole()->action);
-        // The automatic number given at creation is removed from the machine again.
-        $this->assertSame(['delete'], BiometricDeviceUser::where('user_id', $manual->id)->where('employee_no', '!=', '5005')->pluck('action')->all());
+        // The id is already taken as a number by the earlier fixture, so it falls back to the highest number + 1.
+        $this->assertSame((string) ($manual->id + 1), $manual->device_employee_no);
+        $this->assertSame(0, BiometricDeviceUser::where('employee_no', '5005')->count());
     }
 
     public function test_profile_changes_queue_updates_moves_and_removals(): void

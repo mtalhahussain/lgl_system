@@ -7,7 +7,6 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
-use Illuminate\Validation\Rule;
 
 /** Admin: non-teaching staff (receptionist, cleaner, security guard, …). Paid monthly, listed in Users, no sign-in. */
 class StaffController extends Controller
@@ -22,16 +21,11 @@ class StaffController extends Controller
     public function store(Request $request)
     {
         $data = $this->validated($request, null);
-        $machineNo = $data['device_employee_no'] ?? null;
-        unset($data['device_employee_no']);
-        DB::transaction(function () use ($data, $machineNo) {
+        DB::transaction(function () use ($data) {
             // Email and password are required columns; staff never signs in, so both are unusable placeholders.
             $staff = User::create($data + ['role' => 'staff', 'salary_type' => 'monthly',
                 'email' => 'staff-'.Str::uuid().'@staff.invalid', 'password' => Hash::make(Str::random(64))]);
             $staff->update(['employee_id' => 'STF'.str_pad((string) $staff->id, 4, '0', STR_PAD_LEFT)]);
-            if ($machineNo !== null) {
-                $staff->forceFill(['device_employee_no' => $machineNo])->save();
-            }
         });
 
         return redirect()->route('accounts.index', ['role' => 'staff'])->with('success', 'Staff member added.');
@@ -48,10 +42,7 @@ class StaffController extends Controller
     {
         abort_unless($staff->isStaff(), 404);
         $data = $this->validated($request, $staff);
-        $machineNo = $data['device_employee_no'] ?? null;
-        unset($data['device_employee_no']);
-        // Empty keeps the current (automatic) machine number.
-        DB::transaction(fn () => $staff->forceFill(['device_employee_no' => $machineNo ?? $staff->device_employee_no])->fill($data)->save());
+        DB::transaction(fn () => $staff->update($data));
 
         return redirect()->route('accounts.index', ['role' => 'staff'])->with('success', 'Staff member updated.');
     }
@@ -67,8 +58,6 @@ class StaffController extends Controller
             'hire_date' => 'nullable|date',
             'monthly_salary' => 'required|decimal:0,2|min:0|max:99999999.99',
             'is_active' => 'sometimes|boolean',
-            'device_employee_no' => ['nullable', 'regex:/^[A-Za-z0-9]{1,32}$/D',
-                Rule::unique('users', 'device_employee_no')->ignore($staff?->id)],
         ]);
         $data['is_active'] = $request->boolean('is_active', $staff?->is_active ?? true);
 

@@ -92,7 +92,6 @@ class StudentController extends Controller
             'is_active' => 'sometimes|boolean',
             'batch_id' => 'nullable|exists:batches,id',
             'discount_percentage' => 'nullable|numeric|min:0|max:100',
-            'device_employee_no' => ['nullable', 'regex:/^[A-Za-z0-9]{1,32}$/D', Rule::unique('users', 'device_employee_no')],
         ]);
 
         DB::beginTransaction();
@@ -109,9 +108,6 @@ class StudentController extends Controller
                 'emergency_contact' => $request->emergency_contact,
                 'is_active' => $request->boolean('is_active', true),
             ]);
-            if ($request->filled('device_employee_no')) {
-                $student->forceFill(['device_employee_no' => $request->input('device_employee_no')])->save();
-            }
 
             // Enroll in batch
             if ($request->filled('batch_id')) {
@@ -191,13 +187,9 @@ class StudentController extends Controller
             'emergency_contact' => 'nullable|string|max:255',
             'password' => 'nullable|string|min:8|confirmed',
             'is_active' => 'sometimes|boolean',
-            'device_employee_no' => ['nullable', 'regex:/^[A-Za-z0-9]{1,32}$/D', Rule::unique('users', 'device_employee_no')->ignore($student->id)],
         ]);
 
         DB::transaction(function () use ($request, $student) {
-            if ($request->filled('device_employee_no')) {
-                $student->forceFill(['device_employee_no' => $request->input('device_employee_no')])->save();
-            }
             $student->update($request->only([
                 'name', 'email', 'phone', 'address', 'date_of_birth',
                 'emergency_contact', 'is_active',

@@ -6,6 +6,7 @@ use App\Models\AuditLog;
 use App\Models\Batch;
 use App\Models\BatchExam;
 use App\Models\Course;
+use App\Models\Enrollment;
 use App\Models\StudentCertificate;
 use App\Models\StudentExamResult;
 use App\Models\StudentExamSectionMark;
@@ -261,5 +262,69 @@ class BatchExamTest extends TestCase
         $mark = $result->fresh()->sectionMarks()->where('exam_section_id', $first)->first();
         $this->assertSame('20.00', $mark->marks_obtained);
         $this->assertTrue($mark->passed);
+    }
+
+    private function enroll(Batch $batch, User $student): Enrollment
+    {
+        return Enrollment::create(['student_id' => $student->id, 'batch_id' => $batch->id,
+            'enrollment_date' => '2026-10-01', 'total_fee' => 30000, 'status' => 'active']);
+    }
+
+    public function test_admin_creates_an_exam_with_section_marks(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+        $batch = $this->batch();
+
+        $this->actingAs($admin)->post('/exams', [
+            'batch_id' => $batch->id, 'name' => 'A1 Final', 'type' => 'final', 'exam_date' => '2026-12-20',
+            'sections' => [
+                ['name' => 'Hören', 'max_marks' => 25, 'passing_marks' => 15],
+                ['name' => 'Lesen', 'max_marks' => 25, 'passing_marks' => 15],
+                ['name' => 'Schreiben', 'max_marks' => 30, 'passing_marks' => 18],
+                ['name' => 'Sprechen', 'max_marks' => 20, 'passing_marks' => 12],
+            ],
+        ])->assertRedirect();
+
+        $exam = BatchExam::sole();
+        $this->assertSame(4, $exam->sections()->count());
+        $this->assertSame('30.00', $exam->sections()->where('name', 'Schreiben')->value('max_marks'));
+    }
+
+    public function test_teacher_cannot_create_an_exam(): void
+    {
+        $teacher = User::factory()->create(['role' => 'teacher']);
+        $batch = $this->batch($teacher);
+
+        $this->actingAs($teacher)->post('/exams', ['batch_id' => $batch->id, 'name' => 'X',
+            'type' => 'final', 'exam_date' => '2026-12-20', 'sections' => []])->assertForbidden();
+    }
+
+    public function test_teacher_grades_own_batch_but_not_another(): void
+    {
+        $owner = User::factory()->create(['role' => 'teacher']);
+        $other = User::factory()->create(['role' => 'teacher']);
+        $batch = $this->batch($owner);
+        $exam = $this->examWithSections($batch);
+        $student = User::factory()->create(['role' => 'student']);
+        $this->enroll($batch, $student);
+
+        $payload = ['student_id' => $student->id, 'marks' => $this->marksFor($exam, 20)];
+
+        $this->actingAs($other)->post("/exams/{$exam->id}/results", $payload)->assertForbidden();
+        $this->actingAs($owner)->post("/exams/{$exam->id}/results", $payload)->assertRedirect();
+        $this->assertTrue(StudentExamResult::sole()->overall_passed);
+    }
+
+    public function test_only_batch_enrollees_can_be_graded(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+        $batch = $this->batch();
+        $exam = $this->examWithSections($batch);
+        $outsider = User::factory()->create(['role' => 'student']);
+
+        $this->actingAs($admin)->post("/exams/{$exam->id}/results",
+            ['student_id' => $outsider->id, 'marks' => $this->marksFor($exam, 20)])
+            ->assertSessionHasErrors('student_id');
+        $this->assertSame(0, StudentExamResult::count());
     }
 }

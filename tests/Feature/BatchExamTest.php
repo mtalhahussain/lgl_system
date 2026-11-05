@@ -8,6 +8,7 @@ use App\Models\BatchExam;
 use App\Models\Course;
 use App\Models\StudentCertificate;
 use App\Models\StudentExamResult;
+use App\Models\StudentExamSectionMark;
 use App\Models\User;
 use App\Services\ExamGradingService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -196,5 +197,69 @@ class BatchExamTest extends TestCase
         $svc->saveStudentResult($exam, $student->id, $fail, $admin);
 
         $this->assertFalse($result->fresh()->overall_passed);
+    }
+
+    public function test_service_writes_no_result_when_marks_are_out_of_range(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+        $batch = $this->batch();
+        $exam = $this->examWithSections($batch);
+        $student = User::factory()->create(['role' => 'student']);
+
+        $over = $this->marksFor($exam, 20);
+        $over[$exam->sections->first()->id] = 999;
+
+        try {
+            app(ExamGradingService::class)->saveStudentResult($exam, $student->id, $over, $admin);
+            $this->fail('Expected a validation exception.');
+        } catch (ValidationException $e) {
+            // expected
+        }
+
+        $this->assertSame(0, StudentExamResult::count());
+        $this->assertSame(0, StudentExamSectionMark::count());
+    }
+
+    public function test_service_requires_a_mark_for_every_section(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+        $batch = $this->batch();
+        $exam = $this->examWithSections($batch);
+        $student = User::factory()->create(['role' => 'student']);
+
+        $partial = $this->marksFor($exam, 20);
+        unset($partial[$exam->sections->last()->id]); // drop one section
+
+        $this->expectException(ValidationException::class);
+        app(ExamGradingService::class)->saveStudentResult($exam, $student->id, $partial, $admin);
+    }
+
+    public function test_blocked_edit_leaves_section_marks_unchanged(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+        $batch = $this->batch();
+        $exam = $this->examWithSections($batch);
+        $student = User::factory()->create(['role' => 'student']);
+        $svc = app(ExamGradingService::class);
+
+        $result = $svc->saveStudentResult($exam, $student->id, $this->marksFor($exam, 20), $admin);
+        StudentCertificate::create(['student_id' => $student->id, 'student_exam_result_id' => $result->id,
+            'student_name' => 'X', 'level' => 'A1', 'completion_date' => '2026-12-20',
+            'certificate_number' => 'LGL-A1-2026-099', 'issued_by' => $admin->id, 'issued_at' => now()]);
+
+        $first = $exam->sections->first()->id;
+        $fail = $this->marksFor($exam, 20);
+        $fail[$first] = 5;
+
+        try {
+            $svc->saveStudentResult($exam, $student->id, $fail, $admin);
+            $this->fail('Expected a validation exception.');
+        } catch (ValidationException $e) {
+            // expected
+        }
+
+        $mark = $result->fresh()->sectionMarks()->where('exam_section_id', $first)->first();
+        $this->assertSame('20.00', $mark->marks_obtained);
+        $this->assertTrue($mark->passed);
     }
 }

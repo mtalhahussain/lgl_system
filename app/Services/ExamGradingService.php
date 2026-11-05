@@ -20,6 +20,16 @@ class ExamGradingService
     {
         $exam->loadMissing('sections');
 
+        if ($exam->sections->isEmpty()) {
+            throw ValidationException::withMessages([
+                'marks' => 'This exam has no sections to grade.',
+            ]);
+        }
+
+        // Validate every section and compute its pass once, rounding to 2dp to
+        // avoid float-boundary misclassification on decimal(…,2) values.
+        $computed = []; // section_id => [marks, passed]
+        $newOverall = true;
         foreach ($exam->sections as $section) {
             if (! array_key_exists($section->id, $sectionMarks)) {
                 throw ValidationException::withMessages([
@@ -27,44 +37,42 @@ class ExamGradingService
                 ]);
             }
             $value = $sectionMarks[$section->id];
-            if (! is_numeric($value) || $value < 0 || $value > (float) $section->max_marks) {
+            $marks = is_numeric($value) ? round((float) $value, 2) : null;
+            if ($marks === null || $marks < 0 || $marks > round((float) $section->max_marks, 2)) {
                 throw ValidationException::withMessages([
                     "marks.{$section->id}" => "{$section->name}: marks must be between 0 and {$section->max_marks}.",
                 ]);
             }
-        }
-
-        $newOverall = true;
-        foreach ($exam->sections as $section) {
-            if ((float) $sectionMarks[$section->id] < (float) $section->passing_marks) {
+            $passed = $marks >= round((float) $section->passing_marks, 2);
+            $computed[$section->id] = [$marks, $passed];
+            if (! $passed) {
                 $newOverall = false;
-                break;
             }
         }
 
-        $existing = StudentExamResult::where('batch_exam_id', $exam->id)
-            ->where('student_id', $studentId)->first();
+        return DB::transaction(function () use ($exam, $studentId, $actor, $newOverall, $computed) {
+            // Lock the existing result row so the guard's check and the write are atomic.
+            $existing = StudentExamResult::where('batch_exam_id', $exam->id)
+                ->where('student_id', $studentId)->lockForUpdate()->first();
 
-        if ($existing && $existing->overall_passed && ! $newOverall) {
-            $liveCert = $existing->certificate()->whereNull('revoked_at')->first();
-            if ($liveCert) {
-                throw ValidationException::withMessages([
-                    'marks' => "This result has certificate {$liveCert->certificate_number}. Revoke it before lowering the student below a pass.",
-                ]);
+            if ($existing && $existing->overall_passed && ! $newOverall) {
+                $liveCert = $existing->certificate()->whereNull('revoked_at')->first();
+                if ($liveCert) {
+                    throw ValidationException::withMessages([
+                        'marks' => "This result has certificate {$liveCert->certificate_number}. Revoke it before lowering the student below a pass.",
+                    ]);
+                }
             }
-        }
 
-        return DB::transaction(function () use ($exam, $studentId, $sectionMarks, $actor, $newOverall) {
             $result = StudentExamResult::updateOrCreate(
                 ['batch_exam_id' => $exam->id, 'student_id' => $studentId],
                 ['overall_passed' => $newOverall, 'graded_by' => $actor->id, 'graded_at' => now()],
             );
 
-            foreach ($exam->sections as $section) {
-                $marks = $sectionMarks[$section->id];
+            foreach ($computed as $sectionId => [$marks, $passed]) {
                 $result->sectionMarks()->updateOrCreate(
-                    ['exam_section_id' => $section->id],
-                    ['marks_obtained' => $marks, 'passed' => (float) $marks >= (float) $section->passing_marks],
+                    ['exam_section_id' => $sectionId],
+                    ['marks_obtained' => $marks, 'passed' => $passed],
                 );
             }
 

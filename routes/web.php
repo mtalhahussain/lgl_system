@@ -233,6 +233,8 @@ Route::middleware(['auth', EnsureActiveAccount::class])->group(function () {
         ->name('certificates.store')->middleware('role:admin');
     Route::get('/certificates/{certificate}/print', [CertificateController::class, 'print'])
         ->name('certificates.print')->middleware('role:admin,student');
+    Route::post('/certificates/{certificate}/revoke', [CertificateController::class, 'revoke'])
+        ->name('certificates.revoke')->middleware('role:admin');
 
     // Exam Routes
     Route::get('/exams', [ExamController::class, 'index'])

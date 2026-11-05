@@ -78,6 +78,15 @@ class CertificateController extends Controller
             }
         }
 
+        if (! empty($data['student_exam_result_id']) && ! empty($data['student_id'])) {
+            $linkedStudentId = StudentExamResult::whereKey($data['student_exam_result_id'])->value('student_id');
+            if ($linkedStudentId !== null && (int) $linkedStudentId !== (int) $data['student_id']) {
+                throw ValidationException::withMessages([
+                    'student_exam_result_id' => 'The selected exam result does not belong to this student.',
+                ]);
+            }
+        }
+
         // Retry on the rare race where two issues compute the same number: the
         // unique index rejects the loser, which then regenerates and retries.
         $cert = null;
@@ -116,8 +125,28 @@ class CertificateController extends Controller
     public function print(StudentCertificate $certificate)
     {
         $user = auth()->user();
-        abort_if($user->isStudent() && $certificate->student_id !== $user->id, 403);
+        abort_if($user->isStudent() && (int) $certificate->student_id !== (int) $user->id, 403);
 
         return view('certificates.print', ['cert' => $certificate]);
+    }
+
+    public function revoke(Request $request, StudentCertificate $certificate)
+    {
+        if ($certificate->isRevoked()) {
+            throw ValidationException::withMessages([
+                'reason' => 'This certificate is already revoked.',
+            ]);
+        }
+
+        $data = $request->validate(['reason' => 'required|string|min:5|max:1000']);
+
+        DB::transaction(function () use ($certificate, $data, $request) {
+            $certificate->update(['revoked_at' => now(), 'revoked_by' => $request->user()->id,
+                'revoke_reason' => $data['reason']]);
+            AuditLog::create(['actor_id' => $request->user()->id, 'action' => 'certificate.revoked',
+                'subject_type' => 'student_certificate', 'subject_id' => $certificate->id, 'changes' => []]);
+        });
+
+        return back()->with('success', 'Certificate '.$certificate->certificate_number.' revoked.');
     }
 }

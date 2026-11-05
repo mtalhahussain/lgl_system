@@ -61,8 +61,27 @@
                 <td>{{ $certificate->level }}</td>
                 <td>{{ $certificate->completion_date->format('d M Y') }}</td>
                 <td>{{ $certificate->issued_at?->format('d M Y') }}</td>
-                <td class="d-print-none"><a class="btn btn-outline-secondary btn-sm" href="{{ route('certificates.print', $certificate) }}" target="_blank" rel="noopener"><i class="fas fa-print me-1" aria-hidden="true"></i>Reprint</a></td>
+                <td class="d-print-none text-nowrap">
+                    <a class="btn btn-outline-secondary btn-sm" href="{{ route('certificates.print', $certificate) }}" target="_blank" rel="noopener"><i class="fas fa-print me-1" aria-hidden="true"></i>Reprint</a>
+                    @if($certificate->isRevoked())
+                        <span class="badge bg-danger ms-1">Revoked</span>
+                    @else
+                        <button type="button" class="btn btn-outline-danger btn-sm" data-bs-toggle="collapse" data-bs-target="#revoke-{{ $certificate->id }}">Revoke</button>
+                    @endif
+                </td>
             </tr>
+            @unless($certificate->isRevoked())
+            <tr class="collapse d-print-none" id="revoke-{{ $certificate->id }}">
+                <td colspan="6">
+                    <form method="post" action="{{ route('certificates.revoke', $certificate) }}" class="d-flex gap-2 align-items-start">
+                        @csrf
+                        <input class="form-control form-control-sm" name="reason" placeholder="Reason for revoking (min 5 chars)" maxlength="1000" required>
+                        <button class="btn btn-danger btn-sm" type="submit">Confirm revoke</button>
+                    </form>
+                    @error('reason')<div class="text-danger small mt-1">{{ $message }}</div>@enderror
+                </td>
+            </tr>
+            @endunless
         @empty
             <tr><td colspan="6" class="empty-state">No certificates issued yet.</td></tr>
         @endforelse

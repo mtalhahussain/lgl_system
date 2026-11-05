@@ -2,12 +2,16 @@
 
 namespace Tests\Feature;
 
+use App\Models\AuditLog;
 use App\Models\Batch;
 use App\Models\BatchExam;
 use App\Models\Course;
+use App\Models\StudentCertificate;
 use App\Models\StudentExamResult;
 use App\Models\User;
+use App\Services\ExamGradingService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Validation\ValidationException;
 use Tests\TestCase;
 
 class BatchExamTest extends TestCase
@@ -91,5 +95,106 @@ class BatchExamTest extends TestCase
         }
 
         $this->assertFalse($result->fresh()->load('sectionMarks', 'batchExam.sections')->computeOverallPassed());
+    }
+
+    /** @return array<int,float> section_id => marks */
+    private function marksFor(BatchExam $exam, float $value): array
+    {
+        return $exam->sections->mapWithKeys(fn ($s) => [$s->id => $value])->all();
+    }
+
+    public function test_service_saves_marks_computes_pass_and_audits(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+        $batch = $this->batch();
+        $exam = $this->examWithSections($batch);
+        $student = User::factory()->create(['role' => 'student']);
+
+        $result = app(ExamGradingService::class)->saveStudentResult($exam, $student->id, $this->marksFor($exam, 20), $admin);
+
+        $this->assertTrue($result->overall_passed);
+        $this->assertSame(4, $result->sectionMarks()->count());
+        $this->assertSame(4, $result->sectionMarks()->where('passed', true)->count());
+        $this->assertSame($admin->id, $result->graded_by);
+        $this->assertSame(1, AuditLog::where('action', 'exam.result_graded')
+            ->where('subject_type', 'student_exam_result')->where('subject_id', $result->id)->count());
+    }
+
+    public function test_service_rejects_marks_outside_range(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+        $batch = $this->batch();
+        $exam = $this->examWithSections($batch);
+        $student = User::factory()->create(['role' => 'student']);
+
+        $over = $this->marksFor($exam, 20);
+        $over[$exam->sections->first()->id] = 999;
+
+        $this->expectException(ValidationException::class);
+        app(ExamGradingService::class)->saveStudentResult($exam, $student->id, $over, $admin);
+    }
+
+    public function test_service_is_idempotent_and_updates_on_resave(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+        $batch = $this->batch();
+        $exam = $this->examWithSections($batch);
+        $student = User::factory()->create(['role' => 'student']);
+        $svc = app(ExamGradingService::class);
+
+        $svc->saveStudentResult($exam, $student->id, $this->marksFor($exam, 20), $admin);
+        $svc->saveStudentResult($exam, $student->id, $this->marksFor($exam, 22), $admin);
+
+        $this->assertSame(1, StudentExamResult::where('batch_exam_id', $exam->id)->where('student_id', $student->id)->count());
+        $result = StudentExamResult::where('batch_exam_id', $exam->id)->where('student_id', $student->id)->first();
+        $this->assertSame('22.00', $result->sectionMarks->first()->marks_obtained);
+    }
+
+    public function test_service_blocks_pass_to_fail_edit_while_certificate_is_live(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+        $batch = $this->batch();
+        $exam = $this->examWithSections($batch);
+        $student = User::factory()->create(['role' => 'student']);
+        $svc = app(ExamGradingService::class);
+
+        $result = $svc->saveStudentResult($exam, $student->id, $this->marksFor($exam, 20), $admin);
+
+        StudentCertificate::create(['student_id' => $student->id, 'student_exam_result_id' => $result->id,
+            'student_name' => 'X', 'level' => 'A1', 'completion_date' => '2026-12-20',
+            'certificate_number' => 'LGL-A1-2026-050', 'issued_by' => $admin->id, 'issued_at' => now()]);
+
+        $fail = $this->marksFor($exam, 20);
+        $fail[$exam->sections->first()->id] = 5;
+
+        try {
+            $svc->saveStudentResult($exam, $student->id, $fail, $admin);
+            $this->fail('Expected a validation exception.');
+        } catch (ValidationException $e) {
+            $this->assertStringContainsString('LGL-A1-2026-050', $e->getMessage());
+        }
+
+        $this->assertTrue($result->fresh()->overall_passed, 'Result must be unchanged after a blocked edit.');
+    }
+
+    public function test_service_allows_pass_to_fail_edit_after_certificate_revoked(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+        $batch = $this->batch();
+        $exam = $this->examWithSections($batch);
+        $student = User::factory()->create(['role' => 'student']);
+        $svc = app(ExamGradingService::class);
+
+        $result = $svc->saveStudentResult($exam, $student->id, $this->marksFor($exam, 20), $admin);
+        StudentCertificate::create(['student_id' => $student->id, 'student_exam_result_id' => $result->id,
+            'student_name' => 'X', 'level' => 'A1', 'completion_date' => '2026-12-20',
+            'certificate_number' => 'LGL-A1-2026-051', 'issued_by' => $admin->id, 'issued_at' => now(),
+            'revoked_at' => now(), 'revoked_by' => $admin->id, 'revoke_reason' => 'result correction']);
+
+        $fail = $this->marksFor($exam, 20);
+        $fail[$exam->sections->first()->id] = 5;
+        $svc->saveStudentResult($exam, $student->id, $fail, $admin);
+
+        $this->assertFalse($result->fresh()->overall_passed);
     }
 }

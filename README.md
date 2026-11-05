@@ -21,7 +21,7 @@ Use an existing preview at http://127.0.0.1:8791 if already running. Local demo 
 
 These match the current seeder and checked local demo accounts. Editing the seeder alone does not update existing accounts.
 
-The dashboard and login load compiled Tailwind/Vite assets. Node 22 is used locally; build assets before serving or packaging a release. Bootstrap remains for existing forms, tables and navigation behavior. Tailwind utilities use the `tw:` prefix without its reset to avoid conflicts.
+The three role portals and login use a German flag theme: black navigation, red primary actions and gold accents on white surfaces. The dashboard and login load compiled Tailwind/Vite assets. Node 22 is used locally; build assets before serving or packaging a release. Bootstrap remains for existing forms, tables and navigation behavior. Tailwind utilities use the `tw:` prefix without its reset to avoid conflicts.
 
 Demo seeders refuse production. Never use these accounts for production provisioning.
 

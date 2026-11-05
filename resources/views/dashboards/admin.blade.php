@@ -7,13 +7,13 @@
 </div>
 <div class="tw:grid tw:grid-cols-1 tw:gap-4 tw:sm:grid-cols-2 tw:xl:grid-cols-4 tw:mb-6">
     @foreach($stats as $label => $value)
-        <div class="panel metric"><div><div class="metric-label">{{ $label }}</div><div class="metric-value">{{ number_format($value) }}</div><div class="metric-note">Currently active</div></div><span class="metric-icon" style="color:{{ ['#7856ef','#24abc5','#e7974a'][$loop->index % 3] }}"><i class="fas {{ ['fa-user-graduate','fa-address-book','fa-layer-group'][$loop->index % 3] }}" aria-hidden="true"></i></span></div>
+        <div class="panel metric"><div><div class="metric-label">{{ $label }}</div><div class="metric-value">{{ number_format($value) }}</div><div class="metric-note">Currently active</div></div><span class="metric-icon" style="color:{{ ['var(--accent)','var(--navy)','var(--gold-ink)'][$loop->index % 3] }}"><i class="fas {{ ['fa-user-graduate','fa-address-book','fa-layer-group'][$loop->index % 3] }}" aria-hidden="true"></i></span></div>
     @endforeach
     <div class="panel metric"><div><div class="metric-label">This month collected</div><div class="metric-value" style="font-size:23px">{{ $finance ? currency_format($finance['This month net collected']) : 'Unavailable' }}</div><div class="metric-note">Net of period reversals</div></div><span class="metric-icon" style="color:#24b7a0"><i class="fas fa-wallet" aria-hidden="true"></i></span></div>
 </div>
 @if($reminders['starting']->isNotEmpty() || $reminders['ending']->isNotEmpty())
-<section class="panel tw:mb-6" aria-labelledby="batch-reminders-heading" style="border-left:4px solid #e7974a">
-    <div class="panel-heading"><h2 id="batch-reminders-heading"><i class="fas fa-bell me-2" style="color:#e7974a" aria-hidden="true"></i>Batch reminders</h2><span class="page-subtitle">Next 2 days · status updates automatically</span></div>
+<section class="panel tw:mb-6" aria-labelledby="batch-reminders-heading" style="border-left:4px solid var(--gold-ink)">
+    <div class="panel-heading"><h2 id="batch-reminders-heading"><i class="fas fa-bell me-2" style="color:var(--gold-ink)" aria-hidden="true"></i>Batch reminders</h2><span class="page-subtitle">Next 2 days · status updates automatically</span></div>
     <div class="tw:grid tw:grid-cols-1 tw:gap-5 tw:md:grid-cols-2 tw:p-5">
         @foreach(['starting' => ['Starting soon', 'start_date', 'Starts'], 'ending' => ['Completing soon', 'end_date', 'Ends']] as $key => [$title, $column, $verb])
             <div>
@@ -32,7 +32,7 @@
 @endif
 <div class="tw:grid tw:grid-cols-1 tw:gap-5 tw:xl:grid-cols-3 tw:mb-6">
     <section class="panel tw:xl:col-span-2">
-        <div class="panel-heading"><h2>Recent admissions</h2><a href="{{ route('enrollments.index') }}" style="font-size:11px;color:#7956df">View all <i class="fas fa-arrow-right ms-1" aria-hidden="true"></i></a></div>
+        <div class="panel-heading"><h2>Recent admissions</h2><a href="{{ route('enrollments.index') }}" style="font-size:11px;color:var(--accent)">View all <i class="fas fa-arrow-right ms-1" aria-hidden="true"></i></a></div>
         <div class="table-responsive"><table class="table"><thead><tr><th>STUDENT</th><th>BATCH</th><th>STATUS</th><th></th></tr></thead><tbody>
             @forelse($recent as $row)
                 <tr><td><div class="person-cell"><span class="user-avatar">{{ mb_substr($row->student->name, 0, 1) }}</span><div><strong>{{ $row->student->name }}</strong><small>Enrollment #{{ $row->id }}</small></div></div></td><td>{{ $row->batch->name }}</td><td><span class="status-pill">{{ $row->status }}</span></td><td><a href="{{ route('enrollments.show', $row) }}" aria-label="View enrollment for {{ $row->student->name }}" style="color:#8b98ac"><i class="fas fa-arrow-right" aria-hidden="true"></i></a></td></tr>

@@ -107,7 +107,7 @@
             </section>
             @if($isAdmin)
                 <section class="panel" aria-labelledby="pay-heading">
-                    <div class="panel-heading"><h2 id="pay-heading">Recent pay</h2><a href="{{ route('payroll.index', ['teacher_id' => $person->id]) }}" style="font-size:11px;color:#7956df">View all <i class="fas fa-arrow-right ms-1" aria-hidden="true"></i></a></div>
+                    <div class="panel-heading"><h2 id="pay-heading">Recent pay</h2><a href="{{ route('payroll.index', ['teacher_id' => $person->id]) }}" style="font-size:11px;color:var(--accent)">View all <i class="fas fa-arrow-right ms-1" aria-hidden="true"></i></a></div>
                     <div class="table-responsive"><table class="table list-table">
                         <thead><tr><th scope="col">For</th><th scope="col" class="num">Amount</th><th scope="col" class="num">Outstanding</th><th scope="col">Status</th></tr></thead>
                         <tbody>

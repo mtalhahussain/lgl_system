@@ -48,7 +48,7 @@
         </table></div>
     </section>
     <section class="panel" aria-labelledby="upcoming-heading">
-        <div class="panel-heading"><h2 id="upcoming-heading">Upcoming sessions</h2><a href="{{ route('class-sessions.index', ['batch_id' => $batch->id]) }}" style="font-size:11px;color:#7956df">All <i class="fas fa-arrow-right ms-1" aria-hidden="true"></i></a></div>
+        <div class="panel-heading"><h2 id="upcoming-heading">Upcoming sessions</h2><a href="{{ route('class-sessions.index', ['batch_id' => $batch->id]) }}" style="font-size:11px;color:var(--accent)">All <i class="fas fa-arrow-right ms-1" aria-hidden="true"></i></a></div>
         @php $sched = $batch->orderedSchedules(); @endphp
         @if($sched->isNotEmpty())
             <div class="px-4 pt-3">

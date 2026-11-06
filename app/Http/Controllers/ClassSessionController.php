@@ -390,6 +390,13 @@ class ClassSessionController extends Controller
 
         app(ClassTeachingService::class)->record($classSession, 'taken');
 
+        app(\App\Services\NotificationService::class)->toAdmins([
+            'type' => 'class', 'icon' => 'fa-chalkboard-user', 'level' => 'success',
+            'title' => 'Class completed',
+            'body' => ($classSession->batch->name ?? 'A batch').' class on '.($classSession->session_date?->format('d.m.Y') ?? '').' was taken.',
+            'url' => route('class-sessions.show', $classSession),
+        ], auth()->id());
+
         return redirect()->route('class-sessions.show', $classSession)
             ->with('success', 'Class session ended!');
     }
@@ -399,6 +406,22 @@ class ClassSessionController extends Controller
         $this->authorize('view', $classSession->batch);
         $data = $request->validate(['reason' => 'required|string|min:5|max:1000']);
         app(ClassTeachingService::class)->record($classSession, 'missed', $data['reason']);
+
+        $notifier = app(\App\Services\NotificationService::class);
+        $when = $classSession->session_date?->format('d.m.Y') ?? '';
+        $batchName = $classSession->batch->name ?? 'your batch';
+        $notifier->toBatchStudents($classSession->batch_id, [
+            'type' => 'class', 'icon' => 'fa-calendar-xmark', 'level' => 'warning',
+            'title' => 'Class missed',
+            'body' => "The {$batchName} class on {$when} was missed. A makeup will be scheduled.",
+            'url' => route('class-sessions.show', $classSession),
+        ]);
+        $notifier->toAdmins([
+            'type' => 'class', 'icon' => 'fa-calendar-xmark', 'level' => 'warning',
+            'title' => 'Class marked missed',
+            'body' => "{$batchName} class on {$when} was marked missed.",
+            'url' => route('class-sessions.show', $classSession),
+        ], auth()->id());
 
         return redirect()->route('class-sessions.show', $classSession)->with('success', 'Class recorded as missed. Schedule a linked makeup to cover it.');
     }

@@ -17,6 +17,21 @@ class PaymentController extends Controller
         $payment = $service->pay($enrollment->id, (string) $data['amount'], $data['method'],
             $data['submission_key'], $request->user(), $data['reference'] ?? null);
 
+        $notifier = app(\App\Services\NotificationService::class);
+        $amount = currency_format($data['amount']);
+        $notifier->toUser($enrollment->student_id, [
+            'type' => 'payment', 'icon' => 'fa-money-bill-wave', 'level' => 'success',
+            'title' => 'Payment received',
+            'body' => "We received your fee payment of {$amount}.",
+            'url' => route('payments.show', $payment),
+        ]);
+        $notifier->toAdmins([
+            'type' => 'payment', 'icon' => 'fa-money-bill-wave', 'level' => 'info',
+            'title' => 'Fee payment recorded',
+            'body' => ($enrollment->student->name ?? 'A student')." paid {$amount}.",
+            'url' => route('payments.show', $payment),
+        ], $request->user()->id);
+
         return redirect()->route('payments.show', $payment)->with('success', 'Payment recorded.');
     }
 

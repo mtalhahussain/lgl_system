@@ -1,5 +1,5 @@
 @php
-    $templatePath = storage_path('app/public/settings/template.png');
+    $templatePath = public_path('template.png');
     $templateSrc = null;
     if (is_file($templatePath)) {
         $templateSrc = 'data:image/png;base64,'.base64_encode(file_get_contents($templatePath));

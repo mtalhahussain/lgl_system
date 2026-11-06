@@ -114,6 +114,15 @@ class PayrollController extends Controller
             'submission_key' => 'required|string|min:16|max:64']);
         $payout = $service->pay($due->id, (string) $data['amount'], $data['method'], $data['submission_key'], $request->user(), $data['reference'] ?? null);
 
+        if ($due->teacher_id) {
+            app(\App\Services\NotificationService::class)->toUser($due->teacher_id, [
+                'type' => 'payout', 'icon' => 'fa-hand-holding-dollar', 'level' => 'success',
+                'title' => 'Salary paid',
+                'body' => 'A payout of '.currency_format($data['amount']).' has been recorded to you.',
+                'url' => route('payroll.slip', $payout),
+            ]);
+        }
+
         return redirect()->route('payroll.slip', $payout)->with('success', 'Payout recorded.');
     }
 

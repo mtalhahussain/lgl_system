@@ -134,7 +134,9 @@ class EnrollmentController extends Controller
                 $validated['installments'] ?? 1,
                 $validated['schedule'] ?? null
             );
-            
+
+            $this->notifyEnrollment($enrollment);
+
             return redirect()->route('enrollments.index')
                 ->with('success', 'Student enrolled successfully!');
             
@@ -143,6 +145,40 @@ class EnrollmentController extends Controller
                 ->withInput()
                 ->withErrors(['error' => $e->getMessage()]);
         }
+    }
+
+    /** Notify the student, the batch teacher and Admins of a new enrollment. */
+    private function notifyEnrollment(Enrollment $enrollment): void
+    {
+        $notifier = app(\App\Services\NotificationService::class);
+        $enrollment->loadMissing('batch.course', 'batch.teacher', 'student');
+        $batch = $enrollment->batch;
+        $course = $batch?->course;
+        $courseName = $course ? trim($course->name.' '.($course->level ?? '')) : 'a course';
+        $batchName = $batch->name ?? '';
+
+        $notifier->toUser($enrollment->student_id, [
+            'type' => 'enrollment', 'icon' => 'fa-user-graduate', 'level' => 'success',
+            'title' => 'Enrollment confirmed',
+            'body' => "You are enrolled in {$courseName} ({$batchName}).",
+            'url' => route('enrollments.show', $enrollment),
+        ]);
+
+        if ($batch?->teacher_id) {
+            $notifier->toUser($batch->teacher_id, [
+                'type' => 'enrollment', 'icon' => 'fa-user-plus', 'level' => 'info',
+                'title' => 'New student in your batch',
+                'body' => ($enrollment->student->name ?? 'A student')." joined {$batchName}.",
+                'url' => route('enrollments.show', $enrollment),
+            ]);
+        }
+
+        $notifier->toAdmins([
+            'type' => 'enrollment', 'icon' => 'fa-user-graduate', 'level' => 'info',
+            'title' => 'New enrollment',
+            'body' => ($enrollment->student->name ?? 'A student')." enrolled in {$courseName} ({$batchName}).",
+            'url' => route('enrollments.show', $enrollment),
+        ], auth()->id());
     }
 
     public function transfer(Request $request, Enrollment $enrollment)

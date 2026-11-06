@@ -127,6 +127,22 @@ class CertificateController extends Controller
             }
         }
 
+        if ($cert->student_id) {
+            $notifier = app(\App\Services\NotificationService::class);
+            $notifier->toUser($cert->student_id, [
+                'type' => 'certificate', 'icon' => 'fa-certificate', 'level' => 'success',
+                'title' => 'Certificate issued',
+                'body' => "Your {$cert->level} certificate ({$cert->certificate_number}) has been issued.",
+                'url' => route('certificates.print', $cert),
+            ]);
+            $notifier->toAdmins([
+                'type' => 'certificate', 'icon' => 'fa-certificate', 'level' => 'info',
+                'title' => 'Certificate issued',
+                'body' => ($cert->student_name ?? 'A student')." received a {$cert->level} certificate.",
+                'url' => route('certificates.print', $cert),
+            ], $request->user()->id);
+        }
+
         return redirect()->route('certificates.print', $cert)
             ->with('success', 'Certificate '.$cert->certificate_number.' issued.');
     }

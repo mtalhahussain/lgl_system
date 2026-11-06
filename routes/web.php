@@ -14,6 +14,7 @@ use App\Http\Controllers\EnrollmentPackageController;
 use App\Http\Controllers\ExamController;
 use App\Http\Controllers\FeeController;
 use App\Http\Controllers\InstallmentController;
+use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\PayrollController;
 use App\Http\Controllers\ProfileController;
@@ -37,6 +38,16 @@ Route::middleware('guest')->group(function () {
 Route::middleware(['auth', EnsureActiveAccount::class])->group(function () {
 
     Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
+
+    // Notifications (all authenticated roles)
+    Route::get('/notifications/feed', [NotificationController::class, 'feed'])->name('notifications.feed');
+    Route::get('/notifications', [NotificationController::class, 'index'])->name('notifications.index');
+    Route::post('/notifications/{id}/read', [NotificationController::class, 'markRead'])->name('notifications.read');
+    Route::post('/notifications/read-all', [NotificationController::class, 'markAllRead'])->name('notifications.readAll');
+    Route::delete('/notifications/{id}', [NotificationController::class, 'destroy'])->name('notifications.destroy');
+    Route::get('/announcements/new', [NotificationController::class, 'createAnnouncement'])->name('notifications.announce')->middleware('role:admin');
+    Route::post('/announcements', [NotificationController::class, 'sendAnnouncement'])->name('notifications.announce.send')->middleware('role:admin');
+
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::put('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::get('/accounts', [AccountController::class, 'index'])->name('accounts.index')->middleware('role:admin');

@@ -29,7 +29,8 @@
                 <i class="fas fa-user-circle" aria-hidden="true"></i>
             </button>
             <div class="collapse navbar-collapse" id="navbarNav">
-                <div class="navbar-nav ms-auto">
+                <div class="navbar-nav ms-auto align-items-center">
+                    @include('partials.notification-bell')
                     <div class="nav-item dropdown">
                         <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
                             <span class="user-avatar">{{ mb_substr(auth()->user()->name, 0, 1) }}</span><span class="account-label">{{ auth()->user()->name }}<small>{{ ucfirst(auth()->user()->role) }} workspace</small></span>

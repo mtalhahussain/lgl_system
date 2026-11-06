@@ -66,6 +66,21 @@ class ExamController extends Controller
             return $exam;
         });
 
+        $notifier = app(\App\Services\NotificationService::class);
+        $examDate = $exam->exam_date instanceof \Carbon\Carbon ? $exam->exam_date->format('d.m.Y') : (string) $exam->exam_date;
+        $notifier->toBatchStudents($exam->batch_id, [
+            'type' => 'exam', 'icon' => 'fa-file-pen', 'level' => 'info',
+            'title' => 'Exam scheduled',
+            'body' => "{$exam->name} is scheduled for {$examDate}.",
+            'url' => route('exams.show', $exam),
+        ]);
+        $notifier->toAdmins([
+            'type' => 'exam', 'icon' => 'fa-file-pen', 'level' => 'info',
+            'title' => 'Exam created',
+            'body' => "{$exam->name} scheduled for {$examDate}.",
+            'url' => route('exams.show', $exam),
+        ], auth()->id());
+
         return redirect()->route('exams.show', $exam)->with('success', 'Exam created.');
     }
 
@@ -139,6 +154,20 @@ class ExamController extends Controller
 
         $marks = collect($validated['marks'])->mapWithKeys(fn ($v, $k) => [(int) $k => $v])->all();
         $service->saveStudentResult($exam, (int) $validated['student_id'], $marks, $request->user());
+
+        $notifier = app(\App\Services\NotificationService::class);
+        $notifier->toUser((int) $validated['student_id'], [
+            'type' => 'exam_result', 'icon' => 'fa-file-circle-check', 'level' => 'success',
+            'title' => 'Exam result published',
+            'body' => "Your result for {$exam->name} is available.",
+            'url' => route('student.results'),
+        ]);
+        $notifier->toAdmins([
+            'type' => 'exam_result', 'icon' => 'fa-file-circle-check', 'level' => 'info',
+            'title' => 'Exam result recorded',
+            'body' => "A result for {$exam->name} was recorded.",
+            'url' => route('exams.show', $exam),
+        ], $request->user()->id);
 
         return back()->with('success', 'Result saved.');
     }

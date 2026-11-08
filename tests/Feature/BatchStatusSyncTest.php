@@ -126,7 +126,7 @@ class BatchStatusSyncTest extends TestCase
     {
         $this->actingAs($this->admin);
         $data = ['name' => 'Morning', 'course_id' => $this->course->id, 'teacher_id' => $this->teacher->id,
-            'start_date' => today()->addDays(5)->toDateString(), 'max_students' => 10,
+            'start_date' => today()->addDays(5)->toDateString(), 'end_date' => today()->addWeeks(12)->toDateString(), 'max_students' => 10,
             'status' => 'auto', 'meeting_platform' => 'in_person'];
         $this->post('/batches', $data)->assertRedirect('/batches');
         $batch = Batch::sole();

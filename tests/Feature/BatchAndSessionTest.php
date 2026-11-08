@@ -31,7 +31,7 @@ class BatchAndSessionTest extends TestCase
     private function batchData(): array
     {
         return ['name' => 'Morning', 'teacher_id' => $this->teacher->id, 'course_id' => $this->course->id,
-            'start_date' => today()->toDateString(), 'max_students' => 10,
+            'start_date' => today()->toDateString(), 'end_date' => today()->addWeeks(12)->toDateString(), 'max_students' => 10,
             'status' => 'ongoing', 'meeting_platform' => 'in_person'];
     }
 
@@ -53,6 +53,26 @@ class BatchAndSessionTest extends TestCase
         $this->put('/batches/'.$batch->id, array_merge($this->batchData(), ['status' => 'auto',
             'start_date' => today()->subMonth()->toDateString(), 'end_date' => today()->subDay()->toDateString()]))->assertRedirect('/batches/'.$batch->id);
         $this->assertSame('completed', $batch->fresh()->status);
+    }
+
+    public function test_batch_dates_are_required_and_end_cannot_precede_start(): void
+    {
+        $data = array_replace($this->batchData(), ['start_date' => '2026-11-10', 'end_date' => '2026-11-10']);
+        foreach ([null, '', '2026-10-31', '2026-11-09', '2025-12-31', 'invalid'] as $end) {
+            $this->postJson('/batches', array_replace($data, ['end_date' => $end]))
+                ->assertUnprocessable()->assertJsonValidationErrors('end_date');
+        }
+        $this->postJson('/batches', array_replace($data, ['start_date' => null]))
+            ->assertUnprocessable()->assertJsonValidationErrors('start_date');
+        $this->assertDatabaseCount('batches', 0);
+        $this->post('/batches', $data)->assertRedirect('/batches');
+        $batch = Batch::sole();
+        $this->putJson('/batches/'.$batch->id, array_replace($data, ['end_date' => null]))
+            ->assertUnprocessable()->assertJsonValidationErrors('end_date');
+        $this->putJson('/batches/'.$batch->id, array_replace($data, ['end_date' => '2026-10-31']))
+            ->assertUnprocessable()->assertJsonValidationErrors('end_date');
+        $this->put('/batches/'.$batch->id, array_replace($data, ['end_date' => '2027-01-05']))
+            ->assertRedirect('/batches/'.$batch->id);
     }
 
     public function test_batch_rejects_non_teacher_and_inactive_teacher(): void

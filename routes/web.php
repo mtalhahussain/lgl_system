@@ -137,6 +137,8 @@ Route::middleware(['auth', EnsureActiveAccount::class])->group(function () {
         ->middleware('role:admin')->only(['index', 'create', 'store', 'show']);
     Route::post('/enrollments/{enrollment}/transfer', [EnrollmentController::class, 'transfer'])
         ->name('enrollments.transfer')->middleware('role:admin');
+    Route::patch('/enrollments/{enrollment}/correct-batch', [EnrollmentController::class, 'correctBatch'])
+        ->name('enrollments.correct-batch')->middleware('role:admin');
     Route::patch('/enrollments/{enrollment}/withdraw', [EnrollmentController::class, 'drop'])
         ->name('enrollments.withdraw')->middleware('role:admin');
     Route::patch('/enrollments/{enrollment}/discount', [EnrollmentController::class, 'updateDiscount'])

@@ -60,7 +60,7 @@ class ReportsController extends Controller
             return view('admin.reports.enrollments', ['rows' => $list->paginate(25), 'kpis' => $kpis, 'filters' => $reportFilters]);
         }
         abort_unless($type === 'dues', 404);
-        $list = ListQuery::for(FeeInstallment::outstanding()->with(['enrollment.student:id,name', 'enrollment.batch:id,name', 'allocations.payment.reversal'])
+        $list = ListQuery::for(FeeInstallment::outstanding()->with(['enrollment.student:id,name', 'enrollment.batch:id,name,course_id', 'enrollment.batch.course:id,name,level', 'allocations.payment.reversal'])
             ->when(! empty($filters['start_date']), fn ($query) => $query->whereDate('due_date', '>=', $filters['start_date']))
             ->when(! empty($filters['end_date']), fn ($query) => $query->whereDate('due_date', '<=', $filters['end_date']))
             ->when(! empty($filters['batch_id']), fn ($query) => $query->whereHas('enrollment', fn ($enrollment) => $enrollment->where('batch_id', $filters['batch_id'])))

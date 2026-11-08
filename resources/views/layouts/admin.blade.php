@@ -126,6 +126,12 @@
                         @if(auth()->user()->isAdmin())
                         <!-- Teacher Management -->
                         <li class="nav-item">
+                            <a class="nav-link {{ request()->is('enrollments*', 'enrollment-packages*') ? 'active' : '' }}"
+                               href="{{ route('enrollments.index') }}">
+                                <i class="fas fa-user-plus me-2" aria-hidden="true"></i>Enrollments
+                            </a>
+                        </li>
+                        <li class="nav-item">
                             <a class="nav-link {{ request()->is('teachers*') ? 'active' : '' }}" 
                                href="{{ url('/teachers') }}">
                                 <i class="fas fa-chalkboard-teacher me-2"></i>Teachers

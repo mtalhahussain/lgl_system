@@ -45,6 +45,78 @@ class EnrollmentIntegrityTest extends TestCase
         $this->get('/enrollments/'.$enrollment->id)->assertOk();
     }
 
+    public function test_admin_can_correct_unpaid_batch_with_reason_and_preserved_agreement(): void
+    {
+        $source = app(EnrollmentService::class)->enrollStudent($this->student->id, $this->batch->id, 10, 3);
+        $target = $this->batch->replicate();
+        $target->name = 'Evening';
+        $target->save();
+        $schedule = $source->feeInstallments()->orderBy('id')->get(['id', 'amount', 'due_date'])->toArray();
+        $this->get('/enrollments/'.$source->id)->assertOk()->assertSee('Correct batch');
+        $payload = ['new_batch_id' => $target->id, 'reason' => 'Wrong batch selected'];
+        $this->patchJson('/enrollments/'.$source->id.'/correct-batch', array_replace($payload, ['reason' => '']))
+            ->assertUnprocessable()->assertJsonValidationErrors('reason');
+        $this->patch('/enrollments/'.$source->id.'/correct-batch', $payload)->assertRedirect();
+        $corrected = Enrollment::where('transferred_from_enrollment_id', $source->id)->sole();
+        $this->assertSame($target->id, $corrected->batch_id);
+        $this->assertSame($source->total_fee, $corrected->total_fee);
+        $this->assertSame($source->discount_amount, $corrected->discount_amount);
+        $this->assertTrue($source->enrollment_date->equalTo($corrected->enrollment_date));
+        $this->assertSame($schedule, $corrected->feeInstallments()->orderBy('id')->get(['id', 'amount', 'due_date'])->toArray());
+        $this->assertSame('transferred', $source->fresh()->status);
+        $this->assertDatabaseHas('audit_logs', ['action' => 'enrollment.batch_corrected', 'reason' => $payload['reason']]);
+        $this->patchJson('/enrollments/'.$source->id.'/correct-batch', $payload)->assertUnprocessable();
+        $this->assertDatabaseCount('enrollments', 2);
+    }
+
+    public function test_batch_correction_rejects_payment_attendance_full_and_other_course_targets(): void
+    {
+        $source = app(EnrollmentService::class)->enrollStudent($this->student->id, $this->batch->id);
+        $target = $this->batch->replicate();
+        $target->save();
+        $url = '/enrollments/'.$source->id.'/correct-batch';
+        $payload = ['new_batch_id' => $target->id, 'reason' => 'Wrong batch selected'];
+        $this->actingAs($this->student)->patchJson($url, $payload)->assertForbidden();
+        $this->actingAs(User::factory()->create(['role' => 'teacher', 'is_active' => true]))
+            ->patchJson($url, $payload)->assertForbidden();
+        $this->actingAs(User::where('role', 'admin')->first());
+        $target->update(['max_students' => 0]);
+        $this->patchJson($url, $payload)->assertUnprocessable();
+        $target->update(['max_students' => 1]);
+        $otherCourse = $this->batch->course->replicate();
+        $otherCourse->level = 'A2';
+        $otherCourse->save();
+        $target->update(['course_id' => $otherCourse->id]);
+        $this->patchJson($url, $payload)->assertUnprocessable();
+        $target->update(['course_id' => $this->batch->course_id]);
+        $session = \App\Models\ClassSession::create(['batch_id' => $this->batch->id, 'session_date' => today(),
+            'start_time' => '09:00', 'end_time' => '10:00', 'topic' => 'Lesson', 'status' => 'scheduled']);
+        \App\Models\Attendance::create(['class_session_id' => $session->id, 'student_id' => $this->student->id, 'status' => 'present']);
+        $this->patchJson($url, $payload)->assertUnprocessable();
+        $source->update(['paid_amount' => '1.00']);
+        $this->patchJson($url, $payload)->assertUnprocessable();
+        $this->assertSame('active', $source->fresh()->status);
+        $this->assertDatabaseCount('enrollments', 1);
+        $this->assertDatabaseMissing('audit_logs', ['action' => 'enrollment.batch_corrected']);
+    }
+
+    public function test_batch_correction_blocks_posted_and_reversed_payments(): void
+    {
+        $source = app(EnrollmentService::class)->enrollStudent($this->student->id, $this->batch->id);
+        $target = $this->batch->replicate();
+        $target->save();
+        $actor = User::where('role', 'admin')->first();
+        $payments = app(\App\Services\PaymentService::class);
+        $payment = $payments->pay($source->id, '1.00', 'cash', (string) \Illuminate\Support\Str::uuid(), $actor);
+        $payload = ['new_batch_id' => $target->id, 'reason' => 'Wrong batch selected'];
+        $this->patchJson('/enrollments/'.$source->id.'/correct-batch', $payload)->assertUnprocessable();
+        $payments->reverse($payment, $actor, 'Payment recorded by mistake');
+        $this->assertSame('0.00', $source->fresh()->paid_amount);
+        $this->patchJson('/enrollments/'.$source->id.'/correct-batch', $payload)->assertUnprocessable();
+        $this->assertSame($this->batch->id, $source->fresh()->batch_id);
+        $this->assertDatabaseCount('enrollments', 1);
+    }
+
     public function test_duplicate_and_over_capacity_admission_do_not_create_partial_records(): void
     {
         $service = app(EnrollmentService::class);

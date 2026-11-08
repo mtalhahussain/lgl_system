@@ -25,7 +25,7 @@
                     <label class="form-label required" for="{{ $field }}">{{ $label }}</label>
                     <select class="form-select" id="{{ $field }}" name="{{ $field }}" required>
                         @foreach($options as $option)
-                            <option value="{{ $option->id }}" @selected(old($field, $batch?->$field ?? ($field === 'course_id' ? request('course_id') : null)) == $option->id)>{{ $option->name }}</option>
+                            <option value="{{ $option->id }}" @selected(old($field, $batch?->$field ?? ($field === 'course_id' ? request('course_id') : null)) == $option->id)>{{ $option->name }}@if($field === 'course_id' && $option->level) ({{ $option->level }})@endif</option>
                         @endforeach
                     </select>
                 </div>
@@ -37,10 +37,10 @@
         <div class="row g-3">
             @foreach(['start_date' => 'Start date', 'end_date' => 'End date'] as $field => $label)
                 <div class="col-md-6">
-                    <label class="form-label {{ $field === 'start_date' ? 'required' : '' }}" for="{{ $field }}">{{ $label }}</label>
-                    <input class="form-control" type="date" id="{{ $field }}" name="{{ $field }}" value="{{ old($field, $batch?->$field?->format('Y-m-d')) }}" @required($field === 'start_date')>
+                    <label class="form-label required" for="{{ $field }}">{{ $label }}</label>
+                    <input class="form-control" type="date" id="{{ $field }}" name="{{ $field }}" value="{{ old($field, $batch?->$field?->format('Y-m-d')) }}" @if($field === 'end_date') min="{{ old('start_date', $batch?->start_date?->format('Y-m-d')) }}" @endif required>
                     @error($field)<div class="text-danger small">{{ $message }}</div>@enderror
-                    @if($field === 'end_date')<div class="form-text">Required when weekly class days are set; regular classes are scheduled through this date.</div>@endif
+                    @if($field === 'end_date')<div class="form-text">Required for every batch. Must be on or after the start date; regular classes are scheduled through this date.</div>@endif
                 </div>
             @endforeach
             <div class="col-md-6">
@@ -72,7 +72,7 @@
     </div>
     <div class="form-section">
         <h2 class="form-section-title">Class schedule <span class="text-muted fw-normal">(optional)</span></h2>
-        <div class="form-text mb-2">Set this batch's weekly days and times and an end date. Saving automatically creates regular classes from today (or the batch start date) through the end date, ready for teacher attendance. Existing dated classes, including cancelled classes, stay unchanged. A schedule change adds classes only on dates with no class; edit individual existing classes separately. Leave empty if there is no fixed weekly timing.</div>
+        <div class="form-text mb-2">Set weekly days and times to auto-schedule classes from today or the batch start date, whichever is later, through the end date. Existing classes stay unchanged; only empty dates get new classes. Leave blank for flexible timing.</div>
         @php
             $weekdays = \App\Models\BatchSchedule::WEEKDAYS;
             $scheduleRows = old('schedule', ($batch?->schedules ?? collect())->map(fn ($s) => [
@@ -137,6 +137,19 @@
 </form>
 <script>
 (function () {
+    var startDate = document.getElementById('start_date');
+    var endDate = document.getElementById('end_date');
+    function updateDateBounds() {
+        endDate.min = startDate.value;
+        endDate.setCustomValidity(endDate.value && startDate.value && endDate.value < startDate.value
+            ? 'End date must be on or after the start date.' : '');
+    }
+    startDate.addEventListener('input', updateDateBounds);
+    startDate.addEventListener('change', updateDateBounds);
+    endDate.addEventListener('input', updateDateBounds);
+    endDate.addEventListener('change', updateDateBounds);
+    updateDateBounds();
+
     var rows = document.getElementById('schedule-rows');
     var tpl = document.getElementById('schedule-template');
     var add = document.getElementById('schedule-add');

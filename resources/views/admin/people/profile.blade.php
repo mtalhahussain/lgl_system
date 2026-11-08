@@ -93,7 +93,7 @@
                     @forelse($batches as $batch)
                         @php $fill = $batch->max_students ? min(100, round($batch->active_enrollments_count / $batch->max_students * 100)) : 0; @endphp
                         <tr>
-                            <td><a class="cell-main" href="{{ route('batches.show', $batch) }}">{{ $batch->name }}</a><span class="cell-sub">{{ $batch->course?->name }}</span></td>
+                            <td><a class="cell-main" href="{{ route('batches.show', $batch) }}">{{ $batch->name }}</a><span class="cell-sub">{{ $batch->course?->name }}@if($batch->course?->level) ({{ $batch->course?->level }})@endif</span></td>
                             <td class="text-nowrap">{{ $batch->start_date?->format('d M Y') }}<span class="cell-sub">{{ $batch->end_date ? 'to '.$batch->end_date->format('d M Y') : 'No end date' }}</span></td>
                             <td style="min-width:120px">{{ $batch->active_enrollments_count }} / {{ $batch->max_students }}
                                 <div class="balance-bar" role="progressbar" aria-label="{{ $batch->name }} capacity used" aria-valuenow="{{ $fill }}" aria-valuemin="0" aria-valuemax="100" style="margin-top:6px"><span style="width:{{ $fill }}%"></span></div></td>
@@ -133,7 +133,7 @@
                     <tbody>
                     @forelse($enrollments->sortByDesc('enrollment_date') as $row)
                         <tr>
-                            <td>@if($isAdmin)<a class="cell-main" href="{{ route('enrollments.show', $row) }}">{{ $row->batch?->name }}</a>@else<span class="cell-main">{{ $row->batch?->name }}</span>@endif<span class="cell-sub">{{ $row->batch?->course?->name }}</span></td>
+                            <td>@if($isAdmin)<a class="cell-main" href="{{ route('enrollments.show', $row) }}">{{ $row->batch?->name }}</a>@else<span class="cell-main">{{ $row->batch?->name }}</span>@endif<span class="cell-sub">{{ $row->batch?->course?->name }}@if($row->batch?->course?->level) ({{ $row->batch?->course?->level }})@endif</span></td>
                             <td>{{ $row->enrollment_date?->format('d M Y') }}</td>
                             <td class="num"><strong>{{ $row->discount_percentage }}%</strong>@if(\App\Support\Money::minor($row->discount_amount) > 0)<span class="cell-sub">{{ currency_format($row->discount_amount) }}</span>@endif</td>
                             <td class="num">{{ currency_format(\App\Support\Money::decimal(max(0, \App\Support\Money::minor($row->total_fee) - \App\Support\Money::minor($row->discount_amount)))) }}<span class="cell-sub">of {{ currency_format($row->total_fee) }}</span></td>

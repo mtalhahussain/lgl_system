@@ -219,8 +219,8 @@ class BatchScheduleTest extends TestCase
         $this->assertSame(0, BatchSchedule::count());
         $this->assertSame(0, ClassSession::count());
         $this->post(route('batches.store'), $this->batchPayload(['schedule' => [], 'end_date' => null]))
-            ->assertSessionHasNoErrors();
-        $this->assertSame(1, Batch::count());
+            ->assertSessionHasErrors('end_date');
+        $this->assertSame(0, Batch::count());
     }
 
     public function test_teacher_sees_today_attendance_and_own_timing_without_bulk_generator(): void

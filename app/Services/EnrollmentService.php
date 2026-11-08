@@ -180,9 +180,9 @@ class EnrollmentService
     /**
      * Transfer a student to a different batch
      */
-    public function transferStudent($enrollmentId, $newBatchId, $transferDate = null)
+    public function transferStudent($enrollmentId, $newBatchId, $transferDate = null, ?string $correctionReason = null)
     {
-        return \Illuminate\Support\Facades\DB::transaction(function () use ($enrollmentId, $newBatchId, $transferDate) {
+        return \Illuminate\Support\Facades\DB::transaction(function () use ($enrollmentId, $newBatchId, $transferDate, $correctionReason) {
             $sourceBatch = Enrollment::findOrFail($enrollmentId)->batch_id;
             $lockedBatches = Batch::whereIn('id', [$sourceBatch, $newBatchId])->orderBy('id')->lockForUpdate()->get()->keyBy('id');
             $source = Enrollment::lockForUpdate()->findOrFail($enrollmentId);
@@ -197,17 +197,37 @@ class EnrollmentService
                 throw new \InvalidArgumentException('Transfers with financial activity are not supported.');
             }
             app(PaymentService::class)->assertReconciled($source);
+            if ($correctionReason !== null) {
+                if (mb_strlen(trim($correctionReason)) < 5 || mb_strlen(trim($correctionReason)) > 500) {
+                    throw new \InvalidArgumentException('Provide a correction reason between 5 and 500 characters.');
+                }
+                if (! $target->course->is_active || $source->enrollment_package_id || $source->refunds()->exists()
+                    || \App\Support\Money::minor($source->refunded_amount ?? 0) !== 0
+                    || \App\Models\Attendance::where('student_id', $source->student_id)
+                        ->whereHas('classSession', fn ($q) => $q->whereIn('batch_id', [$source->batch_id, $target->id]))->exists()
+                    || \App\Models\StudentExamResult::where('student_id', $source->student_id)
+                        ->whereHas('batchExam', fn ($q) => $q->whereIn('batch_id', [$source->batch_id, $target->id]))->exists()
+                    || \App\Models\StudentCertificate::where('student_id', $source->student_id)
+                        ->where('level', $source->batch->course->level)->exists()) {
+                    throw new \InvalidArgumentException('Batch correction requires an individual enrollment without attendance, exam results or refunds.');
+                }
+            }
             $date = $transferDate ? Carbon::parse($transferDate)->startOfDay() : today();
             if ($date->lt($source->enrollment_date) || $date->gt(today())) {
                 throw new \InvalidArgumentException('Transfer date must be between admission date and today.');
             }
             $new = Enrollment::create(['student_id' => $source->student_id, 'batch_id' => $target->id,
-                'enrollment_date' => $date, 'status' => 'active', 'total_fee' => $source->total_fee,
+                'enrollment_date' => $correctionReason !== null ? $source->enrollment_date : $date, 'status' => 'active', 'total_fee' => $source->total_fee,
                 'discount_amount' => $source->discount_amount, 'paid_amount' => 0, 'transferred_from_enrollment_id' => $source->id]);
             $source->feeInstallments()->update(['enrollment_id' => $new->id]);
             $source->update(['status' => 'transferred', 'transfer_date' => $date, 'transferred_to_batch_id' => $target->id]);
             \App\Models\AuditLog::create(['actor_id' => auth()->id(), 'action' => 'enrollment.transferred',
                 'subject_type' => 'enrollment', 'subject_id' => $source->id, 'changes' => ['target_enrollment_id' => $new->id]]);
+            if ($correctionReason !== null) {
+                \App\Models\AuditLog::create(['actor_id' => auth()->id(), 'action' => 'enrollment.batch_corrected',
+                    'subject_type' => 'enrollment', 'subject_id' => $source->id, 'reason' => trim($correctionReason),
+                    'changes' => ['from_batch_id' => $sourceBatch, 'to_batch_id' => $target->id, 'target_enrollment_id' => $new->id]]);
+            }
 
             return $new;
         }, 3);

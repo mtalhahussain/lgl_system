@@ -40,8 +40,16 @@ Admin can sell a multi-level package (2–4 consecutive levels, e.g. A1 + A2, A1
 
 Exam-based institute certificates are the next requested extension. Design is recorded under E01 in docs/TASKS.md; passing-rule clarification is pending and the legacy exam/certificate modules remain inactive.
 
-Admin batch save now automatically creates regular dated classes from weekly days/times through the batch end date, starting today or the batch start date. Set an end date when supplying a weekly schedule. Teachers see assigned batch dates/timings and today’s direct attendance links; use Extra / makeup class only for additional classes. Existing dated classes and attendance are preserved. For an older batch, Admin can edit and save to fill missing future dates.
+Admin batch save now automatically creates regular dated classes from weekly days/times through the batch end date, starting today or the batch start date. Start and end dates are required for every batch; the end date must be on or after the start date. Teachers see assigned batch dates/timings and today’s direct attendance links; use Extra / makeup class only for additional classes. Existing dated classes and attendance are preserved. For an older batch, Admin can edit and save to fill missing future dates.
 
 Class Sessions now separates teacher confirmation from student attendance. Open a class to record Class taken or Class missed with a reason, then use Schedule linked makeup on an original missed class. This week’s teaching shows missed classes as makeup needed, pending or covered; coverage requires the makeup’s explicit Class taken confirmation. The additive teaching-record migration was applied to the owner-authorized local `lgl_system` on 5 November 2026.
 
 Teacher Dashboard class names and dates/times open class details; assigned weekly timing opens the batch-filtered dated class list. For online teaching, Admin can enter one recurring meeting link on the batch, which regular class generation copies into new sessions. Separate meeting URLs require individual session links; meeting creation is manual. Changing a batch link does not overwrite links already stored on existing sessions.
+
+Teacher create/edit uses searchable Select2 dropdowns for qualification, German-teaching specialization and experience (0–50 years). Existing custom values remain available when editing their teacher.
+
+For an unpaid mistaken admission, open Enrollments > View > Correct batch. Admin can choose another available batch of the same course and provide a reason before academic records exist. The original stays linked in history; fees, installments and admission date are preserved. Package admissions and any payment history require a separate reviewed process.
+
+Admin sidebar includes Enrollments below Students for admissions, batch correction, transfers and withdrawals.
+
+Enrollment, class-session, profile, fee-ledger and enrollment/dues report tables show course levels beside course or batch names.

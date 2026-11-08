@@ -28,7 +28,7 @@ class ClassSessionController extends Controller
         $batches = Batch::query()->when(auth()->user()->isTeacher(), fn ($query) => $query->where('teacher_id', auth()->id()))
             ->orderBy('name')->pluck('name', 'id');
         $statuses = ['scheduled' => 'Scheduled', 'ongoing' => 'Ongoing', 'completed' => 'Completed', 'cancelled' => 'Cancelled'];
-        $list = ListQuery::for(ClassSession::with(['batch:id,name,course_id,teacher_id', 'batch.course:id,name', 'batch.teacher:id,name', 'makeupClasses', 'makeupFor'])
+        $list = ListQuery::for(ClassSession::with(['batch:id,name,course_id,teacher_id', 'batch.course:id,name,level', 'batch.teacher:id,name', 'makeupClasses', 'makeupFor'])
             ->whereIn('batch_id', $batches->keys()), $request)
             ->search(['topic', 'batch.name'])
             ->filter('batch_id', fn ($query, $id) => $query->where('batch_id', $id), $batches->keys()->all())

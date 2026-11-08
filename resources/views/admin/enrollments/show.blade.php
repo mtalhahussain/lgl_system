@@ -140,6 +140,20 @@
         <section class="panel d-print-none" aria-labelledby="actions-heading">
             <div class="panel-heading"><h2 id="actions-heading">Change enrollment</h2></div>
             <div style="padding:16px 22px">
+                @if($transferBatches->isNotEmpty() && $enrollment->payments->isEmpty() && $enrollment->paid_amount == 0 && !$enrollment->enrollment_package_id)
+                    <form method="post" action="{{ route('enrollments.correct-batch', $enrollment) }}" data-confirm="Correct this mistaken batch? The original enrollment will remain linked in history.">
+                        @csrf @method('PATCH')
+                        <label class="form-label" for="correction_batch_id">Correct batch</label>
+                        <select id="correction_batch_id" name="new_batch_id" class="form-select mb-2" required>
+                            @foreach($transferBatches as $batch)<option value="{{ $batch->id }}">{{ $batch->name }}</option>@endforeach
+                        </select>
+                        <label class="form-label" for="correction_reason">Correction reason</label>
+                        <input id="correction_reason" name="reason" class="form-control mb-2" minlength="5" maxlength="500" value="{{ old('reason') }}" required>
+                        <button class="btn btn-primary w-100">Correct batch</button>
+                        <p class="form-text">Same course only, before payments or academic records. Fee agreement and admission date stay unchanged; original enrollment stays in history.</p>
+                    </form>
+                    <hr>
+                @endif
                 @if($transferBatches->isNotEmpty() && $enrollment->paid_amount == 0)
                     <form method="post" action="{{ route('enrollments.transfer', $enrollment) }}" data-confirm="Transfer this enrollment and move its schedule?">
                         @csrf

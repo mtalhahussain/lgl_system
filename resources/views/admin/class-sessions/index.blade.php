@@ -23,7 +23,7 @@
             @forelse($sessions as $session)
                 <tr>
                     <td><span class="cell-main">{{ $session->session_date->format('d M Y') }}</span><span class="cell-sub">{{ $session->session_date->format('l') }} · {{ $session->start_time?->format('H:i') }}</span></td>
-                    <td>{{ $session->batch->name }}<span class="cell-sub">{{ $session->batch->course?->name }}</span></td>
+                    <td>{{ $session->batch->name }}<span class="cell-sub">{{ $session->batch->course?->name }}@if($session->batch->course?->level) ({{ $session->batch->course?->level }})@endif</span></td>
                     @if(auth()->user()->isAdmin())<td>{{ $session->batch->teacher?->name ?? 'Unassigned' }}</td>@endif
                     <td><a class="cell-main" href="{{ route('class-sessions.show', $session) }}">{{ $session->topic ?: 'Untitled session' }}</a></td>
                     <td><x-list.status :value="$session->status" /></td>

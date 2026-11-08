@@ -15,7 +15,7 @@
             </tr></thead>
             <tbody>
             @forelse($rows as $row)
-                <tr><td class="cell-main">{{ $row->student->name }}</td><td>{{ $row->batch->course->name }}</td><td>{{ $row->batch->name }}</td>
+                <tr><td class="cell-main">{{ $row->student->name }}</td><td>{{ $row->batch->course->name }}@if($row->batch->course->level) ({{ $row->batch->course->level }})@endif</td><td>{{ $row->batch->name }}</td>
                     <td>{{ $row->enrollment_date->format('d M Y') }}</td><td><x-list.status :value="$row->status" /></td></tr>
             @empty
                 <x-list.empty colspan="5" />

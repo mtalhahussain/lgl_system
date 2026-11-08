@@ -31,7 +31,7 @@
                     $detailId = 'ledger_detail_'.$enrollment->id;
                 @endphp
                 <tr>
-                    <td><span class="cell-main">{{ $enrollment->student->name }}</span><span class="cell-sub">{{ $enrollment->batch->name }} · {{ $enrollment->status }}@if(\App\Support\Money::minor($enrollment->discount_amount) > 0) · {{ $enrollment->discount_percentage }}% off @endif</span></td>
+                    <td><span class="cell-main">{{ $enrollment->student->name }}</span><span class="cell-sub">{{ $enrollment->batch->name }}@if($enrollment->batch->course?->level) ({{ $enrollment->batch->course?->level }})@endif · {{ $enrollment->status }}@if(\App\Support\Money::minor($enrollment->discount_amount) > 0) · {{ $enrollment->discount_percentage }}% off @endif</span></td>
                     <td class="num">{{ currency_format($net) }}</td>
                     <td class="num">{{ currency_format($enrollment->net_paid) }}@if(\App\Support\Money::minor($enrollment->refunded_amount ?? '0') > 0)<span class="cell-sub">after {{ currency_format($enrollment->refunded_amount) }} refund</span>@endif</td>
                     <td class="num"><strong>{{ currency_format($enrollment->remaining_fee) }}</strong></td>

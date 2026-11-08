@@ -17,7 +17,7 @@
             </tr></thead>
             <tbody>
             @forelse($rows as $row)
-                <tr><td class="cell-main">{{ $row->enrollment->student->name }}</td><td>{{ $row->enrollment->batch->name }}</td>
+                <tr><td class="cell-main">{{ $row->enrollment->student->name }}</td><td>{{ $row->enrollment->batch->name }}@if($row->enrollment->batch->course?->level) ({{ $row->enrollment->batch->course?->level }})@endif</td>
                     <td>{{ $row->due_date->format('d M Y') }} @if($row->due_date->lt(today()))<x-list.status value="overdue" />@endif</td>
                     <td class="num">{{ currency_format($row->amount) }}</td><td class="num"><strong>{{ currency_format($row->outstanding_amount) }}</strong></td></tr>
             @empty

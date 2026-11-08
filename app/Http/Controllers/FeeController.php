@@ -47,7 +47,7 @@ class FeeController extends Controller
         $global = ! $student && ! $batch;
         $batches = $global ? Batch::orderBy('name')->pluck('name', 'id') : collect();
         $dueStatuses = ['due' => 'Has balance', 'overdue' => 'Overdue', 'paid' => 'Fully paid'];
-        $list = ListQuery::for(Enrollment::with(['student:id,name,email', 'batch:id,name', 'feeInstallments.allocations.payment.reversal'])
+        $list = ListQuery::for(Enrollment::with(['student:id,name,email', 'batch:id,name,course_id', 'batch.course:id,name,level', 'feeInstallments.allocations.payment.reversal'])
             ->when($student, fn ($query) => $query->where('student_id', $student->id))
             ->when($batch, fn ($query) => $query->where('batch_id', $batch->id)), $request)
             ->search(['student.name', 'student.email'])

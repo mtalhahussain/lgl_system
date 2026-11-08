@@ -23,7 +23,7 @@
             @forelse($enrollments as $enrollment)
                 <tr>
                     <td><a class="cell-main" href="{{ route('enrollments.show', $enrollment) }}">{{ $enrollment->student->name }}</a><span class="cell-sub">{{ $enrollment->student->email }}</span></td>
-                    <td>{{ $enrollment->batch->course?->name }}<span class="cell-sub">{{ $enrollment->batch->name }}</span></td>
+                    <td>{{ $enrollment->batch->course?->name }}@if($enrollment->batch->course?->level) ({{ $enrollment->batch->course?->level }})@endif<span class="cell-sub">{{ $enrollment->batch->name }}</span></td>
                     <td>{{ $enrollment->enrollment_date?->format('d M Y') }}</td>
                     <td><x-list.status :value="$enrollment->status" :label="$statuses[$enrollment->status] ?? null" /></td>
                     <td class="num">{{ $enrollment->discount_percentage }}%@if(\App\Support\Money::minor($enrollment->discount_amount) > 0)<span class="cell-sub">{{ currency_format($enrollment->discount_amount) }}</span>@endif</td>

@@ -145,7 +145,7 @@ class BatchController extends Controller
             'course_id' => ['required', Rule::exists('courses', 'id')->where('is_active', true)],
             'teacher_id' => ['required', Rule::exists('users', 'id')->where('role', 'teacher')->where('is_active', true)],
             'start_date' => 'required|date',
-            'end_date' => 'nullable|date|after_or_equal:start_date',
+            'end_date' => 'required|date|after_or_equal:start_date',
             'max_students' => 'required|integer|min:1|max:500',
             // Only cancellation is manual; any other value means "follow the dates".
             'status' => 'nullable|in:auto,upcoming,ongoing,completed,cancelled',

@@ -53,6 +53,36 @@ class PeopleAndCourseTest extends TestCase
         $this->assertDatabaseHas('users', ['id' => $teacher->id, 'email' => 'edited.teacher@lgl.com']);
     }
 
+    public function test_teaching_dropdowns_validate_choices_and_preserve_existing_values(): void
+    {
+        $this->get('/teachers/create')->assertOk()
+            ->assertSee('name="qualification"', false)->assertSee('Goethe-Zertifikat C1')
+            ->assertSee('German for Ausbildung')->assertSee('0 years (New teacher)')
+            ->assertDontSee('<input class="form-control" id="qualification"', false);
+        $data = $this->personData('choices.teacher@lgl.com') + [
+            'qualification' => 'Goethe-Zertifikat C1', 'specialization' => 'A1', 'experience_years' => 0,
+        ];
+        $this->post('/teachers', $data)->assertRedirect('/teachers');
+        $teacher = User::where('email', $data['email'])->sole();
+        $this->assertDatabaseHas('users', ['id' => $teacher->id, 'qualification' => 'Goethe-Zertifikat C1', 'experience_years' => 0]);
+        $invalid = array_replace($data, ['qualification' => 'Invalid qualification', 'specialization' => 'Invalid specialty', 'experience_years' => 51]);
+        $this->postJson('/teachers', array_replace($invalid, ['email' => 'invalid.teacher@lgl.com']))
+            ->assertUnprocessable()->assertJsonValidationErrors(['qualification', 'specialization', 'experience_years']);
+        $this->putJson('/teachers/'.$teacher->id, $invalid)->assertUnprocessable()
+            ->assertJsonValidationErrors(['qualification', 'specialization', 'experience_years']);
+        $teacher->update(['qualification' => 'Existing custom diploma', 'specialization' => 'Existing specialty', 'experience_years' => 55]);
+        $this->get('/teachers/'.$teacher->id.'/edit')->assertOk()
+            ->assertSee('Existing custom diploma')->assertSee('Existing specialty')->assertSee('55 years');
+        $this->put('/teachers/'.$teacher->id, array_replace($data, [
+            'qualification' => 'Existing custom diploma', 'specialization' => 'Existing specialty', 'experience_years' => 55,
+        ]))->assertRedirect('/teachers/'.$teacher->id);
+        $this->put('/teachers/'.$teacher->id, array_replace($data, [
+            'qualification' => 'Master in German Studies', 'specialization' => 'TestDaF Preparation', 'experience_years' => 5,
+        ]))->assertRedirect('/teachers/'.$teacher->id);
+        $this->assertDatabaseHas('users', ['id' => $teacher->id, 'qualification' => 'Master in German Studies',
+            'specialization' => 'TestDaF Preparation', 'experience_years' => 5]);
+    }
+
     public function test_wrong_profile_type_cannot_be_modified_through_another_resource(): void
     {
         $teacher = User::factory()->create(['role' => 'teacher']);

@@ -8,6 +8,7 @@ use App\Services\SalaryCalculatorService;
 use App\Support\ListQuery;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
 
 class TeacherController extends Controller
 {
@@ -57,9 +58,9 @@ class TeacherController extends Controller
             'phone' => 'required|string|max:20',
             'address' => 'required|string|max:500',
             'date_of_birth' => 'nullable|date|before:today',
-            'qualification' => 'nullable|string|max:255',
-            'experience_years' => 'nullable|integer|min:0',
-            'specialization' => 'nullable|string|max:255',
+            'qualification' => ['nullable', 'string', Rule::in(config('teaching.qualification'))],
+            'experience_years' => ['nullable', 'integer', Rule::in(config('teaching.experience_years'))],
+            'specialization' => ['nullable', 'string', Rule::in(config('teaching.specialization'))],
             'emergency_contact' => 'nullable|string|max:255',
             'hire_date' => 'nullable|date',
             'salary_type' => 'sometimes|in:monthly,per_student',
@@ -112,9 +113,9 @@ class TeacherController extends Controller
             'phone' => 'required|string|max:20',
             'address' => 'required|string|max:500',
             'date_of_birth' => 'nullable|date|before:today',
-            'qualification' => 'nullable|string|max:255',
-            'experience_years' => 'nullable|integer|min:0',
-            'specialization' => 'nullable|string|max:255',
+            'qualification' => ['nullable', 'string', Rule::in([...config('teaching.qualification'), $teacher->qualification])],
+            'experience_years' => ['nullable', 'integer', Rule::in([...config('teaching.experience_years'), $teacher->experience_years])],
+            'specialization' => ['nullable', 'string', Rule::in([...config('teaching.specialization'), $teacher->specialization])],
             'emergency_contact' => 'nullable|string|max:255',
             'hire_date' => 'nullable|date',
             'salary_type' => 'sometimes|in:monthly,per_student',

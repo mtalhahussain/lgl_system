@@ -28,7 +28,7 @@ class EnrollmentController extends Controller
         $statuses = ['active' => 'Active', 'completed' => 'Completed', 'dropped' => 'Withdrawn', 'transferred' => 'Transferred'];
         $courses = \App\Models\Course::orderBy('name')->pluck('name', 'id');
         $batches = \App\Models\Batch::orderBy('name')->pluck('name', 'id');
-        $list = ListQuery::for(Enrollment::with(['student:id,name,email', 'batch:id,name,course_id', 'batch.course:id,name']), $request)
+        $list = ListQuery::for(Enrollment::with(['student:id,name,email', 'batch:id,name,course_id', 'batch.course:id,name,level']), $request)
             ->search(['student.name', 'student.email'])
             ->filter('status', fn ($query, $status) => $query->where('status', $status), array_keys($statuses))
             ->filter('course_id', fn ($query, $id) => $query->whereHas('batch', fn ($batch) => $batch->where('course_id', $id)), $courses->keys()->all())
@@ -179,6 +179,22 @@ class EnrollmentController extends Controller
             'body' => ($enrollment->student->name ?? 'A student')." enrolled in {$courseName} ({$batchName}).",
             'url' => route('enrollments.show', $enrollment),
         ], auth()->id());
+    }
+
+    public function correctBatch(Request $request, Enrollment $enrollment)
+    {
+        $this->authorize('update', $enrollment);
+        $data = $request->validate([
+            'new_batch_id' => 'required|integer|exists:batches,id',
+            'reason' => 'required|string|min:5|max:500',
+        ]);
+        try {
+            $corrected = $this->enrollmentService->transferStudent($enrollment->id, $data['new_batch_id'], null, $data['reason']);
+        } catch (\InvalidArgumentException $e) {
+            throw \Illuminate\Validation\ValidationException::withMessages(['correction' => $e->getMessage()]);
+        }
+
+        return redirect()->route('enrollments.show', $corrected)->with('success', 'Batch corrected. Fee agreement and installments preserved.');
     }
 
     public function transfer(Request $request, Enrollment $enrollment)

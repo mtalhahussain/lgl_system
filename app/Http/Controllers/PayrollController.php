@@ -6,9 +6,11 @@ use App\Models\Batch;
 use App\Models\TeacherDue;
 use App\Models\TeacherPayout;
 use App\Models\User;
+use App\Services\NotificationService;
 use App\Services\PayrollService;
 use App\Support\ListQuery;
 use App\Support\Money;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 
 class PayrollController extends Controller
@@ -31,8 +33,13 @@ class PayrollController extends Controller
         $teachers = $isAdmin ? User::whereIn('role', User::PAID_ROLES)->orderBy('name')->pluck('name', 'id') : collect();
         $kinds = ['salary' => 'Salary', 'batch' => 'Per student (batch)'];
         $states = ['outstanding' => 'Outstanding', 'paid' => 'Fully paid', 'void' => 'Voided'];
+        $year = (int) $request->integer('year');
+        $month = (int) $request->integer('month');
+        $hasPeriod = $year >= 2000 && $year <= 2100 && $month >= 1 && $month <= 12;
+        $period = $hasPeriod ? sprintf('%04d-%02d', $year, $month) : null;
         $list = ListQuery::for(TeacherDue::with(['teacher:id,name', 'batch:id,name', 'payouts.reversal'])
-            ->when(! $isAdmin, fn ($query) => $query->where('teacher_id', $user->id)), $request)
+            ->when(! $isAdmin, fn ($query) => $query->where('teacher_id', $user->id))
+            ->when($period, fn ($query) => $query->where('period', $period)), $request)
             ->filter('teacher_id', fn ($query, $id) => $query->where('teacher_id', $id), $teachers->keys()->all())
             ->filter('kind', fn ($query, $kind) => $query->where('kind', $kind), array_keys($kinds))
             ->filter('state', fn ($query, $state) => match ($state) {
@@ -52,14 +59,20 @@ class PayrollController extends Controller
                 'Status' => fn ($due) => $due->state(), 'Created' => fn ($due) => $due->created_at?->toDateString()]);
         }
         $open = $list->totalsQuery()->whereNull('voided_at')->get();
-        $paidThisMonth = TeacherPayout::posted()->where('paid_at', '>=', now()->startOfMonth())
+        $paidStart = $hasPeriod ? Carbon::create($year, $month, 1)->startOfMonth() : now()->startOfMonth();
+        $paidEnd = $hasPeriod ? $paidStart->copy()->endOfMonth() : null;
+        $paid = TeacherPayout::posted()->where('paid_at', '>=', $paidStart)
+            ->when($paidEnd, fn ($query) => $query->where('paid_at', '<=', $paidEnd))
             ->when(! $isAdmin, fn ($query) => $query->whereHas('due', fn ($due) => $due->where('teacher_id', $user->id)))
             ->pluck('amount')->sum(fn ($amount) => Money::minor((string) $amount));
         $kpis = [['label' => 'Dues', 'value' => $list->counts()['total'], 'icon' => 'fa-file-invoice-dollar'],
             ['label' => 'Outstanding', 'value' => currency_format(Money::decimal($open->sum(fn ($due) => $due->outstandingMinor()))), 'icon' => 'fa-wallet'],
-            ['label' => 'Paid this month', 'value' => currency_format(Money::decimal($paidThisMonth)), 'icon' => 'fa-coins', 'note' => 'Excluding reversed payouts']];
+            ['label' => $hasPeriod ? 'Paid in '.$paidStart->format('M Y') : 'Paid this month',
+                'value' => currency_format(Money::decimal($paid)), 'icon' => 'fa-coins', 'note' => 'Excluding reversed payouts']];
         $filters = array_values(array_filter([
             $isAdmin ? ['name' => 'teacher_id', 'label' => 'Person', 'options' => $teachers] : null,
+            ['name' => 'year', 'label' => 'Year', 'options' => self::payrollYears()],
+            ['name' => 'month', 'label' => 'Month', 'options' => FeeController::MONTHS],
             ['name' => 'kind', 'label' => 'Type', 'options' => $kinds],
             ['name' => 'state', 'label' => 'Status', 'options' => $states],
         ]));
@@ -72,6 +85,16 @@ class PayrollController extends Controller
 
         return view('payroll.index', ['dues' => $list->paginate(), 'kpis' => $kpis, 'filters' => $filters,
             'isAdmin' => $isAdmin, 'eligibleBatches' => $eligibleBatches]);
+    }
+
+    /** Year options for the payroll filter, drawn from the recorded due periods, newest first. */
+    private static function payrollYears(): array
+    {
+        $years = TeacherDue::whereNotNull('period')->distinct()->pluck('period')
+            ->map(fn ($period) => (int) substr($period, 0, 4))
+            ->push((int) today()->year)->unique()->sortDesc()->values()->all();
+
+        return array_combine($years, $years);
     }
 
     public function show(Request $request, TeacherDue $due)
@@ -115,7 +138,7 @@ class PayrollController extends Controller
         $payout = $service->pay($due->id, (string) $data['amount'], $data['method'], $data['submission_key'], $request->user(), $data['reference'] ?? null);
 
         if ($due->teacher_id) {
-            app(\App\Services\NotificationService::class)->toUser($due->teacher_id, [
+            app(NotificationService::class)->toUser($due->teacher_id, [
                 'type' => 'payout', 'icon' => 'fa-hand-holding-dollar', 'level' => 'success',
                 'title' => 'Salary paid',
                 'body' => 'A payout of '.currency_format($data['amount']).' has been recorded to you.',

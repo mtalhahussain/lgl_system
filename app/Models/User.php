@@ -3,9 +3,12 @@
 namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
+use App\Biometric\MachineUserSync;
+use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Facades\Schema;
 
 class User extends Authenticatable
 {
@@ -29,31 +32,33 @@ class User extends Authenticatable
         static::updated(fn (User $user) => $user->recordAccountAudit('user.updated',
             array_intersect_key($user->getChanges(), array_flip(['name', 'email', 'role', 'is_active']))));
         // Auto machine employee number and Hikvision user sync for Students and Teachers.
-        static::created(fn (User $user) => app(\App\Biometric\MachineUserSync::class)->userChanged($user, true));
-        static::updated(fn (User $user) => app(\App\Biometric\MachineUserSync::class)->userChanged($user, false));
+        static::created(fn (User $user) => app(MachineUserSync::class)->userChanged($user, true));
+        static::updated(fn (User $user) => app(MachineUserSync::class)->userChanged($user, false));
     }
 
     private function recordAccountAudit(string $action, array $fields): void
     {
-        if (! $fields || ! \Illuminate\Support\Facades\Schema::hasTable('audit_logs')) {
+        if (! $fields || ! Schema::hasTable('audit_logs')) {
             return;
         }
         AuditLog::create(['actor_id' => auth()->id(), 'action' => $action, 'subject_type' => 'user', 'subject_id' => $this->id,
             'changes' => ['before' => $action === 'user.created' ? null : array_intersect_key($this->getRawOriginal(), $fields),
                 'after' => $fields], 'created_at' => now()]);
     }
+
     use HasFactory, Notifiable;
 
     public function teacherPayments()
     {
-        return $this->hasManyThrough(\App\Models\TeacherPayment::class, \App\Models\BatchTeacherEarning::class, 'teacher_id', 'batch_teacher_earning_id');
+        return $this->hasManyThrough(TeacherPayment::class, BatchTeacherEarning::class, 'teacher_id', 'batch_teacher_earning_id');
     }
 
     public function batchTeacherEarnings()
     {
-        return $this->hasMany(\App\Models\BatchTeacherEarning::class, 'teacher_id');
+        return $this->hasMany(BatchTeacherEarning::class, 'teacher_id');
     }
-    /** @use HasFactory<\Database\Factories\UserFactory> */
+
+    /** @use HasFactory<UserFactory> */
     use HasFactory, Notifiable;
 
     /**
@@ -132,6 +137,12 @@ class User extends Authenticatable
         return $this->hasMany(Batch::class, 'teacher_id');
     }
 
+    /** True when this teacher still owns an upcoming or ongoing batch (blocks deactivation until reassigned). */
+    public function hasOpenBatches(): bool
+    {
+        return $this->taughtBatches()->whereIn('status', ['upcoming', 'ongoing'])->exists();
+    }
+
     public function enrollments()
     {
         return $this->hasMany(Enrollment::class, 'student_id');
@@ -203,5 +214,4 @@ class User extends Authenticatable
     {
         return $this->role === 'staff';
     }
-
 }

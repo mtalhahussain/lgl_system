@@ -124,6 +124,39 @@
                         </tbody>
                     </table></div>
                 </section>
+                <section class="panel" aria-labelledby="offboard-heading">
+                    <div class="panel-heading"><h2 id="offboard-heading">Reassign batches / offboard</h2>@if($openBatchCount)<span class="page-subtitle">{{ $openBatchCount }} active/upcoming</span>@endif</div>
+                    <div style="padding:6px 22px 18px">
+                    @if($openBatchCount > 0)
+                        @if($otherTeachers->isEmpty())
+                            <p class="text-muted mb-0">No other active teacher is available to receive these batches. Add or activate another teacher first.</p>
+                        @else
+                            <p class="page-subtitle" style="margin-bottom:14px">When this teacher leaves, move their {{ $openBatchCount }} active/upcoming {{ \Illuminate\Support\Str::plural('batch', $openBatchCount) }} to another teacher. Classes, sessions, attendance and future pay follow the new teacher; completed batches and past pay stay unchanged.</p>
+                            <form method="post" action="{{ route('teachers.reassign', $person) }}" class="tw:flex tw:flex-col tw:gap-3">
+                                @csrf
+                                <div>
+                                    <label class="form-label required" for="new_teacher_id">New teacher</label>
+                                    <select class="form-select" id="new_teacher_id" name="new_teacher_id" required>
+                                        <option value="">Choose teacher…</option>
+                                        @foreach($otherTeachers as $id => $name)<option value="{{ $id }}" @selected(old('new_teacher_id') == $id)>{{ $name }}</option>@endforeach
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="form-label" for="reassign_reason">Reason (optional)</label>
+                                    <textarea class="form-control" id="reassign_reason" name="reason" rows="2" maxlength="500" placeholder="e.g. Teacher resigned">{{ old('reason') }}</textarea>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="deactivate" name="deactivate" value="1">
+                                    <label class="form-check-label" for="deactivate">Deactivate this teacher after moving the batches</label>
+                                </div>
+                                <div><button type="submit" class="btn btn-primary" data-confirm="Reassign {{ $openBatchCount }} {{ \Illuminate\Support\Str::plural('batch', $openBatchCount) }} to the selected teacher?"><i class="fas fa-people-arrows me-1" aria-hidden="true"></i>Reassign batches</button></div>
+                            </form>
+                        @endif
+                    @else
+                        <p class="text-muted mb-0">No active or upcoming batches to reassign.@if($person->is_active) This teacher can be deactivated from Edit.@endif</p>
+                    @endif
+                    </div>
+                </section>
             @endif
         @else
             <section class="panel" aria-labelledby="enrollments-heading">

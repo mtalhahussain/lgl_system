@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\AuditLog;
 use App\Models\Batch;
 use App\Models\Course;
 use App\Models\Enrollment;
@@ -11,6 +12,7 @@ use App\Services\EnrollmentService;
 use App\Services\PaymentService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 use Tests\TestCase;
 
 class PaymentIntegrityTest extends TestCase
@@ -54,7 +56,7 @@ class PaymentIntegrityTest extends TestCase
         $this->payment('40.01');
         $this->assertSame('100.01', $this->enrollment->fresh()->paid_amount);
         $this->assertSame(3, $this->enrollment->feeInstallments()->where('status', 'paid')->count());
-        $this->assertSame(3, \App\Models\AuditLog::where('action', 'payment.posted')->count());
+        $this->assertSame(3, AuditLog::where('action', 'payment.posted')->count());
     }
 
     public function test_duplicate_submission_returns_same_receipt_without_changing_totals(): void
@@ -68,7 +70,7 @@ class PaymentIntegrityTest extends TestCase
         try {
             $this->payment('21.00', $key);
             $this->fail('Conflicting replay must fail.');
-        } catch (\Illuminate\Validation\ValidationException $exception) {
+        } catch (ValidationException $exception) {
             $this->assertArrayHasKey('submission_key', $exception->errors());
         }
     }
@@ -78,7 +80,7 @@ class PaymentIntegrityTest extends TestCase
         try {
             $this->payment('100.02');
             $this->fail('Overpayment must fail.');
-        } catch (\Illuminate\Validation\ValidationException $exception) {
+        } catch (ValidationException $exception) {
             $this->assertArrayHasKey('amount', $exception->errors());
         }
         $this->assertDatabaseCount('payments', 0);
@@ -98,7 +100,7 @@ class PaymentIntegrityTest extends TestCase
         try {
             app(PaymentService::class)->reverse($payment, $this->admin, 'Duplicate correction');
             $this->fail('Duplicate reversal must fail.');
-        } catch (\Illuminate\Validation\ValidationException $exception) {
+        } catch (ValidationException $exception) {
             $this->assertArrayHasKey('payment', $exception->errors());
         }
         $this->assertDatabaseCount('payment_reversals', 1);
@@ -132,7 +134,7 @@ class PaymentIntegrityTest extends TestCase
         try {
             $this->payment('10.00');
             $this->fail('Unreconciled account must fail.');
-        } catch (\Illuminate\Validation\ValidationException $exception) {
+        } catch (ValidationException $exception) {
             $this->assertArrayHasKey('enrollment', $exception->errors());
         }
         $this->enrollment->update(['paid_amount' => 0]);
@@ -143,14 +145,13 @@ class PaymentIntegrityTest extends TestCase
 
     public function test_collection_report_keeps_original_date_and_subtracts_reversal_on_reversal_date(): void
     {
-        $this->travelTo(today()->subMonthNoOverflow()->day(5)->setTime(9, 0));
+        $previous = today()->subMonthNoOverflow();
+        $this->travelTo($previous->copy()->day(5)->setTime(9, 0));
         $payment = $this->payment('10.00');
-        $previousStart = today()->startOfMonth()->toDateString();
-        $previousEnd = today()->endOfMonth()->toDateString();
         $this->travelBack();
         app(PaymentService::class)->reverse($payment, $this->admin, 'Wrong payment reference');
-        $this->get('/fees/reports?start_date='.$previousStart.'&end_date='.$previousEnd)->assertOk()->assertViewHas('net', '10.00');
-        $this->get('/fees/reports?start_date='.today()->startOfMonth()->toDateString().'&end_date='.today()->toDateString())
+        $this->get('/fees/reports?year='.$previous->year.'&month='.$previous->month)->assertOk()->assertViewHas('net', '10.00');
+        $this->get('/fees/reports?year='.today()->year.'&month='.today()->month)
             ->assertOk()->assertViewHas('net', '-10.00');
     }
 }

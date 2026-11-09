@@ -87,6 +87,8 @@ Route::middleware(['auth', EnsureActiveAccount::class])->group(function () {
         ->name('students.enroll')->middleware('role:admin');
 
     // Teacher Management Routes
+    Route::post('/teachers/{teacher}/reassign-batches', [TeacherController::class, 'reassignBatches'])
+        ->name('teachers.reassign')->middleware('role:admin');
     Route::resource('teachers', TeacherController::class)
         ->middleware('role:admin');
 

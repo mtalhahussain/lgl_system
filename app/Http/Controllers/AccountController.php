@@ -53,6 +53,9 @@ class AccountController extends Controller
             if ($target->role !== $data['role'] && ($target->enrollments()->exists() || $target->taughtBatches()->exists())) {
                 throw ValidationException::withMessages(['role' => 'Accounts with academic history must keep their role. Create a separate account for a new role.']);
             }
+            if ($target->isTeacher() && $target->is_active && ! $data['is_active'] && $target->hasOpenBatches()) {
+                throw ValidationException::withMessages(['is_active' => "Reassign this teacher's active and upcoming batches before deactivating them."]);
+            }
             $target->update($data);
         }, 3);
 

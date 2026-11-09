@@ -3,8 +3,10 @@
 namespace App\Http\Controllers;
 
 use App\Models\Batch;
+use App\Models\Course;
 use App\Models\Enrollment;
 use App\Models\FeeInstallment;
+use App\Models\FeeRefund;
 use App\Models\Payment;
 use App\Models\PaymentReversal;
 use App\Models\User;
@@ -12,6 +14,7 @@ use App\Services\OverviewService;
 use App\Services\PaymentService;
 use App\Support\ListQuery;
 use App\Support\Money;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Schema;
 
@@ -82,7 +85,7 @@ class FeeController extends Controller
             ->when($batch, fn ($query) => $query->whereHas('enrollment', fn ($enrollment) => $enrollment->where('batch_id', $batch->id)))
             ->orderByDesc('id')->paginate(20, ['*'], 'payments_page')->withQueryString();
 
-        $refunds = \App\Models\FeeRefund::with('enrollment.student:id,name')
+        $refunds = FeeRefund::with('enrollment.student:id,name')
             ->when($student, fn ($query) => $query->whereHas('enrollment', fn ($enrollment) => $enrollment->where('student_id', $student->id)))
             ->when($batch, fn ($query) => $query->whereHas('enrollment', fn ($enrollment) => $enrollment->where('batch_id', $batch->id)))
             ->orderByDesc('id')->paginate(20, ['*'], 'refunds_page')->withQueryString();
@@ -103,10 +106,11 @@ class FeeController extends Controller
 
     public function reports(Request $request)
     {
-        $data = $request->validate(['start_date' => 'nullable|date', 'end_date' => 'nullable|date|after_or_equal:start_date',
+        $data = $request->validate(['year' => 'nullable|integer|min:2000|max:2100', 'month' => 'nullable|integer|min:1|max:12',
             'batch_id' => 'nullable|integer', 'course_id' => 'nullable|integer', 'method' => 'nullable|in:'.implode(',', array_keys(self::METHODS))]);
-        $start = \Carbon\Carbon::parse($data['start_date'] ?? today()->startOfMonth())->startOfDay();
-        $end = \Carbon\Carbon::parse($data['end_date'] ?? today())->endOfDay();
+        $period = Carbon::create((int) ($data['year'] ?? today()->year), (int) ($data['month'] ?? today()->month), 1);
+        $start = $period->copy()->startOfMonth();
+        $end = $period->copy()->endOfMonth();
         $scope = fn ($query) => $query
             ->when(! empty($data['batch_id']), fn ($query) => $query->where('batch_id', $data['batch_id']))
             ->when(! empty($data['course_id']), fn ($query) => $query->whereHas('batch', fn ($batch) => $batch->where('course_id', $data['course_id'])));
@@ -114,7 +118,7 @@ class FeeController extends Controller
             ->when(! empty($data['method']), fn ($query) => $query->where('method', $data['method']));
         $reversalQuery = PaymentReversal::whereBetween('payment_reversals.created_at', [$start, $end])->whereHas('payment.enrollment', $scope)
             ->when(! empty($data['method']), fn ($query) => $query->whereHas('payment', fn ($payment) => $payment->where('method', $data['method'])));
-        $refundQuery = \App\Models\FeeRefund::whereBetween('refunded_at', [$start, $end])->whereHas('enrollment', $scope)
+        $refundQuery = FeeRefund::whereBetween('refunded_at', [$start, $end])->whereHas('enrollment', $scope)
             ->when(! empty($data['method']), fn ($query) => $query->where('method', $data['method']));
         if ($request->query('export') === 'csv') {
             $rows = (function () use ($paymentQuery, $reversalQuery, $refundQuery) {
@@ -122,7 +126,7 @@ class FeeController extends Controller
                     yield [$payment->paid_at?->format('Y-m-d H:i'), 'Payment', $payment->receipt_number, $payment->enrollment->student->name, $payment->method, $payment->amount];
                 }
                 foreach ((clone $reversalQuery)->with('payment.enrollment.student:id,name')->orderBy('payment_reversals.id')->lazy(500) as $reversal) {
-                    yield [$reversal->created_at ? \Carbon\Carbon::parse($reversal->created_at)->format('Y-m-d H:i') : '', 'Reversal', $reversal->payment->receipt_number, $reversal->payment->enrollment->student->name,
+                    yield [$reversal->created_at ? Carbon::parse($reversal->created_at)->format('Y-m-d H:i') : '', 'Reversal', $reversal->payment->receipt_number, $reversal->payment->enrollment->student->name,
                         $reversal->payment->method, '-'.$reversal->payment->amount];
                 }
                 foreach ((clone $refundQuery)->with('enrollment.student:id,name')->orderBy('refunded_at')->lazy(500) as $refund) {
@@ -144,18 +148,36 @@ class FeeController extends Controller
         $payments = $paymentQuery->with(['enrollment.student:id,name', 'reversal'])->orderBy('paid_at')->paginate(50)->withQueryString();
         $reversals = $reversalQuery->with('payment.enrollment.student:id,name')->orderBy('payment_reversals.id')->paginate(50, ['*'], 'reversals_page')->withQueryString();
         $refunds = $refundQuery->with('enrollment.student:id,name')->orderBy('refunded_at')->paginate(50, ['*'], 'refunds_page')->withQueryString();
-        $filters = array_merge(self::reportFilters(), [['name' => 'method', 'label' => 'Method', 'options' => self::METHODS]]);
+        $filters = [['name' => 'year', 'label' => 'Year', 'options' => self::collectionYears()],
+            ['name' => 'month', 'label' => 'Month', 'options' => self::MONTHS],
+            ['name' => 'batch_id', 'label' => 'Batch', 'options' => Batch::orderBy('name')->pluck('name', 'id')],
+            ['name' => 'course_id', 'label' => 'Course', 'options' => Course::orderBy('name')->pluck('name', 'id')],
+            ['name' => 'method', 'label' => 'Method', 'options' => self::METHODS]];
 
         return view('fees.report', compact('payments', 'reversals', 'refunds', 'net', 'start', 'end', 'kpis', 'filters'));
     }
 
     public const METHODS = ['cash' => 'Cash', 'bank' => 'Bank', 'card' => 'Card', 'jazzcash' => 'JazzCash', 'easypaisa' => 'Easypaisa', 'online' => 'Online'];
 
+    public const MONTHS = [1 => 'January', 2 => 'February', 3 => 'March', 4 => 'April', 5 => 'May', 6 => 'June',
+        7 => 'July', 8 => 'August', 9 => 'September', 10 => 'October', 11 => 'November', 12 => 'December'];
+
+    /** Year options for the collection report: from the first recorded payment to this year, newest first. */
+    private static function collectionYears(): array
+    {
+        $first = Payment::min('paid_at');
+        $startYear = $first ? (int) Carbon::parse($first)->year : (int) today()->year;
+        $endYear = (int) today()->year;
+        $years = range($endYear, min($startYear, $endYear));
+
+        return array_combine($years, $years);
+    }
+
     /** Shared date/batch/course filters for the Admin reports. */
     public static function reportFilters(): array
     {
         return [['name' => 'start_date', 'label' => 'From', 'type' => 'date'], ['name' => 'end_date', 'label' => 'To', 'type' => 'date'],
             ['name' => 'batch_id', 'label' => 'Batch', 'options' => Batch::orderBy('name')->pluck('name', 'id')],
-            ['name' => 'course_id', 'label' => 'Course', 'options' => \App\Models\Course::orderBy('name')->pluck('name', 'id')]];
+            ['name' => 'course_id', 'label' => 'Course', 'options' => Course::orderBy('name')->pluck('name', 'id')]];
     }
 }

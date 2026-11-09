@@ -100,10 +100,12 @@ class PeopleAndCourseTest extends TestCase
         $student = User::factory()->create(['role' => 'student', 'is_active' => true]);
         $course = Course::create(['name' => 'German', 'level' => 'A1', 'total_fee' => 10000,
             'teacher_per_student_amount' => 0, 'duration_weeks' => 12]);
+        // A completed batch has no open commitment, so the teacher can be deactivated directly;
+        // upcoming/ongoing batches must be reassigned first (see TeacherReassignTest).
         $batch = Batch::create(['teacher_id' => $teacher->id, 'course_id' => $course->id, 'name' => 'Morning',
-            'start_date' => today(), 'status' => 'ongoing', 'max_students' => 10]);
+            'start_date' => today()->subMonth(), 'end_date' => today()->subDay(), 'status' => 'completed', 'max_students' => 10]);
         $enrollment = Enrollment::create(['student_id' => $student->id, 'batch_id' => $batch->id,
-            'enrollment_date' => today(), 'total_fee' => 10000, 'status' => 'active']);
+            'enrollment_date' => today()->subMonth(), 'total_fee' => 10000, 'status' => 'active']);
         $this->delete('/students/'.$student->id)->assertRedirect('/students');
         $this->delete('/teachers/'.$teacher->id)->assertRedirect('/teachers');
         $this->delete('/courses/'.$course->id)->assertRedirect('/courses');

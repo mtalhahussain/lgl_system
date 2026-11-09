@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\User;
 use App\Services\NotificationService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -11,9 +10,7 @@ use Illuminate\View\View;
 
 class NotificationController extends Controller
 {
-    public function __construct(private NotificationService $notifications)
-    {
-    }
+    public function __construct(private NotificationService $notifications) {}
 
     /** JSON feed for the bell dropdown (latest 15 + unread count). */
     public function feed(Request $request): JsonResponse
@@ -25,7 +22,7 @@ class NotificationController extends Controller
             'read' => $n->read_at !== null,
             'title' => $n->data['title'] ?? 'Notification',
             'body' => $n->data['body'] ?? '',
-            'url' => $n->data['url'] ?? null,
+            'url' => $this->notifications->destinationFor($user, $n->data),
             'icon' => $n->data['icon'] ?? 'fa-bell',
             'level' => $n->data['level'] ?? 'info',
             'time' => $n->created_at->diffForHumans(),

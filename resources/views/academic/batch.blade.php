@@ -59,14 +59,14 @@
                 <ul class="profile-facts mb-0">
                     @foreach($sched as $s)
                         <li><i class="fas fa-clock" aria-hidden="true"></i><div><small>{{ $s->weekdayLabel() }}</small>
-                            {{ \Illuminate\Support\Carbon::parse($s->getRawOriginal('start_time'))->format('H:i') }}–{{ \Illuminate\Support\Carbon::parse($s->getRawOriginal('end_time'))->format('H:i') }}</div></li>
+                            {{ \Illuminate\Support\Carbon::parse($s->getRawOriginal('start_time'))->format('h:i A') }}–{{ \Illuminate\Support\Carbon::parse($s->getRawOriginal('end_time'))->format('h:i A') }}</div></li>
                     @endforeach
                 </ul>
             </div>
         @endif
         <ul class="profile-facts">
             @forelse($upcoming as $session)
-                <li><i class="fas fa-calendar-day" aria-hidden="true"></i><div><small>{{ $session->session_date->format('D, d M') }} · {{ $session->start_time?->format('H:i') }}–{{ $session->end_time?->format('H:i') }}</small>
+                <li><i class="fas fa-calendar-day" aria-hidden="true"></i><div><small>{{ $session->session_date->format('D, d M') }} · {{ $session->start_time?->format('h:i A') }}–{{ $session->end_time?->format('h:i A') }}</small>
                     <a href="{{ route('class-sessions.show', $session) }}">{{ $session->topic }}</a></div></li>
             @empty
                 <li class="page-subtitle">No upcoming sessions scheduled.</li>

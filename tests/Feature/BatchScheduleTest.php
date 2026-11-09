@@ -231,9 +231,9 @@ class BatchScheduleTest extends TestCase
         $student = User::factory()->create(['role' => 'student', 'is_active' => true]);
         app(EnrollmentService::class)->enrollStudent($student->id, $batch->id, 0, 1);
         $this->actingAs($this->teacher)->get(route('teacher.dashboard'))->assertOk()
-            ->assertSee("Today's classes", false)->assertSee('18:00–20:00')
+            ->assertSee("Today's classes", false)->assertSee('06:00 PM–08:00 PM')
             ->assertSee(route('class-sessions.attendance', $today), false);
-        $this->get(route('batches.index'))->assertOk()->assertSee('Weekly timing')->assertSee('18:00–20:00');
+        $this->get(route('batches.index'))->assertOk()->assertSee('Weekly timing')->assertSee('06:00 PM–08:00 PM');
         $this->get(route('batches.show', $batch))->assertOk()->assertSee('Extra / makeup class')
             ->assertDontSee('Advanced: generate missing classes');
         $this->post(route('class-sessions.attendance.store', $today), ['attendance' => [$student->id => 'present']])
@@ -282,6 +282,6 @@ class BatchScheduleTest extends TestCase
         $this->put(route('batches.update', $batch), $payload)->assertSessionHasNoErrors();
         $this->assertSame($before, $batch->classSessions()->orderBy('id')->get()->toArray());
         $this->actingAs($this->teacher)->get(route('courses.show', $this->course))->assertOk()
-            ->assertSee('08:00–10:00')->assertSee(today()->addWeek()->format('d M Y'));
+            ->assertSee('08:00 AM–10:00 AM')->assertSee(today()->addWeek()->format('d M Y'));
     }
 }

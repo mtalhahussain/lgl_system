@@ -116,7 +116,7 @@
                                     <span class="badge bg-primary">{{ $attendance->classSession->batch->name }}</span>
                                 </td>
                                 <td>
-                                    {{ $attendance->classSession->start_time }} - {{ $attendance->classSession->end_time }}
+                                    {{ $attendance->classSession->start_time?->format('h:i A') }} - {{ $attendance->classSession->end_time?->format('h:i A') }}
                                     <br>
                                     <small class="text-muted">
                                         @if($attendance->classSession->is_online)
@@ -156,7 +156,7 @@
                                     @if($attendance->marked_by)
                                         {{ $attendance->markedBy->name }}
                                         <br>
-                                        <small class="text-muted">{{ $attendance->created_at->format('H:i') }}</small>
+                                        <small class="text-muted">{{ $attendance->created_at->format('h:i A') }}</small>
                                     @else
                                         <span class="text-muted">-</span>
                                     @endif

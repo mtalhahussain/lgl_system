@@ -44,6 +44,17 @@ class ClassTeachingTest extends TestCase
             'start_time' => '11:00', 'end_time' => '12:00', 'topic' => 'Makeup German', 'makeup_for_id' => $source->id];
     }
 
+    public function test_class_detail_times_use_am_pm_without_changing_stored_values(): void
+    {
+        $session = $this->classRecord(['start_time' => '12:00', 'end_time' => '23:30',
+            'teaching_started_at' => '2026-11-05 23:23:00']);
+        $this->get(route('class-sessions.show', $session))->assertOk()
+            ->assertSee('Start recorded: 05 Nov 2026 11:23 PM')
+            ->assertSee('12:00 PM')->assertSee('11:30 PM')
+            ->assertDontSee('05 Nov 2026 23:23');
+        $this->assertSame('23:23', $session->fresh()->teaching_started_at->format('H:i'));
+    }
+
     public function test_taken_is_separate_from_attendance_records_actor_and_is_idempotent(): void
     {
         $session = $this->classRecord(['status' => 'completed']); // Existing student register may already mark the session completed.

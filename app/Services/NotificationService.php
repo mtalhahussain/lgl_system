@@ -19,6 +19,18 @@ use Illuminate\Support\Facades\Notification;
  */
 class NotificationService
 {
+    /** Resolve historical student exam links without changing stored notifications. */
+    public function destinationFor(User $user, array $payload): ?string
+    {
+        $url = $payload['url'] ?? null;
+        if ($user->isStudent() && ($payload['type'] ?? null) === 'exam' && is_string($url)
+            && preg_match('~/exams/\d+/?$~', (string) parse_url($url, PHP_URL_PATH))) {
+            return route('student.results');
+        }
+
+        return $url;
+    }
+
     /** Send to one user (model or id). Silently skips a missing/inactive target. */
     public function toUser(User|int|null $user, array $payload): void
     {

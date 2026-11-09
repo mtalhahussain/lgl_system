@@ -62,6 +62,33 @@ class ListPagesTest extends TestCase
         }
     }
 
+    public function test_page_size_is_above_filters_and_retains_filters_without_current_page(): void
+    {
+        $this->actingAs($this->admin);
+        $response = $this->get('/students?search=Learner&status=active&sort=name&dir=asc&per_page=25&page=2')->assertOk();
+        $html = $response->getContent();
+        preg_match('/<form[^>]*data-page-size[^>]*>([\s\S]*?)<\/form>/', $html, $footer);
+        $this->assertNotEmpty($footer);
+        $this->assertStringContainsString('id="list_search" form="list-filters"', $html);
+        $this->assertStringContainsString('id="list-filters" class="list-filter"', $html);
+        $this->assertLessThan(strpos($html, 'data-list-filter'), strpos($html, 'data-page-size'));
+        preg_match('/<div class="list-footer">([\s\S]*?)<\/div>/', $html, $tableFooter);
+        $this->assertStringNotContainsString('data-page-size', $tableFooter[1]);
+        $this->assertStringContainsString('Rows per page', $footer[1]);
+        $this->assertStringContainsString('name="search" value="Learner"', $footer[1]);
+        $this->assertStringContainsString('name="status" value="active"', $footer[1]);
+        $this->assertStringContainsString('name="sort" value="name"', $footer[1]);
+        $this->assertStringContainsString('name="dir" value="asc"', $footer[1]);
+        $this->assertStringNotContainsString('name="page"', $footer[1]);
+        $this->assertStringContainsString('value="25" selected', $footer[1]);
+        preg_match('/<form[^>]*data-list-filter[^>]*>([\s\S]*?)<\/form>/', $html, $toolbar);
+        $this->assertStringNotContainsString('Rows per page', $toolbar[1]);
+        $this->assertStringContainsString('type="hidden" name="per_page" value="25"', $toolbar[1]);
+        $this->get('/reports/enrollments')->assertOk()->assertSee('value="25" selected', false);
+        $this->get('/fees/reports')->assertOk()->assertDontSee('data-page-size', false);
+        $this->get('/fees')->assertOk()->assertSee('data-page-size', false);
+    }
+
     public function test_filters_change_rows_and_chips_offer_removal(): void
     {
         $this->actingAs($this->admin);

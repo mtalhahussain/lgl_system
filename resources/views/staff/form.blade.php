@@ -20,15 +20,15 @@
             </div>
             <div class="col-md-6">
                 <label class="form-label required" for="phone">Phone</label>
-                <input class="form-control" id="phone" name="phone" type="tel" maxlength="20" value="{{ old('phone', $person?->phone) }}" required>
+                <input class="form-control" id="phone" name="phone" type="tel" inputmode="tel" pattern="\+?[0-9]+" maxlength="20" title="Digits only, with an optional leading +" value="{{ old('phone', $person?->phone) }}" required>
             </div>
             <div class="col-md-6">
                 <label class="form-label" for="emergency_contact">Emergency contact</label>
-                <input class="form-control" id="emergency_contact" name="emergency_contact" maxlength="255" value="{{ old('emergency_contact', $person?->emergency_contact) }}">
+                <input class="form-control" id="emergency_contact" name="emergency_contact" type="tel" inputmode="tel" pattern="\+?[0-9]+" maxlength="20" title="Digits only, with an optional leading +" value="{{ old('emergency_contact', $person?->emergency_contact) }}">
             </div>
             <div class="col-md-6">
                 <label class="form-label" for="hire_date">Joining date</label>
-                <input class="form-control" type="date" id="hire_date" name="hire_date" value="{{ old('hire_date', $person?->hire_date ? \Illuminate\Support\Carbon::parse($person->hire_date)->format('Y-m-d') : '') }}">
+                <input class="form-control" type="date" id="hire_date" name="hire_date" value="{{ old('hire_date', $person ? $person->hire_date?->format('Y-m-d') : today()->toDateString()) }}">
             </div>
             <div class="col-md-6">
                 <label class="form-label" for="address">Address</label>

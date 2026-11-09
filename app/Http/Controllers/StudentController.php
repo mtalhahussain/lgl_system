@@ -14,6 +14,7 @@ use App\Support\ListQuery;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
 
 class StudentController extends Controller
 {
@@ -83,11 +84,11 @@ class StudentController extends Controller
         $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|string|email|max:255|unique:users',
-            'phone' => 'required|string|max:20',
+            'phone' => 'required|string|max:20|regex:/^\+?[0-9]+$/D',
             'address' => 'required|string|max:500',
             'date_of_birth' => 'nullable|date|before:today',
-            'emergency_contact' => 'nullable|string|max:255',
-            'password' => 'required|string|min:8|confirmed',
+            'emergency_contact' => 'nullable|string|max:20|regex:/^\+?[0-9]+$/D',
+            'password' => 'nullable|required_with:password_confirmation|string|min:8|confirmed',
             'is_active' => 'sometimes|boolean',
             'batch_id' => 'nullable|exists:batches,id',
             'discount_percentage' => 'nullable|numeric|min:0|max:100',
@@ -99,7 +100,7 @@ class StudentController extends Controller
             $student = User::create([
                 'name' => $request->name,
                 'email' => $request->email,
-                'password' => Hash::make($request->password),
+                'password' => Hash::make($request->filled('password') ? $request->password : Str::random(64)),
                 'role' => 'student',
                 'phone' => $request->phone,
                 'address' => $request->address,
@@ -180,11 +181,11 @@ class StudentController extends Controller
         $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|string|email|max:255|unique:users,email,'.$student->id,
-            'phone' => 'required|string|max:20',
+            'phone' => 'required|string|max:20|regex:/^\+?[0-9]+$/D',
             'address' => 'required|string|max:500',
             'date_of_birth' => 'nullable|date|before:today',
-            'emergency_contact' => 'nullable|string|max:255',
-            'password' => 'nullable|string|min:8|confirmed',
+            'emergency_contact' => 'nullable|string|max:20|regex:/^\+?[0-9]+$/D',
+            'password' => 'nullable|required_with:password_confirmation|string|min:8|confirmed',
             'is_active' => 'sometimes|boolean',
         ]);
 

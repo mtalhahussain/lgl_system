@@ -62,21 +62,23 @@ class TeacherController extends Controller
         $data = $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|email|max:255|unique:users,email',
-            'phone' => 'required|string|max:20',
+            'phone' => 'required|string|max:20|regex:/^\+?[0-9]+$/D',
             'address' => 'required|string|max:500',
             'date_of_birth' => 'nullable|date|before:today',
             'qualification' => ['nullable', 'string', Rule::in(config('teaching.qualification'))],
             'experience_years' => ['nullable', 'integer', Rule::in(config('teaching.experience_years'))],
             'specialization' => ['nullable', 'string', Rule::in(config('teaching.specialization'))],
-            'emergency_contact' => 'nullable|string|max:255',
+            'emergency_contact' => 'nullable|string|max:20|regex:/^\+?[0-9]+$/D',
             'hire_date' => 'nullable|date',
             'salary_type' => 'sometimes|in:monthly,per_student',
+            'per_student_amount' => 'required_if:salary_type,per_student|nullable|decimal:0,2|gt:0|max:99999999.99',
             'monthly_salary' => 'nullable|decimal:0,2|min:0|max:99999999.99',
-            'password' => 'required|string|min:8|confirmed',
+            'password' => 'nullable|required_with:password_confirmation|string|min:8|confirmed',
             'is_active' => 'sometimes|boolean',
         ]);
         DB::transaction(function () use ($data, $request) {
             $data['role'] = 'teacher';
+            $data['password'] = ! empty($data['password']) ? $data['password'] : Str::random(64);
             $data['is_active'] = $request->boolean('is_active', true);
             $data['experience_years'] = $data['experience_years'] ?? 0;
             $teacher = User::create($data);
@@ -121,17 +123,18 @@ class TeacherController extends Controller
         $data = $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|email|max:255|unique:users,email,'.$teacher->id,
-            'phone' => 'required|string|max:20',
+            'phone' => 'required|string|max:20|regex:/^\+?[0-9]+$/D',
             'address' => 'required|string|max:500',
             'date_of_birth' => 'nullable|date|before:today',
             'qualification' => ['nullable', 'string', Rule::in([...config('teaching.qualification'), $teacher->qualification])],
             'experience_years' => ['nullable', 'integer', Rule::in([...config('teaching.experience_years'), $teacher->experience_years])],
             'specialization' => ['nullable', 'string', Rule::in([...config('teaching.specialization'), $teacher->specialization])],
-            'emergency_contact' => 'nullable|string|max:255',
+            'emergency_contact' => 'nullable|string|max:20|regex:/^\+?[0-9]+$/D',
             'hire_date' => 'nullable|date',
             'salary_type' => 'sometimes|in:monthly,per_student',
+            'per_student_amount' => [Rule::requiredIf($request->input('salary_type', $teacher->salary_type) === 'per_student'), 'nullable', 'decimal:0,2', 'gt:0', 'max:99999999.99'],
             'monthly_salary' => 'nullable|decimal:0,2|min:0|max:99999999.99',
-            'password' => 'nullable|string|min:8|confirmed',
+            'password' => 'nullable|required_with:password_confirmation|string|min:8|confirmed',
             'is_active' => 'sometimes|boolean',
         ]);
         if (empty($data['password'])) {

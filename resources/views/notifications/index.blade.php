@@ -24,18 +24,19 @@
         @forelse($notifications as $n)
             @php
                 $d = $n->data; $level = $d['level'] ?? 'info';
+                $destination = app(\App\Services\NotificationService::class)->destinationFor(auth()->user(), $d);
                 $color = ['info'=>'primary','success'=>'success','warning'=>'warning','danger'=>'danger'][$level] ?? 'secondary';
             @endphp
             <div class="list-group-item d-flex gap-3 align-items-start {{ $n->read_at ? '' : 'bg-light' }}">
                 <span class="fs-5 text-{{ $color }}"><i class="fas {{ $d['icon'] ?? 'fa-bell' }}"></i></span>
                 <div class="flex-grow-1">
                     <div class="fw-semibold">
-                        @if(!empty($d['url']))<a href="{{ $d['url'] }}" class="text-decoration-none text-body stretched-link">{{ $d['title'] ?? 'Notification' }}</a>
+                        @if($destination)<a href="{{ $destination }}" class="text-decoration-none text-body stretched-link">{{ $d['title'] ?? 'Notification' }}</a>
                         @else{{ $d['title'] ?? 'Notification' }}@endif
                         @unless($n->read_at)<span class="badge bg-{{ $color }} ms-1" style="font-size:.6rem;">new</span>@endunless
                     </div>
                     <div class="text-muted small">{{ $d['body'] ?? '' }}</div>
-                    <div class="text-muted" style="font-size:.75rem;">{{ $n->created_at->diffForHumans() }} &middot; {{ $n->created_at->format('d.m.Y H:i') }}</div>
+                    <div class="text-muted" style="font-size:.75rem;">{{ $n->created_at->diffForHumans() }} &middot; {{ $n->created_at->format('d.m.Y h:i A') }}</div>
                 </div>
                 <form method="POST" action="{{ route('notifications.destroy', $n->id) }}" class="position-relative" style="z-index:2;">
                     @csrf @method('DELETE')

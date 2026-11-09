@@ -116,11 +116,11 @@ class BiometricController extends Controller
     {
         $month = preg_match('/^\d{4}-(0[1-9]|1[0-2])$/D', (string) $request->query('month')) ? $request->query('month') : now()->format('Y-m');
         $start = Carbon::createFromFormat('Y-m-d', $month.'-01')->startOfDay();
-        $people = User::whereIn('role', User::PAID_ROLES)->orderBy('name')->get(['id', 'name', 'role', 'designation']);
+        $people = User::where('role', 'staff')->orderBy('name')->get(['id', 'name', 'role', 'designation']);
         $teachers = $people->pluck('name', 'id');
         $roles = $people->mapWithKeys(fn ($person) => [$person->id => $person->isStaff() ? ($person->designation ?: 'Staff') : 'Teacher']);
         $teacherId = $teachers->has((int) $request->query('teacher_id')) ? (int) $request->query('teacher_id') : null;
-        $days = BiometricPunch::whereIn('result', ['teacher', 'staff'])
+        $days = BiometricPunch::where('result', 'staff')->whereIn('user_id', $people->pluck('id'))
             ->whereBetween('punched_at', [$start, $start->copy()->endOfMonth()])
             ->when($teacherId, fn ($query) => $query->where('user_id', $teacherId))
             ->selectRaw('user_id, DATE(punched_at) as day, MIN(punched_at) as first_in, MAX(punched_at) as last_out, COUNT(*) as punches')

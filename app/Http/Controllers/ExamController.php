@@ -23,11 +23,53 @@ class ExamController extends Controller
 
     public function studentResults(Request $request)
     {
-        $results = StudentExamResult::where('student_id', $request->user()->id)
+        $batches = Batch::whereHas('enrollments', fn ($query) => $query->where('student_id', $request->user()->id))
+            ->orderBy('name')->pluck('name', 'id');
+        $data = $request->validate([
+            'search' => 'nullable|string|max:100',
+            'batch_id' => ['nullable', 'integer', Rule::in($batches->keys()->all())],
+            'status' => ['nullable', Rule::in(['scheduled', 'recorded', 'passed', 'failed'])],
+        ]);
+        $scheduledQuery = BatchExam::where('status', 'scheduled')
+            ->whereDoesntHave('results', fn ($query) => $query->where('student_id', $request->user()->id))
+            ->whereHas('batch.enrollments', fn ($query) => $query->where('student_id', $request->user()->id)
+                ->whereIn('status', ['active', 'completed']))
+            ->with('batch.course:id,name,level');
+        $resultsQuery = StudentExamResult::where('student_id', $request->user()->id)
             ->with(['batchExam.batch.course:id,level', 'sectionMarks.section', 'activeCertificate'])
-            ->orderByDesc('graded_at')->get();
+            ->orderByDesc('graded_at');
+        $kpis = [
+            ['label' => 'Scheduled', 'value' => (clone $scheduledQuery)->count(), 'icon' => 'fa-calendar-day'],
+            ['label' => 'Results available', 'value' => (clone $resultsQuery)->count(), 'icon' => 'fa-file-circle-check'],
+            ['label' => 'Passed', 'value' => (clone $resultsQuery)->where('overall_passed', true)->count(), 'icon' => 'fa-circle-check'],
+            ['label' => 'Failed', 'value' => (clone $resultsQuery)->where('overall_passed', false)->count(), 'icon' => 'fa-circle-xmark'],
+        ];
+        if (! empty($data['search'])) {
+            $search = '%'.trim($data['search']).'%';
+            $scheduledQuery->where('name', 'like', $search);
+            $resultsQuery->whereHas('batchExam', fn ($query) => $query->where('name', 'like', $search));
+        }
+        if (! empty($data['batch_id'])) {
+            $scheduledQuery->where('batch_id', $data['batch_id']);
+            $resultsQuery->whereHas('batchExam', fn ($query) => $query->where('batch_id', $data['batch_id']));
+        }
+        $status = $data['status'] ?? '';
+        if ($status === 'scheduled') {
+            $resultsQuery->whereRaw('1 = 0');
+        } elseif (in_array($status, ['recorded', 'passed', 'failed'], true)) {
+            $scheduledQuery->whereRaw('1 = 0');
+            if ($status !== 'recorded') {
+                $resultsQuery->where('overall_passed', $status === 'passed');
+            }
+        }
+        $scheduledExams = $scheduledQuery->orderBy('exam_date')->get();
+        $results = $resultsQuery->get();
+        $filters = [
+            ['name' => 'batch_id', 'label' => 'Batch', 'options' => $batches->all()],
+            ['name' => 'status', 'label' => 'Status', 'options' => ['scheduled' => 'Scheduled', 'recorded' => 'Results available', 'passed' => 'Passed', 'failed' => 'Failed']],
+        ];
 
-        return view('exams.student-results', compact('results'));
+        return view('exams.student-results', compact('results', 'scheduledExams', 'kpis', 'filters'));
     }
 
     public function index(Request $request)
@@ -72,7 +114,7 @@ class ExamController extends Controller
             'type' => 'exam', 'icon' => 'fa-file-pen', 'level' => 'info',
             'title' => 'Exam scheduled',
             'body' => "{$exam->name} is scheduled for {$examDate}.",
-            'url' => route('exams.show', $exam),
+            'url' => route('student.results'),
         ]);
         $notifier->toAdmins([
             'type' => 'exam', 'icon' => 'fa-file-pen', 'level' => 'info',

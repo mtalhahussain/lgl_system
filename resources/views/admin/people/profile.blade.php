@@ -76,6 +76,8 @@
                         <div class="finance-row"><span>Pay type</span><strong>{{ $person->salary_type === 'per_student' ? 'Per student per month' : 'Fixed monthly salary' }}</strong></div>
                         @if($person->salary_type !== 'per_student')
                             <div class="finance-row"><span>Monthly salary</span><strong>{{ $person->monthly_salary ? currency_format($person->monthly_salary) : 'Not set' }}</strong></div>
+                        @else
+                            <div class="finance-row"><span>Per student per month</span><strong>{{ $person->per_student_amount ? currency_format($person->per_student_amount) : 'Not set' }}</strong></div>
                         @endif
                     @endif
                 </div>

@@ -198,7 +198,7 @@
                                     @endif
                                 </td>
                                 <td>
-                                    <span title="{{ $student->created_at->format('d M Y H:i') }}">
+                                    <span title="{{ $student->created_at->format('d M Y h:i A') }}">
                                         {{ $student->created_at->diffForHumans() }}
                                     </span>
                                 </td>

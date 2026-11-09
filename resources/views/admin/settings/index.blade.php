@@ -37,7 +37,7 @@
                 @elseif($setting->type === 'file')
                     <input class="form-control mb-3" type="file" id="{{ $setting->key }}" name="{{ $setting->key }}" accept="image/png,image/jpeg,image/webp">
                 @else
-                    <input class="form-control mb-3" id="{{ $setting->key }}" name="{{ $setting->key }}" type="{{ in_array($setting->type, ['text', 'email', 'url', 'number']) ? $setting->type : 'text' }}" value="{{ old($setting->key, $setting->value) }}">
+                    <input class="form-control mb-3" id="{{ $setting->key }}" name="{{ $setting->key }}" type="{{ $setting->key === 'institute_phone' ? 'tel' : (in_array($setting->type, ['text', 'email', 'url', 'number']) ? $setting->type : 'text') }}" @if($setting->key === 'institute_phone') inputmode="tel" pattern="\+?[0-9]+" maxlength="30" title="Digits only, with an optional leading +" @endif value="{{ old($setting->key, $setting->value) }}">
                 @endif
             @endforeach
         </section>

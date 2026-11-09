@@ -89,7 +89,7 @@
                                         <td>
                                             {{ $session->session_date->format('M d, Y') }}
                                             <br>
-                                            <small class="text-muted">{{ $session->start_time }} - {{ $session->end_time }}</small>
+                                            <small class="text-muted">{{ $session->start_time?->format('h:i A') }} - {{ $session->end_time?->format('h:i A') }}</small>
                                         </td>
                                         <td>
                                             <span class="badge bg-info">{{ $batch->enrollments->where('status', 'active')->count() }} Students</span>

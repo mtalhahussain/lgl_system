@@ -14,6 +14,23 @@ class PeopleAndCourseTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function test_contact_inputs_reject_text_and_preserve_phone_digits(): void
+    {
+        foreach (['teachers', 'students'] as $resource) {
+            $data = $this->personData('contact.'.$resource.'@lgl.com');
+            $this->postJson('/'.$resource, array_replace($data, ['phone' => 'abc', 'emergency_contact' => 'A contact name']))
+                ->assertUnprocessable()->assertJsonValidationErrors(['phone', 'emergency_contact']);
+            $this->post('/'.$resource, $data + ['emergency_contact' => '+923001234567'])->assertRedirect();
+            $person = User::where('email', $data['email'])->sole();
+            $this->assertSame('03001234567', $person->phone);
+            $this->assertSame('+923001234567', $person->emergency_contact);
+            $this->putJson('/'.$resource.'/'.$person->id, array_replace($data, ['emergency_contact' => '0300abc']))
+                ->assertUnprocessable()->assertJsonValidationErrors('emergency_contact');
+        }
+        $this->putJson('/profile', ['name' => 'Admin', 'phone' => '1e10', 'emergency_contact' => 'text'])
+            ->assertUnprocessable()->assertJsonValidationErrors(['phone', 'emergency_contact']);
+    }
+
     protected function setUp(): void
     {
         parent::setUp();
@@ -51,6 +68,58 @@ class PeopleAndCourseTest extends TestCase
         $this->get('/teachers/'.$teacher->id.'/edit')->assertOk();
         $this->put('/teachers/'.$teacher->id, $this->personData('edited.teacher@lgl.com'))->assertRedirect('/teachers/'.$teacher->id);
         $this->assertDatabaseHas('users', ['id' => $teacher->id, 'email' => 'edited.teacher@lgl.com']);
+    }
+
+    public function test_teacher_and_student_passwords_can_be_set_later_and_blank_edits_preserve_hash(): void
+    {
+        foreach (['teachers' => 'teacher', 'students' => 'student'] as $resource => $role) {
+            $data = $this->personData('optional.'.$role.'@lgl.com');
+            unset($data['password'], $data['password_confirmation']);
+            $this->post('/'.$resource, $data + ['password' => '', 'password_confirmation' => ''])->assertRedirect('/'.$resource);
+            $person = User::where('email', $data['email'])->sole();
+            $this->assertNotEmpty($person->password);
+            $this->assertNotSame('', $person->password);
+            $this->assertFalse(Hash::check('', $person->password));
+            $this->assertFalse(Hash::check('password', $person->password));
+            $hash = $person->password;
+            $this->put('/'.$resource.'/'.$person->id, $data + ['password' => '', 'password_confirmation' => ''])->assertRedirect();
+            $this->assertSame($hash, $person->fresh()->password);
+            $this->put('/'.$resource.'/'.$person->id, $data + ['password' => 'chosen-password', 'password_confirmation' => 'chosen-password'])->assertRedirect();
+            $this->assertTrue(Hash::check('chosen-password', $person->fresh()->password));
+            $this->put('/'.$resource.'/'.$person->id, $data)->assertRedirect();
+            $this->assertTrue(Hash::check('chosen-password', $person->fresh()->password));
+            $this->post('/'.$resource, array_replace($data, ['email' => 'omitted.'.$role.'@lgl.com']))->assertRedirect();
+            $this->assertNotEmpty(User::where('email', 'omitted.'.$role.'@lgl.com')->sole()->password);
+        }
+    }
+
+    public function test_optional_provisioning_passwords_still_require_length_and_matching_confirmation(): void
+    {
+        foreach (['teachers', 'students'] as $resource) {
+            $data = $this->personData('invalid.'.$resource.'@lgl.com');
+            foreach ([['short', 'short'], ['long-password', 'mismatch'], ['long-password', ''], ['', 'confirmation-only']] as [$password, $confirmation]) {
+                $this->postJson('/'.$resource, array_replace($data, ['password' => $password, 'password_confirmation' => $confirmation]))
+                    ->assertUnprocessable()->assertJsonValidationErrors('password');
+            }
+        }
+    }
+
+    public function test_teacher_per_student_rate_is_required_validated_and_saved(): void
+    {
+        $data = $this->personData('rate.teacher@lgl.com') + ['salary_type' => 'per_student'];
+        foreach ([null, '0', '-1', '1.001', '100000000'] as $invalid) {
+            $this->postJson('/teachers', $data + ['per_student_amount' => $invalid])
+                ->assertUnprocessable()->assertJsonValidationErrors('per_student_amount');
+        }
+        $this->post('/teachers', $data + ['per_student_amount' => '1000.25'])->assertRedirect('/teachers');
+        $teacher = User::where('email', $data['email'])->sole();
+        $this->assertSame('1000.25', $teacher->per_student_amount);
+        $this->get('/teachers/'.$teacher->id.'/edit')->assertOk()->assertSee('Amount per student per month');
+        $this->putJson('/teachers/'.$teacher->id, $data)->assertUnprocessable()->assertJsonValidationErrors('per_student_amount');
+        $this->put('/teachers/'.$teacher->id, $data + ['per_student_amount' => '1200.50'])->assertRedirect();
+        $this->assertSame('1200.50', $teacher->fresh()->per_student_amount);
+        $this->put('/teachers/'.$teacher->id, array_replace($data, ['salary_type' => 'monthly', 'monthly_salary' => '30000']))->assertRedirect();
+        $this->assertSame('1200.50', $teacher->fresh()->per_student_amount);
     }
 
     public function test_teaching_dropdowns_validate_choices_and_preserve_existing_values(): void

@@ -9,7 +9,7 @@
         <div class="card card-body mb-2">
             @php $existing = $classSession->attendances->firstWhere('student_id', $enrollment->student_id); @endphp
             <label for="attendance_{{ $enrollment->student_id }}">{{ $enrollment->student->name }}</label>
-            @if($existing?->auto_marked)<span class="cell-sub"><i class="fas fa-fingerprint" aria-hidden="true"></i> Machine {{ $existing->check_in_time?->format('H:i') }}</span>@endif
+            @if($existing?->auto_marked)<span class="cell-sub"><i class="fas fa-fingerprint" aria-hidden="true"></i> Machine {{ $existing->check_in_time?->format('h:i A') }}</span>@endif
             <select class="form-select" id="attendance_{{ $enrollment->student_id }}" name="attendance[{{ $enrollment->student_id }}]">
                 <option value="">Unmarked / unchanged</option>
                 @foreach(['present', 'absent', 'late', 'excused'] as $status)

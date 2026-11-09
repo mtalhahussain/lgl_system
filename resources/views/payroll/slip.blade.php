@@ -11,7 +11,7 @@
         <button class="btn btn-primary ms-auto" type="button" onclick="window.print()"><i class="fas fa-print me-1" aria-hidden="true"></i>Print slip</button>
     </div>
     <x-show.document kind="Salary Payment Slip" :number="$payout->voucher_number" :institute="$details['institute_name'] ?? null"
-        :amount="$payout->amount" :currency="$details['currency_code'] ?? 'PKR'" :date="$payout->paid_at->format('d M Y, H:i')" :reversal="$payout->reversal"
+        :amount="$payout->amount" :currency="$details['currency_code'] ?? 'PKR'" :date="$payout->paid_at->format('d M Y, h:i A')" :reversal="$payout->reversal"
         :rows="['Paid to' => $teacher, 'For' => $details['description'] ?? null,
             'Due amount' => isset($details['due_amount']) ? ($details['currency_code'] ?? 'PKR').' '.number_format((float) $details['due_amount'], 2) : null,
             'Method' => \App\Services\PayrollService::METHODS[$payout->method] ?? $payout->method, 'Reference' => $payout->reference]" />

@@ -14,10 +14,10 @@
                 <x-list.status :value="$device->is_active ? 'active' : 'inactive'" />
             </div>
             <div style="padding:18px 22px">
-                <p class="mb-2">Last contact: <strong>{{ $device->last_seen_at ? $device->last_seen_at->format('d M Y H:i').' ('.$device->last_seen_at->diffForHumans().')' : 'Never' }}</strong></p>
+                <p class="mb-2">Last contact: <strong>{{ $device->last_seen_at ? $device->last_seen_at->format('d M Y h:i A').' ('.$device->last_seen_at->diffForHumans().')' : 'Never' }}</strong></p>
                 @php $counts = $sync[$device->id] ?? collect(); @endphp
                 <p class="mb-2">User sync: <strong>{{ $counts['synced'] ?? 0 }}</strong> on machine · <strong>{{ $counts['pending'] ?? 0 }}</strong> waiting · <strong class="{{ ($counts['failed'] ?? 0) ? 'text-danger' : '' }}">{{ $counts['failed'] ?? 0 }}</strong> failed
-                    <span class="d-block form-text">Bridge PC last contact: {{ $device->bridge_seen_at ? $device->bridge_seen_at->format('d M Y H:i').' ('.$device->bridge_seen_at->diffForHumans().')' : 'Never' }}</span></p>
+                    <span class="d-block form-text">Bridge PC last contact: {{ $device->bridge_seen_at ? $device->bridge_seen_at->format('d M Y h:i A').' ('.$device->bridge_seen_at->diffForHumans().')' : 'Never' }}</span></p>
                 @if(($failed[$device->id] ?? collect())->isNotEmpty())
                     <details class="mb-3">
                         <summary class="fw-semibold text-danger">Failed users</summary>
@@ -87,7 +87,7 @@
             <tbody>
             @forelse($punches as $punch)
                 <tr>
-                    <td>{{ $punch->punched_at->format('d M Y H:i:s') }}</td>
+                    <td>{{ $punch->punched_at->format('d M Y h:i:s A') }}</td>
                     <td><code>{{ $punch->employee_no }}</code></td>
                     <td>@if($punch->user)<span class="cell-main">{{ $punch->user->name }}</span><span class="cell-sub">{{ ucfirst($punch->user->role) }}</span>@else<span class="text-muted">Not linked</span>@endif</td>
                     <td>@if($punch->classSession)<a href="{{ route('class-sessions.show', $punch->classSession) }}">{{ $punch->classSession->batch?->name }}</a>@else — @endif</td>

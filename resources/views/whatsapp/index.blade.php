@@ -53,7 +53,7 @@
             </ol>
             <form method="post" action="{{ route('whatsapp.test') }}" class="row g-2 align-items-end">
                 @csrf
-                <div class="col-sm-8"><label class="form-label" for="phone">Test number</label><input class="form-control" id="phone" name="phone" type="tel" placeholder="03001234567" maxlength="20" required></div>
+                <div class="col-sm-8"><label class="form-label" for="phone">Test number</label><input class="form-control" id="phone" name="phone" type="tel" inputmode="tel" pattern="\+?[0-9]+" title="Digits only, with an optional leading +" placeholder="03001234567" maxlength="20" required></div>
                 <div class="col-sm-4"><button class="btn btn-outline-success w-100" @disabled(! $configured)>Send test</button></div>
             </form>
         </div>
@@ -75,7 +75,7 @@
             <tbody>
             @forelse($messages as $message)
                 <tr>
-                    <td>{{ $message->created_at->format('d M Y H:i') }}</td>
+                    <td>{{ $message->created_at->format('d M Y h:i A') }}</td>
                     <td>@if($message->student)<a href="{{ route('students.show', $message->student) }}">{{ $message->student->name }}</a><span class="cell-sub">{{ $message->enrollment?->batch?->name }}</span>@else — @endif</td>
                     <td>{{ $message->phone ?: '—' }}</td>
                     <td>{{ $message->kindLabel() }}@if($message->sender)<span class="cell-sub">by {{ $message->sender->name }}</span>@endif</td>

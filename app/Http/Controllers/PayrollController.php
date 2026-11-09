@@ -76,7 +76,7 @@ class PayrollController extends Controller
             ['name' => 'kind', 'label' => 'Type', 'options' => $kinds],
             ['name' => 'state', 'label' => 'Status', 'options' => $states],
         ]));
-        $eligibleBatches = $isAdmin ? Batch::with(['teacher:id,name', 'course:id,teacher_per_student_amount'])
+        $eligibleBatches = $isAdmin ? Batch::with(['teacher:id,name,per_student_amount'])
             ->whereIn('status', ['ongoing', 'completed'])
             ->whereHas('teacher', fn ($query) => $query->where('salary_type', 'per_student'))
             // Batches with a pre-monthly whole-batch earning (no period) stay excluded until it is voided.

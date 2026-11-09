@@ -24,7 +24,7 @@
             @forelse($sessions as $session)
                 @php $markable = $session->status !== 'cancelled' && $session->session_date->lte(today()); @endphp
                 <tr>
-                    <td><span class="cell-main">{{ $session->session_date->format('d M Y') }}</span><span class="cell-sub">{{ $session->start_time?->format('H:i') }}</span></td>
+                    <td><span class="cell-main">{{ $session->session_date->format('d M Y') }}</span><span class="cell-sub">{{ $session->start_time?->format('h:i A') }}</span></td>
                     <td>{{ $session->batch->name }}<span class="cell-sub">{{ $session->batch->course?->name }}</span></td>
                     <td>{{ $session->topic ?: '—' }}</td>
                     <td><x-list.status :value="$session->status" /></td>

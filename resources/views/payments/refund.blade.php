@@ -16,7 +16,7 @@
         <button class="btn btn-primary ms-auto" type="button" onclick="window.print()"><i class="fas fa-print me-1" aria-hidden="true"></i>Print slip</button>
     </div>
     <x-show.document kind="Fee Refund Slip" :number="$refund->voucher_number" :institute="$details['institute_name'] ?? null"
-        :amount="$refund->amount" :currency="$details['currency_code'] ?? 'PKR'" :date="$refund->refunded_at->format('d M Y, H:i')"
+        :amount="$refund->amount" :currency="$details['currency_code'] ?? 'PKR'" :date="$refund->refunded_at->format('d M Y, h:i A')"
         :rows="['Refunded to' => $student, 'Course' => $details['course_name'] ?? null, 'Batch' => $details['batch_name'] ?? null,
             'Discount now' => isset($details['discount_percentage']) ? $details['discount_percentage'].'%' : null,
             'Method' => \App\Services\PaymentService::REFUND_METHODS[$refund->method] ?? $refund->method, 'Reference' => $refund->reference,

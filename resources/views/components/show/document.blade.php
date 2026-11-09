@@ -23,5 +23,5 @@
         @endforeach
     </dl>
     {{ $slot }}
-    <footer class="doc-foot">System-generated record · Printed {{ now()->format('d M Y H:i') }}</footer>
+    <footer class="doc-foot">System-generated record · Printed {{ now()->format('d M Y h:i A') }}</footer>
 </article>

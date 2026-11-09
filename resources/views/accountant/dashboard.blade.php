@@ -85,7 +85,7 @@
                                 </td>
                                 <td>German A1 - Beginner</td>
                                 <td>{{ currency_format(300) }}</td>
-                                <td>{{ now()->subHours(2)->format('M d, H:i') }}</td>
+                                <td>{{ now()->subHours(2)->format('M d, h:i A') }}</td>
                                 <td><span class="badge bg-success">Paid</span></td>
                             </tr>
                             <tr>
@@ -95,7 +95,7 @@
                                 </td>
                                 <td>German B1 - Intermediate</td>
                                 <td>{{ currency_format(350) }}</td>
-                                <td>{{ now()->subHours(5)->format('M d, H:i') }}</td>
+                                <td>{{ now()->subHours(5)->format('M d, h:i A') }}</td>
                                 <td><span class="badge bg-success">Paid</span></td>
                             </tr>
                             <tr>
@@ -105,7 +105,7 @@
                                 </td>
                                 <td>German A2 - Elementary</td>
                                 <td>{{ currency_format(325) }}</td>
-                                <td>{{ now()->subDays(1)->format('M d, H:i') }}</td>
+                                <td>{{ now()->subDays(1)->format('M d, h:i A') }}</td>
                                 <td><span class="badge bg-warning">Pending</span></td>
                             </tr>
                             <tr>
@@ -115,7 +115,7 @@
                                 </td>
                                 <td>German C1 - Advanced</td>
                                 <td>{{ currency_format(400) }}</td>
-                                <td>{{ now()->subDays(2)->format('M d, H:i') }}</td>
+                                <td>{{ now()->subDays(2)->format('M d, h:i A') }}</td>
                                 <td><span class="badge bg-danger">Overdue</span></td>
                             </tr>
                         </tbody>

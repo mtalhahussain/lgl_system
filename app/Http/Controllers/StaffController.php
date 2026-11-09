@@ -52,9 +52,9 @@ class StaffController extends Controller
         $data = $request->validate([
             'name' => 'required|string|max:255',
             'designation' => 'required|string|max:60',
-            'phone' => 'required|string|max:20',
+            'phone' => 'required|string|max:20|regex:/^\+?[0-9]+$/D',
             'address' => 'nullable|string|max:500',
-            'emergency_contact' => 'nullable|string|max:255',
+            'emergency_contact' => 'nullable|string|max:20|regex:/^\+?[0-9]+$/D',
             'hire_date' => 'nullable|date',
             'monthly_salary' => 'required|decimal:0,2|min:0|max:99999999.99',
             'is_active' => 'sometimes|boolean',

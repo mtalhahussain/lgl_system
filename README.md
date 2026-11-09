@@ -27,6 +27,20 @@ Demo seeders refuse production. Never use these accounts for production provisio
 
 ## Documentation
 
+Displayed times across dashboards, class/attendance pages, notifications, machine logs, fee history and printable receipts/payroll slips use 12-hour AM/PM format. Stored times, native form values, calculations and CSV exports retain their existing formats.
+
+Date/time pickers have separate month/year dropdowns, labelled Hour/Minute/AM–PM choices and Today/Now, Clear and Done actions. Dates display DD-MM-YYYY and times display hh:mm AM/PM; submitted values retain existing controller formats. Calendar layouts fit narrow screens and keep existing date limits.
+
+Staff Attendance lists only non-teaching users with the staff role, including the staff selector and daily punch totals. Teacher punch history remains available in the machine punch log; this report does not affect payroll.
+
+Phone and Emergency contact fields accept digits with an optional leading + and preserve leading zeroes. Forms use telephone keyboards and remove letters/pasted formatting; server validation also rejects text. Emergency contact remains optional.
+
+New staff Joining date and Teacher Hire date default to today in the application timezone. Editing preserves the saved date, including an unset date; validation retries preserve submitted input.
+
+Student My Result includes exam-name search, batch/status filters and personal Scheduled, Results available, Passed and Failed counts. Filters show only the student's own records, with a clear reset when nothing matches.
+
+Teacher and Student password fields are optional on create/edit. Leave them blank on creation to set a password later through Admin edit before the person's first sign-in; leave them blank on edit to retain the existing password. Supplied passwords require at least 8 characters and matching confirmation.
+
 - [Project requirements, architecture and operations](docs/PROJECT.md)
 - [Task status, verification and recovery evidence](docs/TASKS.md)
 - [Shared agent rules and collaboration workflow](AGENTS.md)
@@ -40,6 +54,8 @@ Admin can sell a multi-level package (2–4 consecutive levels, e.g. A1 + A2, A1
 
 Exam-based institute certificates are the next requested extension. Design is recorded under E01 in docs/TASKS.md; passing-rule clarification is pending and the legacy exam/certificate modules remain inactive.
 
+Student exam announcements open My Result, showing a Scheduled state for ungraded exams in their enrolled batches. A separate Results section appears only after marks are recorded for that student. Existing exam notifications with staff-only exam URLs are adapted when shown in the bell or notification history; stored notifications remain unchanged. The current workflow records marks through Teacher/Admin; it does not provide online question attempts.
+
 Admin batch save now automatically creates regular dated classes from weekly days/times through the batch end date, starting today or the batch start date. Start and end dates are required for every batch; the end date must be on or after the start date. Teachers see assigned batch dates/timings and today’s direct attendance links; use Extra / makeup class only for additional classes. Existing dated classes and attendance are preserved. For an older batch, Admin can edit and save to fill missing future dates.
 
 Class Sessions now separates teacher confirmation from student attendance. Open a class to record Class taken or Class missed with a reason, then use Schedule linked makeup on an original missed class. This week’s teaching shows missed classes as makeup needed, pending or covered; coverage requires the makeup’s explicit Class taken confirmation. The additive teaching-record migration was applied to the owner-authorized local `lgl_system` on 5 November 2026.
@@ -52,4 +68,10 @@ For an unpaid mistaken admission, open Enrollments > View > Correct batch. Admin
 
 Admin sidebar includes Enrollments below Students for admissions, batch correction, transfers and withdrawals.
 
+For per-student teacher pay, select Per student per month on teacher create/edit and enter Amount per student per month. This teacher's rate applies to students in every assigned batch each month, independent of the course amount. Existing teachers without a positive rate need it configured before new batch dues can be generated; previously generated dues and payouts keep their saved amounts.
+
 Enrollment, class-session, profile, fee-ledger and enrollment/dues report tables show course levels beside course or batch names.
+
+Shared tables place Rows per page at the top left with search on the right; filters sit in a separate compact group below. On mobile, search wraps to a full-width row. Result count and pagination stay below the table. Changing page size preserves filters and sorting and returns to the first page. Financial histories with fixed page sizes retain their existing pagination.
+
+Date/time fields use a locally bundled Flatpickr calendar and AM/PM time picker with the portal's red/gold theme, including dynamically added schedule rows. Displayed and typed dates use DD-MM-YYYY; submitted dates remain YYYY-MM-DD and submitted times remain HH:MM. Existing required fields and date bounds remain enforced. Rebuild assets after frontend changes.

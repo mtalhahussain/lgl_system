@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>@yield('title') - {{ institute_name() }}</title>
     <script>try { if (localStorage.getItem('lgl:sidebar') === 'collapsed') document.documentElement.classList.add('sidebar-collapsed'); } catch (e) {}</script>
+    <link rel="icon" href="{{ asset('favicon.png') }}" type="image/png">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     @vite(['resources/css/app.css', 'resources/js/app.js'])
@@ -98,7 +99,7 @@
                                     <i class="fas fa-clipboard-check me-2"></i>My Attendance
                                 </a>
                             </li>
-                            <li class="nav-item"><a class="nav-link {{ request()->is('student/results*') ? 'active' : '' }}" href="{{ route('student.results') }}"><i class="fas fa-file-circle-check me-2" aria-hidden="true"></i>My Results</a></li>
+                            <li class="nav-item"><a class="nav-link {{ request()->is('student/results*') ? 'active' : '' }}" href="{{ route('student.results') }}"><i class="fas fa-clipboard-check me-2" aria-hidden="true"></i>My Result</a></li>
                             <li class="nav-item">
                                 <a class="nav-link {{ request()->is('students/' . auth()->id()) ? 'active' : '' }}" 
                                    href="{{ route('students.show', auth()->user()) }}">

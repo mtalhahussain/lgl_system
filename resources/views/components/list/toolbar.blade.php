@@ -19,17 +19,51 @@
     $keep = array_filter(request()->only(['sort', 'dir', 'per_page']), 'filled');
 @endphp
 <div class="list-toolbar d-print-none">
-    <form method="get" action="{{ url()->current() }}" class="list-filter" data-list-filter role="search">
-        @foreach(['sort', 'dir'] as $key)
-            @if(filled(request($key)))<input type="hidden" name="{{ $key }}" value="{{ request($key) }}">@endif
-        @endforeach
+    @if($perPage || $search)
+    <div class="list-display-options">
+        @if($perPage)
+        @php
+            $pageSizeId = 'filter-page-size';
+            $queryFields = [];
+            $flattenQuery = function ($values, $prefix = '') use (&$flattenQuery, &$queryFields) {
+                foreach ($values as $key => $value) {
+                    $name = $prefix === '' ? $key : $prefix.'['.$key.']';
+                    if (is_array($value)) {
+                        $flattenQuery($value, $name);
+                    } elseif (is_scalar($value)) {
+                        $queryFields[$name] = $value;
+                    }
+                }
+            };
+            $flattenQuery(request()->except(['page', 'per_page', 'export']));
+        @endphp
+        <form method="get" action="{{ url()->current() }}" class="list-page-size d-print-none" data-page-size>
+            @foreach($queryFields as $name => $value)
+                <input type="hidden" name="{{ $name }}" value="{{ $value }}">
+            @endforeach
+            <label for="{{ $pageSizeId }}">Rows per page</label>
+            <select id="{{ $pageSizeId }}" name="per_page" class="form-select" data-native>
+                @foreach(\App\Support\ListQuery::PER_PAGE as $size)
+                    <option value="{{ $size }}" @selected((int) request('per_page', $perPageDefault) === $size)>{{ $size }}</option>
+                @endforeach
+            </select>
+            <button class="btn btn-outline-primary page-size-apply">Apply</button>
+        </form>
+        @endif
         @if($search)
             <div class="list-search">
                 <label class="visually-hidden" for="list_search">{{ $search }}</label>
                 <i class="fas fa-search" aria-hidden="true"></i>
-                <input id="list_search" type="search" name="search" value="{{ request('search') }}" placeholder="{{ $search }}" maxlength="100" autocomplete="off">
+                <input id="list_search" form="list-filters" type="search" name="search" value="{{ request('search') }}" placeholder="{{ $search }}" maxlength="100" autocomplete="off">
             </div>
         @endif
+    </div>
+    @endif
+    <form method="get" action="{{ url()->current() }}" id="list-filters" class="list-filter" data-list-filter role="search">
+        @foreach(['sort', 'dir'] as $key)
+            @if(filled(request($key)))<input type="hidden" name="{{ $key }}" value="{{ request($key) }}">@endif
+        @endforeach
+
         @foreach($filters as $filter)
             <div class="list-field">
                 <label for="filter_{{ $filter['name'] }}">{{ $filter['label'] }}</label>
@@ -46,14 +80,7 @@
             </div>
         @endforeach
         @if($perPage)
-            <div class="list-field">
-                <label for="filter_per_page">Rows</label>
-                <select id="filter_per_page" name="per_page" class="form-select" data-native>
-                    @foreach(\App\Support\ListQuery::PER_PAGE as $size)
-                        <option value="{{ $size }}" @selected((int) request('per_page', $perPageDefault) === $size)>{{ $size }}</option>
-                    @endforeach
-                </select>
-            </div>
+            <input type="hidden" name="per_page" value="{{ request('per_page', $perPageDefault) }}">
         @endif
         <div class="list-buttons">
             <button class="btn btn-primary list-apply">Apply</button>

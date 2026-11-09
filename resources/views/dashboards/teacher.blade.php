@@ -14,7 +14,7 @@
     <ul class="list-group list-group-flush">
         @forelse($todaySessions as $session)
             <li class="list-group-item d-flex justify-content-between align-items-center flex-wrap gap-2">
-                <div><a class="cell-main" href="{{ route('class-sessions.show', $session) }}">{{ $session->batch->name }}<span class="cell-sub">{{ $session->session_date->format('D, d M Y') }} · {{ $session->start_time?->format('H:i') }}–{{ $session->end_time?->format('H:i') }} · {{ $session->topic }}</span></a></div>
+                <div><a class="cell-main" href="{{ route('class-sessions.show', $session) }}">{{ $session->batch->name }}<span class="cell-sub">{{ $session->session_date->format('D, d M Y') }} · {{ $session->start_time?->format('h:i A') }}–{{ $session->end_time?->format('h:i A') }} · {{ $session->topic }}</span></a></div>
                 <div class="d-flex flex-wrap gap-2"><a class="btn btn-outline-primary" href="{{ route('class-sessions.show', $session) }}">Open class / teaching record</a><a class="btn btn-primary" href="{{ route('class-sessions.attendance', $session) }}">Mark attendance</a></div>
             </li>
         @empty<li class="list-group-item">No classes scheduled for today.</li>@endforelse
@@ -28,7 +28,7 @@
                 <div><a href="{{ route('batches.show', $batch) }}">{{ $batch->name }}</a> — {{ $batch->course->name }}; {{ $batch->active_enrollments_count }} enrolled
                     <div class="small text-muted">{{ $batch->start_date?->format('d M Y') }} – {{ $batch->end_date?->format('d M Y') ?? 'No end date' }}</div>
                     @if($sched->isNotEmpty())
-                        <div class="small"><a href="{{ route('class-sessions.index', ['batch_id' => $batch->id]) }}" title="View dated classes for {{ $batch->name }}">{{ $sched->map(fn ($s) => $s->weekdayLabel().' '.\Illuminate\Support\Carbon::parse($s->getRawOriginal('start_time'))->format('H:i').'–'.\Illuminate\Support\Carbon::parse($s->getRawOriginal('end_time'))->format('H:i'))->implode(' · ') }}</a></div>
+                        <div class="small"><a href="{{ route('class-sessions.index', ['batch_id' => $batch->id]) }}" title="View dated classes for {{ $batch->name }}">{{ $sched->map(fn ($s) => $s->weekdayLabel().' '.\Illuminate\Support\Carbon::parse($s->getRawOriginal('start_time'))->format('h:i A').'–'.\Illuminate\Support\Carbon::parse($s->getRawOriginal('end_time'))->format('h:i A'))->implode(' · ') }}</a></div>
                     @else
                         <div class="small text-muted fst-italic">No weekly schedule set.</div>
                     @endif
@@ -39,7 +39,7 @@
     @empty<li class="list-group-item">No assigned batches.</li>@endforelse
 </ul></section>
 <section class="panel tw:mb-6"><div class="panel-heading"><h2>Upcoming Sessions</h2></div><ul class="list-group list-group-flush">
-    @forelse($sessions as $session)<li class="list-group-item"><a class="d-block" href="{{ route('class-sessions.show', $session) }}"><strong>{{ $session->batch->name }} — {{ $session->topic }}</strong><span class="cell-sub">{{ $session->session_date->format('D, d M Y') }} · {{ $session->start_time->format('H:i') }}–{{ $session->end_time?->format('H:i') }}</span></a></li>
+    @forelse($sessions as $session)<li class="list-group-item"><a class="d-block" href="{{ route('class-sessions.show', $session) }}"><strong>{{ $session->batch->name }} — {{ $session->topic }}</strong><span class="cell-sub">{{ $session->session_date->format('D, d M Y') }} · {{ $session->start_time->format('h:i A') }}–{{ $session->end_time?->format('h:i A') }}</span></a></li>
     @empty<li class="list-group-item">No upcoming sessions.</li>@endforelse
 </ul></section>
 <a class="btn btn-primary" href="{{ route('attendance.index') }}">Review attendance</a>

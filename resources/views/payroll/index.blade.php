@@ -31,7 +31,7 @@
                     <select class="form-select" id="batch_id" name="batch_id" required @disabled($eligibleBatches->isEmpty())>
                         <option value="">{{ $eligibleBatches->isEmpty() ? 'No eligible batches' : 'Choose batch' }}</option>
                         @foreach($eligibleBatches as $batch)
-                            <option value="{{ $batch->id }}" data-meta="{{ $batch->teacher?->name }} · {{ currency_format($batch->course?->teacher_per_student_amount ?? 0) }} per student" @selected(old('batch_id') == $batch->id)>{{ $batch->name }}</option>
+                            <option value="{{ $batch->id }}" data-meta="{{ $batch->teacher?->name }} · {{ currency_format($batch->teacher?->per_student_amount ?? 0) }} per student per month" @selected(old('batch_id') == $batch->id)>{{ $batch->name }}</option>
                         @endforeach
                     </select>
                 </div>

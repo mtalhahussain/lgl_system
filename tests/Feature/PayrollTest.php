@@ -29,9 +29,40 @@ class PayrollTest extends TestCase
         parent::setUp();
         $this->admin = User::factory()->create(['role' => 'admin', 'is_active' => true]);
         $this->salaried = User::factory()->create(['role' => 'teacher', 'is_active' => true, 'salary_type' => 'monthly', 'monthly_salary' => 50000]);
-        $this->perStudent = User::factory()->create(['role' => 'teacher', 'is_active' => true, 'salary_type' => 'per_student']);
+        $this->perStudent = User::factory()->create(['role' => 'teacher', 'is_active' => true, 'salary_type' => 'per_student', 'per_student_amount' => '1500.00']);
         $this->course = Course::create(['name' => 'A1', 'level' => 'A1', 'total_fee' => 10000,
             'teacher_per_student_amount' => 1500, 'duration_weeks' => 12]);
+    }
+
+    public function test_teacher_rate_applies_across_batches_and_changes_only_new_dues(): void
+    {
+        $this->actingAs($this->admin);
+        $first = $this->batch($this->perStudent);
+        $second = $this->batch($this->perStudent);
+        $this->enroll($first, 'active');
+        $this->enroll($first, 'active');
+        $this->enroll($second, 'active');
+        $this->course->update(['teacher_per_student_amount' => 9999]);
+        $this->perStudent->update(['per_student_amount' => '1000.25']);
+        $period = now()->format('Y-m');
+        $this->post('/payroll/batches', ['batch_id' => $first->id, 'period' => $period])->assertRedirect();
+        $this->post('/payroll/batches', ['batch_id' => $second->id, 'period' => $period])->assertRedirect();
+        $due = TeacherDue::where('batch_id', $first->id)->sole();
+        $this->assertSame('2000.50', $due->amount);
+        $this->assertSame('1000.25', TeacherDue::where('batch_id', $second->id)->sole()->amount);
+        $this->perStudent->update(['per_student_amount' => '1200.50']);
+        $third = $this->batch($this->perStudent);
+        $this->enroll($third, 'active');
+        $this->post('/payroll/batches', ['batch_id' => $third->id, 'period' => $period])->assertRedirect();
+        $this->assertSame('1200.50', TeacherDue::where('batch_id', $third->id)->sole()->rate);
+        $this->assertSame(['1000.25', '2000.50'], [$due->fresh()->rate, $due->fresh()->amount]);
+        $this->postJson('/payroll/batches', ['batch_id' => $first->id, 'period' => $period])->assertUnprocessable();
+        $this->perStudent->update(['per_student_amount' => null]);
+        $missing = $this->batch($this->perStudent);
+        $this->enroll($missing, 'active');
+        $this->postJson('/payroll/batches', ['batch_id' => $missing->id, 'period' => $period])
+            ->assertUnprocessable()->assertJsonValidationErrors('batch_id');
+        $this->assertDatabaseCount('teacher_dues', 3);
     }
 
     private function batch(User $teacher, string $status = 'ongoing'): Batch

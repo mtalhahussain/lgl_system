@@ -20,6 +20,72 @@ class BatchExamTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function test_my_result_filters_and_counts_are_scoped_to_the_student(): void
+    {
+        $student = User::factory()->create(['role' => 'student', 'is_active' => true]);
+        $other = User::factory()->create(['role' => 'student', 'is_active' => true]);
+        $admin = User::factory()->create(['role' => 'admin']);
+        $batch = $this->batch();
+        $batch->update(['name' => 'My visible batch']);
+        $this->enroll($batch, $student);
+        $scheduled = $this->examWithSections($batch);
+        $scheduled->update(['name' => 'Upcoming language exam']);
+        $graded = $this->examWithSections($batch);
+        $graded->update(['name' => 'Recorded language exam']);
+        app(ExamGradingService::class)->saveStudentResult($graded, $student->id, $this->marksFor($graded, 20), $admin);
+        $foreignBatch = $this->batch();
+        $foreignBatch->update(['name' => 'Private other batch']);
+        $this->enroll($foreignBatch, $other);
+        $foreign = $this->examWithSections($foreignBatch);
+        app(ExamGradingService::class)->saveStudentResult($foreign, $other->id, $this->marksFor($foreign, 0), $admin);
+        $this->actingAs($student)->get('/student/results')->assertOk()->assertSee('My Result')
+            ->assertDontSee('Private other batch')->assertViewHas('kpis', fn ($items) => array_column($items, 'value') === [1, 1, 1, 0]);
+        $this->get('/student/results?status=scheduled')->assertOk()
+            ->assertViewHas('scheduledExams', fn ($items) => $items->count() === 1)
+            ->assertViewHas('results', fn ($items) => $items->isEmpty());
+        $this->get('/student/results?status=passed&batch_id='.$batch->id)->assertOk()
+            ->assertViewHas('results', fn ($items) => $items->count() === 1)
+            ->assertViewHas('scheduledExams', fn ($items) => $items->isEmpty());
+        $this->get('/student/results?search=Upcoming')->assertOk()->assertSee('Upcoming language exam')
+            ->assertDontSee('Recorded language exam');
+        $this->get('/student/results?status=failed')->assertOk()->assertSee('No matching exams or results')->assertSee('Clear filters');
+        $this->getJson('/student/results?batch_id='.$foreignBatch->id)->assertUnprocessable()->assertJsonValidationErrors('batch_id');
+    }
+
+    public function test_student_exam_notifications_open_scoped_schedule_including_historical_links(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin', 'is_active' => true]);
+        $student = User::factory()->create(['role' => 'student', 'is_active' => true]);
+        $batch = $this->batch();
+        Enrollment::create(['student_id' => $student->id, 'batch_id' => $batch->id,
+            'enrollment_date' => today(), 'total_fee' => 30000, 'status' => 'active']);
+        $this->actingAs($admin)->post('/exams', [
+            'batch_id' => $batch->id, 'name' => 'My scheduled exam', 'type' => 'final',
+            'exam_date' => today()->addWeek()->toDateString(),
+            'sections' => collect(BatchExam::SECTIONS)->map(fn ($name) => ['name' => $name, 'max_marks' => 25, 'passing_marks' => 15])->all(),
+        ])->assertRedirect();
+        $exam = BatchExam::where('name', 'My scheduled exam')->sole();
+        $notice = $student->notifications()->sole();
+        $this->assertSame(route('student.results'), $notice->data['url']);
+        $unrelated = $this->examWithSections($this->batch());
+        $unrelated->update(['name' => 'Unrelated private exam']);
+        // Existing notifications are adapted for display without rewriting their history.
+        $legacyUrl = 'http://localhost:8000/exams/'.$exam->id;
+        $notice->update(['data' => array_replace($notice->data, ['url' => $legacyUrl])]);
+        $this->actingAs($student)->get('/notifications/feed')->assertOk()
+            ->assertJsonPath('items.0.url', route('student.results'));
+        $this->get('/notifications')->assertOk()->assertSee(route('student.results'), false)
+            ->assertDontSee('href="'.$legacyUrl.'"', false);
+        $this->assertSame($legacyUrl, $notice->fresh()->data['url']);
+        $this->get('/student/results')->assertOk()->assertSee('My scheduled exam')->assertDontSee('Unrelated private exam')
+            ->assertSee('Scheduled exams')->assertDontSee('<h2>Results</h2>', false)
+            ->assertDontSee('My Results')->assertDontSee('<span class="badge bg-success">Passed</span>', false)
+            ->assertDontSee('<span class="badge bg-danger">Failed</span>', false);
+        $this->get('/exams/'.$exam->id)->assertForbidden();
+        $this->assertSame(route('exams.show', $exam), app(\App\Services\NotificationService::class)
+            ->destinationFor($admin, ['type' => 'exam', 'url' => route('exams.show', $exam)]));
+    }
+
     private function batch(?User $teacher = null): Batch
     {
         $teacher ??= User::factory()->create(['role' => 'teacher']);
@@ -444,9 +510,10 @@ class BatchExamTest extends TestCase
         $teacher = User::factory()->create(['role' => 'teacher']);
         $student = User::factory()->create(['role' => 'student']);
 
-        $this->actingAs($admin)->get('/exams')->assertOk()->assertSee('Exams')->assertSee('fa-file-pen');
-        $this->actingAs($teacher)->get('/exams')->assertOk();
+        $this->actingAs($admin)->get('/exams')->assertOk()->assertSee('href="'.route('exams.index').'"', false);
+        $this->actingAs($teacher)->get('/exams')->assertOk()->assertSee('href="'.route('exams.index').'"', false);
         $this->actingAs($student)->get('/exams')->assertForbidden();
+        $this->get('/student/results')->assertOk()->assertDontSee('href="'.route('exams.index').'"', false);
     }
 
     public function test_grid_inputs_reference_external_row_forms(): void
@@ -504,7 +571,7 @@ class BatchExamTest extends TestCase
         $response = $this->actingAs($mine)->get('/student/results')->assertOk()
             ->assertSee($exam->name)
             ->assertSee('Passed')
-            ->assertDontSee('Failed');
+            ->assertDontSee('<span class="badge bg-danger">Failed</span>', false);
 
         $response->assertViewHas('results', fn ($results) => $results->count() === 1
             && $results->first()->student_id === $mine->id);

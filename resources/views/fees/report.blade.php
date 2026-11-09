@@ -28,8 +28,8 @@
             </tbody>
         </table>
     </div>
-    <x-list.footer :paginator="$payments" label="payments" />
-    @if($reversals->hasPages())<x-list.footer :paginator="$reversals" label="reversals" />@endif
-    @if($refunds->hasPages())<x-list.footer :paginator="$refunds" label="refunds" />@endif
+    <x-list.footer :paginator="$payments" label="payments" :per-page="false" />
+    @if($reversals->hasPages())<x-list.footer :paginator="$reversals" label="reversals" :per-page="false" />@endif
+    @if($refunds->hasPages())<x-list.footer :paginator="$refunds" label="refunds" :per-page="false" />@endif
 </div>
 @endsection

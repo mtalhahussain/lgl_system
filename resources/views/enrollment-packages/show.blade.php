@@ -14,7 +14,7 @@
         <button class="btn btn-primary ms-auto" type="button" onclick="window.print()">Print</button>
     </div>
     <x-show.document :kind="$levels.($full ? ' Package Receipt' : ' Package Agreement')" :number="$package->receipt_number" :institute="$details['institute_name']"
-        :amount="$package->amount" :currency="$currency" :date="$package->created_at->format('d M Y, H:i')" :reversal="$reversal"
+        :amount="$package->amount" :currency="$currency" :date="$package->created_at->format('d M Y, h:i A')" :reversal="$reversal"
         :rows="['Received from' => $details['student_name'], 'Student reference' => $details['student_reference'], 'Normal fees' => isset($details['gross_total']) ? $currency.' '.number_format($details['gross_total'], 2) : null, 'Package discount' => isset($details['discount_total']) ? $currency.' '.number_format($details['discount_total'], 2) : null, 'Payment' => $full ? 'Full advance payment' : ($details['installments'].' monthly installments per level'), 'Method' => $full ? ucfirst($package->method) : null, 'Reference' => $package->reference]">
         <div class="p-4 table-responsive">
             <h2 class="h6">Module allocation</h2>

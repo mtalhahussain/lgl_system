@@ -13,8 +13,8 @@ class ProfileController extends Controller
 
     public function update(Request $request)
     {
-        $data = $request->validate(['name' => 'required|string|max:255', 'phone' => 'nullable|string|max:20',
-            'address' => 'nullable|string|max:500', 'emergency_contact' => 'nullable|string|max:255',
+        $data = $request->validate(['name' => 'required|string|max:255', 'phone' => 'nullable|string|max:20|regex:/^\+?[0-9]+$/D',
+            'address' => 'nullable|string|max:500', 'emergency_contact' => 'nullable|string|max:20|regex:/^\+?[0-9]+$/D',
             'password' => 'nullable|string|min:8|confirmed', 'current_password' => 'nullable|required_with:password|current_password']);
         unset($data['current_password']);
         if (empty($data['password'])) {

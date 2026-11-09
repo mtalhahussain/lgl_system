@@ -18,24 +18,28 @@ function debounce(fn, wait) {
 }
 
 export function initListFilters(root = document) {
+    root.querySelectorAll('form[data-page-size]').forEach((form) => {
+        form.classList.add('is-enhanced');
+        form.querySelector('select[name="per_page"]').addEventListener('change', () => form.requestSubmit());
+    });
     root.querySelectorAll('form[data-list-filter]').forEach((form) => {
         form.classList.add('is-enhanced');
 
         // Drop empty fields so shared URLs stay short; re-enabled if the page is restored from cache.
         form.addEventListener('submit', () => {
-            form.querySelectorAll('input, select').forEach((field) => {
+            Array.from(form.elements).filter(field => field.matches('input, select')).forEach((field) => {
                 if (field.value === '') field.disabled = true;
             });
         });
         window.addEventListener('pageshow', () => {
-            form.querySelectorAll(':disabled').forEach((field) => { field.disabled = false; });
+            Array.from(form.elements).filter(field => field.disabled).forEach((field) => { field.disabled = false; });
         });
 
         form.querySelectorAll('select, input[type=date]').forEach((field) => {
             field.addEventListener('change', () => form.requestSubmit());
         });
 
-        const search = form.querySelector('input[type=search]');
+        const search = form.elements.namedItem('search');
         if (search) {
             let last = search.value;
             const run = debounce(() => {
@@ -449,6 +453,7 @@ export function initComboboxes(root = document) {
 }
 
 export function initLists() {
+    initContactInputs();
     initListFilters();
     initConfirmForms();
     initNumberWheelGuard();
@@ -457,4 +462,26 @@ export function initLists() {
     initSidebarCollapse();
     initAutoSave();
     initDiscountPreview();
+}
+
+function initContactInputs() {
+    const selector = 'input[name="phone"], input[name="emergency_contact"], input[name="institute_phone"]';
+    document.querySelectorAll(selector).forEach(input => {
+        input.type = 'tel';
+        input.inputMode = 'tel';
+        input.pattern = '\\+?[0-9]+';
+        input.maxLength = input.name === 'institute_phone' ? 30 : 20;
+        input.title = 'Digits only, with an optional leading +';
+        input.addEventListener('input', event => {
+            if (event.isComposing) return;
+            const position = input.selectionStart;
+            const clean = value => value.replace(/[^0-9+]/g, '').replace(/(?!^)\+/g, '');
+            const value = clean(input.value);
+            if (value !== input.value) {
+                const cursor = clean(input.value.slice(0, position)).length;
+                input.value = value;
+                input.setSelectionRange(cursor, cursor);
+            }
+        });
+    });
 }

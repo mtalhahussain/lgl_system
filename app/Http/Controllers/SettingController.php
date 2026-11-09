@@ -27,7 +27,7 @@ class SettingController extends Controller
         $this->authorize('update', Setting::class);
         $data = $request->validate([
             'institute_name' => 'sometimes|required|string|max:255', 'institute_address' => 'nullable|string|max:1000',
-            'institute_phone' => 'nullable|string|max:30', 'institute_email' => 'nullable|email|max:255',
+            'institute_phone' => 'nullable|string|max:30|regex:/^\+?[0-9]+$/D', 'institute_email' => 'nullable|email|max:255',
             'institute_website' => 'nullable|url:http,https|max:255',
             'institute_logo' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:2048',
             'currency_code' => 'sometimes|in:PKR,USD,EUR,GBP', 'currency_symbol' => 'sometimes|string|max:10',

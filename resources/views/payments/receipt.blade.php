@@ -22,7 +22,7 @@
         <div class="alert alert-info">Module allocation of a multi-level package, not an additional payment. <a href="{{ route('enrollment-packages.show', $package) }}">Combined package receipt</a>. Reversing this allocation reverses all original module payments of the package together.</div>
     @endif
     <x-show.document kind="Fee Payment Receipt" :number="$payment->receipt_number" :institute="$details['institute_name'] ?? null"
-        :amount="$payment->amount" :currency="$currency" :date="$payment->paid_at?->format('d M Y, H:i') ?? 'Historical date unavailable'" :reversal="$payment->reversal"
+        :amount="$payment->amount" :currency="$currency" :date="$payment->paid_at?->format('d M Y, h:i A') ?? 'Historical date unavailable'" :reversal="$payment->reversal"
         :rows="['Received from' => $student, 'Course' => $details['course_name'] ?? null, 'Batch' => $details['batch_name'] ?? 'Historical details unavailable',
             'Method' => ucfirst($payment->method), 'Reference' => $payment->reference]">
         @if($payment->allocations->isNotEmpty())

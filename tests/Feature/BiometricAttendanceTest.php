@@ -86,7 +86,7 @@ class BiometricAttendanceTest extends TestCase
         $this->assertSame('excused', $record->fresh()->status);
         $this->assertSame(2, BiometricPunch::count());
 
-        $this->actingAs($this->admin)->get('/class-sessions/'.$this->session->id)->assertOk()->assertSee('Machine 08:40');
+        $this->actingAs($this->admin)->get('/class-sessions/'.$this->session->id)->assertOk()->assertSee('Machine 08:40 AM');
     }
 
     public function test_late_after_threshold_from_multipart_push_with_offset_and_picture(): void
@@ -146,7 +146,7 @@ class BiometricAttendanceTest extends TestCase
             ->assertSee('Student Sara')->assertSee('Marked present');
         $this->get('/biometric?result=teacher')->assertOk()->assertSee('Teacher Tina')->assertDontSee('Student Sara');
         $this->get('/biometric?export=csv')->assertOk();
-        $this->get('/biometric/teachers?month=2026-11')->assertOk()->assertSee('Teacher Tina')->assertSee('08:55')->assertSee('09:58');
+        $this->get('/biometric/teachers?month=2026-11')->assertOk()->assertDontSee('Teacher Tina')->assertSee('No staff punches in this month.');
 
         $this->post('/biometric/devices', ['name' => 'Back door', 'timezone' => 'Asia/Karachi'])->assertRedirect('/biometric');
         $this->post('/biometric/devices', ['name' => 'Bad', 'timezone' => 'Mars/Base'])->assertSessionHasErrors('timezone');

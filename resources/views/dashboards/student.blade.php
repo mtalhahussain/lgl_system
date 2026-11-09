@@ -11,7 +11,7 @@
 </ul></section>
 <section class="panel tw:mb-6"><div class="panel-heading"><h2>Upcoming Sessions</h2></div><ul class="list-group list-group-flush">
     @forelse($sessions as $session)
-        <li class="list-group-item">{{ $session->batch->name }} — {{ $session->topic }}, {{ $session->session_date->format('d M Y') }} {{ $session->start_time->format('H:i') }}
+        <li class="list-group-item">{{ $session->batch->name }} — {{ $session->topic }}, {{ $session->session_date->format('d M Y') }} {{ $session->start_time->format('h:i A') }}
             @if($session->meeting_link ?? $session->batch->meeting_link)<a href="{{ $session->meeting_link ?? $session->batch->meeting_link }}" rel="noopener noreferrer">Join meeting</a>@endif
         </li>
     @empty<li class="list-group-item">No upcoming sessions.</li>@endforelse

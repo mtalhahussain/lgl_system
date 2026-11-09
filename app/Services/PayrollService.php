@@ -75,7 +75,7 @@ class PayrollService
     }
 
     /**
-     * Monthly earning for a per-student teacher: course rate x students enrolled in the batch during the month.
+     * Monthly earning for a per-student teacher: teacher rate x students enrolled in the batch during the month.
      * Active/completed students count when enrolled by month end; dropped or transferred ones count until they left.
      */
     public function generateBatchDue(int $batchId, string $period, User $actor): TeacherDue
@@ -84,14 +84,16 @@ class PayrollService
         [$start, $end] = $this->monthRange($period);
         try {
             return DB::transaction(function () use ($batchId, $period, $start, $end, $actor) {
-                $batch = Batch::lockForUpdate()->with(['course:id,teacher_per_student_amount', 'teacher:id,role,salary_type'])->findOrFail($batchId);
-                $rate = Money::minor((string) ($batch->course?->teacher_per_student_amount ?? '0'));
+                $batch = Batch::lockForUpdate()->findOrFail($batchId);
+                $teacher = User::lockForUpdate()->find($batch->teacher_id);
+                $batch->setRelation('teacher', $teacher);
+                $rate = Money::minor((string) ($teacher?->per_student_amount ?? '0'));
                 $count = $this->studentsInMonth($batch, $start, $end);
                 $error = match (true) {
                     ! in_array($batch->status, ['ongoing', 'completed'], true) => 'Only ongoing or completed batches can earn.',
                     $batch->start_date->gt($end) || ($batch->end_date && $batch->end_date->lt($start)) => 'The batch did not run in this month.',
                     $batch->teacher?->role !== 'teacher' || $batch->teacher->salary_type !== 'per_student' => 'The batch teacher is not paid per student.',
-                    $rate <= 0 => 'Set the course teacher amount per student first.',
+                    $rate <= 0 => 'Set the teacher amount per student per month first.',
                     $count === 0 => 'The batch had no students in this month.',
                     TeacherDue::where('active_key', 'batch:'.$batch->id)->exists() => 'This batch already has a whole-batch earning from before monthly pay. Void it first to switch to monthly.',
                     TeacherDue::where('active_key', "batch:{$batch->id}:{$period}")->exists() => 'This batch already has an earning for this month.',

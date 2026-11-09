@@ -113,7 +113,7 @@
                 <tr>
                     <td><a class="cell-main" href="{{ route('payments.show', $payment) }}">{{ $payment->receipt_number }}</a></td>
                     <td>{{ $payment->enrollment->student->name }}</td>
-                    <td>{{ $payment->paid_at?->format('d M Y H:i') }}</td>
+                    <td>{{ $payment->paid_at?->format('d M Y h:i A') }}</td>
                     <td>{{ $payment->method }}</td>
                     <td class="num">{{ currency_format($payment->amount) }}</td>
                     <td><x-list.status :value="$payment->reversal ? 'reversed' : 'paid'" :label="$payment->reversal ? 'Reversed' : 'Posted'" /></td>
@@ -124,7 +124,7 @@
             </tbody>
         </table>
     </div>
-    <x-list.footer :paginator="$payments" label="payments" />
+    <x-list.footer :paginator="$payments" label="payments" :per-page="false" />
 </div>
 
 @if($refunds->total() > 0)
@@ -138,7 +138,7 @@
                 <tr>
                     <td><a class="cell-main" href="{{ route('refunds.show', $refund) }}">{{ $refund->voucher_number }}</a></td>
                     <td>{{ $refund->enrollment->student->name }}</td>
-                    <td>{{ $refund->refunded_at->format('d M Y H:i') }}</td>
+                    <td>{{ $refund->refunded_at->format('d M Y h:i A') }}</td>
                     <td>{{ \App\Services\PaymentService::REFUND_METHODS[$refund->method] ?? $refund->method }}</td>
                     <td class="num">− {{ currency_format($refund->amount) }}</td>
                     <td class="cell-sub">{{ $refund->reason }}</td>
@@ -147,7 +147,7 @@
             </tbody>
         </table>
     </div>
-    <x-list.footer :paginator="$refunds" label="refunds" />
+    <x-list.footer :paginator="$refunds" label="refunds" :per-page="false" />
 </div>
 @endif
 @endsection

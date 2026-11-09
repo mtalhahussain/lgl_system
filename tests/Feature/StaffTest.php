@@ -107,8 +107,19 @@ class StaffTest extends TestCase
                 json_encode($event(today()->toDateString().'T'.$time)))->assertOk();
         }
         $this->assertSame(['staff', 'staff'], BiometricPunch::pluck('result')->all());
+        $teacher = User::factory()->create(['role' => 'teacher', 'name' => 'Excluded Teacher', 'is_active' => true]);
+        $teacherEvent = $event(today()->toDateString().'T20:06:00');
+        $teacherEvent['AccessControllerEvent']['employeeNoString'] = $teacher->device_employee_no;
+        $this->call('POST', '/biometric/hook/'.$device->webhook_token, [], [], [], ['CONTENT_TYPE' => 'application/json'],
+            json_encode($teacherEvent))->assertOk();
         $this->get('/biometric/teachers?month='.today()->format('Y-m'))->assertOk()->assertSee('Staff Attendance')
-            ->assertSee('Guard Gul')->assertSee('Security guard')->assertSee('08:01')->assertSee('20:05');
+            ->assertSee('Guard Gul')->assertSee('Security guard')->assertSee('08:01')->assertSee('08:05 PM')
+            ->assertDontSee('Excluded Teacher')
+            ->assertViewHas('teachers', fn ($people) => $people->keys()->all() === [$guard->id])
+            ->assertViewHas('days', fn ($days) => $days->count() === 1 && $days->first()->user_id === $guard->id && $days->first()->punches === 2);
+        $this->get('/biometric/teachers?month='.today()->format('Y-m').'&teacher_id='.$teacher->id)->assertOk()
+            ->assertDontSee('Excluded Teacher')->assertViewHas('days', fn ($days) => $days->every(fn ($day) => $day->user_id === $guard->id));
+        $this->get('/biometric?result=teacher')->assertOk()->assertSee('Excluded Teacher');
         $this->get('/biometric?result=staff')->assertOk()->assertSee('Staff punch');
     }
 }

@@ -61,7 +61,7 @@ class WhatsAppReminderController extends Controller
 
     public function test(Request $request, FeeReminderService $reminders)
     {
-        $data = $request->validate(['phone' => 'required|string|max:20']);
+        $data = $request->validate(['phone' => 'required|string|max:20|regex:/^\+?[0-9][0-9 ()-]*$/D']);
         $message = $reminders->sendTest($data['phone'], $request->user());
 
         return redirect()->route('whatsapp.index')->with($message->status === 'sent' ? 'success' : 'error',

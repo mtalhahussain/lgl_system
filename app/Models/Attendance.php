@@ -13,6 +13,7 @@ class Attendance extends Model
         'class_session_id',
         'student_id',
         'status',
+        'source',
         'check_in_time',
         'notes',
     ];

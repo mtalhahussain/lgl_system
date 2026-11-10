@@ -3,9 +3,14 @@
 namespace App\Services;
 
 use App\Models\Attendance;
+use App\Models\AuditLog;
 use App\Models\Batch;
 use App\Models\ClassSession;
+use App\Models\User;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Gate;
+use Illuminate\Validation\ValidationException;
 
 class AttendanceService
 {
@@ -17,28 +22,28 @@ class AttendanceService
         $actor = auth()->user();
         abort_unless($actor && $actor->is_active && in_array($actor->role, ['admin', 'teacher'], true), 403);
 
-        return \Illuminate\Support\Facades\DB::transaction(function () use ($classSessionId, $attendanceData, $reason, $actor) {
+        return DB::transaction(function () use ($classSessionId, $attendanceData, $reason, $actor) {
             $session = ClassSession::lockForUpdate()->findOrFail($classSessionId);
-            \Illuminate\Support\Facades\Gate::authorize('view', $session->batch);
+            Gate::authorize('view', $session->batch);
             if ($session->session_date->gt(today())) {
-                throw \Illuminate\Validation\ValidationException::withMessages(['attendance' => 'Future attendance cannot be recorded.']);
+                throw ValidationException::withMessages(['attendance' => 'Future attendance cannot be recorded.']);
             }
             $session->validateAttendanceStudents(array_column($attendanceData, 'student_id'));
             $results = [];
             foreach ($attendanceData as $row) {
                 if (! in_array($row['status'], ['present', 'absent', 'late', 'excused'], true)) {
-                    throw \Illuminate\Validation\ValidationException::withMessages(['attendance' => 'Invalid attendance status.']);
+                    throw ValidationException::withMessages(['attendance' => 'Invalid attendance status.']);
                 }
                 $record = Attendance::firstOrNew(['class_session_id' => $session->id, 'student_id' => $row['student_id']]);
                 $before = $record->exists ? $record->only(['status', 'notes']) : null;
                 $after = ['status' => $row['status'], 'notes' => array_key_exists('notes', $row) ? $row['notes'] : $record->notes];
                 $changed = $record->exists && $before !== $after;
                 if ($changed && (strlen(trim((string) $reason)) < 5 || strlen((string) $reason) > 1000)) {
-                    throw \Illuminate\Validation\ValidationException::withMessages(['reason' => 'Attendance corrections require a reason of 5–1000 characters.']);
+                    throw ValidationException::withMessages(['reason' => 'Attendance corrections require a reason of 5–1000 characters.']);
                 }
                 if (! $record->exists || $changed) {
                     $record->fill($after)->save();
-                    \App\Models\AuditLog::create(['actor_id' => $actor->id, 'action' => $changed ? 'attendance.corrected' : 'attendance.marked',
+                    AuditLog::create(['actor_id' => $actor->id, 'action' => $changed ? 'attendance.corrected' : 'attendance.marked',
                         'subject_type' => 'attendance', 'subject_id' => $record->id, 'reason' => $changed ? trim($reason) : null,
                         'changes' => ['before' => $before, 'after' => $after], 'created_at' => now()]);
                 }
@@ -49,6 +54,56 @@ class AttendanceService
             }
 
             return $results;
+        });
+    }
+
+    /**
+     * A student marks their own attendance for today's online session.
+     * Separate from markBulkAttendance (which is admin/teacher only).
+     *
+     * @return array{status: string, already: bool}
+     */
+    public function selfMarkOnline(ClassSession $session, User $student): array
+    {
+        abort_unless($student->is_active && $student->role === 'student', 403);
+
+        return DB::transaction(function () use ($session, $student) {
+            $session = ClassSession::lockForUpdate()->findOrFail($session->id);
+
+            $state = $session->selfJoinState();
+            if (! $state['open']) {
+                throw ValidationException::withMessages(['join' => $state['message']]);
+            }
+
+            $eligible = $session->eligibleEnrollments()->where('student_id', $student->id)->exists();
+            if (! $eligible) {
+                throw ValidationException::withMessages(['join' => "You are not enrolled in this session's batch."]);
+            }
+
+            $existing = Attendance::where('class_session_id', $session->id)->where('student_id', $student->id)->first();
+            if ($existing) {
+                return ['status' => $existing->status, 'already' => true];
+            }
+
+            $record = Attendance::create([
+                'class_session_id' => $session->id,
+                'student_id' => $student->id,
+                'status' => $state['status'],
+                'source' => 'self_online',
+                'check_in_time' => now()->format('H:i:s'),
+            ]);
+
+            AuditLog::create([
+                'actor_id' => $student->id,
+                'action' => 'attendance.self_marked',
+                'subject_type' => 'attendance',
+                'subject_id' => $record->id,
+                'reason' => null,
+                'changes' => ['after' => ['status' => $record->status, 'source' => 'self_online']],
+                'created_at' => now(),
+            ]);
+
+            return ['status' => $record->status, 'already' => false];
         });
     }
 

@@ -291,5 +291,7 @@ Route::middleware(['auth', EnsureActiveAccount::class])->group(function () {
             ->name('student.timetable');
         Route::get('/student/results', [ExamController::class, 'studentResults'])
             ->name('student.results');
+        Route::post('/student/sessions/{session}/join', [AttendanceController::class, 'joinOnline'])
+            ->name('student.session.join');
     });
 });

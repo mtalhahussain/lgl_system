@@ -4,19 +4,22 @@ namespace App\Http\Controllers;
 
 use App\Models\Attendance;
 use App\Models\Batch;
+use App\Models\BiometricPunch;
 use App\Models\ClassSession;
 use App\Models\User;
 use App\Services\AttendanceService;
 use App\Support\ListQuery;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class AttendanceController extends Controller
 {
     public function __construct(private AttendanceService $attendanceService)
     {
         $this->middleware('auth');
-        $this->middleware('role:admin,teacher')->except(['myAttendance', 'studentAttendance']);
+        $this->middleware('role:admin,teacher')->except(['myAttendance', 'studentAttendance', 'joinOnline']);
     }
 
     private function batches()
@@ -103,7 +106,7 @@ class AttendanceController extends Controller
         $session->load(['batch.course:id,name,level', 'attendances.student:id,name']);
 
         $session->load(['makeupFor', 'makeupClasses', 'teachingRecorder:id,name']);
-        $teacherPunches = \App\Models\BiometricPunch::where('user_id', $session->batch->teacher_id)
+        $teacherPunches = BiometricPunch::where('user_id', $session->batch->teacher_id)
             ->where('result', 'teacher')->whereDate('punched_at', $session->session_date->toDateString())
             ->orderBy('punched_at')->get(['punched_at']);
 
@@ -126,6 +129,25 @@ class AttendanceController extends Controller
     public function myAttendance(Request $request)
     {
         return $this->attendanceReport($request, $request->user());
+    }
+
+    public function joinOnline(Request $request, ClassSession $session)
+    {
+        try {
+            $this->attendanceService->selfMarkOnline($session, $request->user());
+        } catch (ValidationException $e) {
+            return back()->with('error', collect($e->errors())->flatten()->first());
+        } catch (QueryException $e) {
+            // A concurrent self-mark won the unique (class_session_id, student_id) race;
+            // the student is already recorded, so fall through to the meeting link.
+        }
+
+        $link = $session->meeting_link ?: $session->batch->meeting_link;
+        if (! $link) {
+            return back()->with('error', 'No meeting link is set for this class.');
+        }
+
+        return redirect()->away($link);
     }
 
     private function attendanceReport(Request $request, ?User $student = null)

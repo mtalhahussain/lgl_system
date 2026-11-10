@@ -140,4 +140,21 @@ class OnlineSelfAttendanceTest extends TestCase
         $teacher = User::factory()->create(['role' => 'teacher', 'is_active' => true]);
         $this->actingAs($teacher)->post(route('student.session.join', $this->session))->assertForbidden();
     }
+
+    public function test_teacher_can_override_a_self_marked_row(): void
+    {
+        app(\App\Services\AttendanceService::class)->selfMarkOnline($this->session, $this->student);
+        $teacher = $this->session->batch->teacher;
+
+        $this->actingAs($teacher);
+        app(\App\Services\AttendanceService::class)->markBulkAttendance(
+            $this->session->id,
+            [['student_id' => $this->student->id, 'status' => 'absent']],
+            'Student was not actually present in the meeting.'
+        );
+
+        $row = Attendance::where('class_session_id', $this->session->id)->where('student_id', $this->student->id)->sole();
+        $this->assertSame('absent', $row->status);
+        $this->assertDatabaseHas('audit_logs', ['action' => 'attendance.corrected']);
+    }
 }

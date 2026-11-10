@@ -158,6 +158,45 @@ class ClassSession extends Model
         return $this->batch->isOnline();
     }
 
+    public function startAt(): \Illuminate\Support\Carbon
+    {
+        return $this->session_date->copy()->setTimeFromTimeString($this->getRawOriginal('start_time'));
+    }
+
+    public function endAt(): \Illuminate\Support\Carbon
+    {
+        return $this->session_date->copy()->setTimeFromTimeString($this->getRawOriginal('end_time'));
+    }
+
+    /**
+     * Whether a student may self check-in right now, and as what status.
+     * One source of truth for both the service and the dashboard button.
+     *
+     * @return array{open: bool, status: ?string, message: ?string}
+     */
+    public function selfJoinState(?\Illuminate\Support\Carbon $now = null): array
+    {
+        $now ??= now();
+        if (! $this->isOnline()) {
+            return ['open' => false, 'status' => null, 'message' => 'This session is not an online class.'];
+        }
+        if ($this->status === 'cancelled' || $this->batch->status === 'cancelled') {
+            return ['open' => false, 'status' => null, 'message' => 'This class has been cancelled.'];
+        }
+        if (! $this->session_date->isSameDay($now)) {
+            return ['open' => false, 'status' => null, 'message' => 'Self check-in is only available on the class day.'];
+        }
+        $start = $this->startAt();
+        if ($now->lt($start->copy()->subMinutes(15))) {
+            return ['open' => false, 'status' => null, 'message' => 'Join opens 15 minutes before the class.'];
+        }
+        if ($now->gt($this->endAt())) {
+            return ['open' => false, 'status' => null, 'message' => 'This class has ended; your teacher will mark attendance.'];
+        }
+
+        return ['open' => true, 'status' => $now->lte($start->copy()->addMinutes(10)) ? 'present' : 'late', 'message' => null];
+    }
+
     public function getDurationInMinutesAttribute()
     {
         return $this->start_time->diffInMinutes($this->end_time);

@@ -2,8 +2,11 @@
 
 namespace App\Models;
 
+use App\Services\AttendanceService;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Carbon;
+use Illuminate\Validation\ValidationException;
 
 class ClassSession extends Model
 {
@@ -92,13 +95,13 @@ class ClassSession extends Model
     public function validateAttendanceStudents(array $studentIds): void
     {
         if ($this->status === 'cancelled' || $this->batch->status === 'cancelled') {
-            throw \Illuminate\Validation\ValidationException::withMessages(['attendance' => 'Cancelled sessions or batches cannot receive attendance.']);
+            throw ValidationException::withMessages(['attendance' => 'Cancelled sessions or batches cannot receive attendance.']);
         }
         $eligibleIds = $this->eligibleEnrollments()->pluck('student_id')->map(fn ($id) => (string) $id)->all();
         $submittedIds = array_map('strval', $studentIds);
 
         if (array_diff($submittedIds, $eligibleIds) || count($submittedIds) !== count(array_unique($submittedIds))) {
-            throw \Illuminate\Validation\ValidationException::withMessages([
+            throw ValidationException::withMessages([
                 'attendance' => 'Attendance must contain distinct students enrolled in this batch on the session date.',
             ]);
         }
@@ -148,7 +151,7 @@ class ClassSession extends Model
 
     public function markAttendance($studentId, $status, $checkInTime = null)
     {
-        app(\App\Services\AttendanceService::class)->markBulkAttendance($this->id, [['student_id' => $studentId, 'status' => $status]]);
+        app(AttendanceService::class)->markBulkAttendance($this->id, [['student_id' => $studentId, 'status' => $status]]);
 
         return $this->attendances()->where('student_id', $studentId)->sole();
     }
@@ -158,12 +161,12 @@ class ClassSession extends Model
         return $this->batch->isOnline();
     }
 
-    public function startAt(): \Illuminate\Support\Carbon
+    public function startAt(): Carbon
     {
         return $this->session_date->copy()->setTimeFromTimeString($this->getRawOriginal('start_time'));
     }
 
-    public function endAt(): \Illuminate\Support\Carbon
+    public function endAt(): Carbon
     {
         return $this->session_date->copy()->setTimeFromTimeString($this->getRawOriginal('end_time'));
     }
@@ -174,7 +177,7 @@ class ClassSession extends Model
      *
      * @return array{open: bool, status: ?string, message: ?string}
      */
-    public function selfJoinState(?\Illuminate\Support\Carbon $now = null): array
+    public function selfJoinState(?Carbon $now = null): array
     {
         $now ??= now();
         if (! $this->isOnline()) {

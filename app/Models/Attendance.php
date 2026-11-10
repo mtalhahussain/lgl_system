@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\AttendanceService;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
@@ -69,6 +70,6 @@ class Attendance extends Model
             $query->where('status', '!=', 'cancelled')->when($batchId, fn ($query) => $query->where('batch_id', $batchId));
         });
 
-        return app(\App\Services\AttendanceService::class)->statistics($query);
+        return app(AttendanceService::class)->statistics($query);
     }
 }

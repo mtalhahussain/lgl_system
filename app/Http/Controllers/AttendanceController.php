@@ -4,12 +4,14 @@ namespace App\Http\Controllers;
 
 use App\Models\Attendance;
 use App\Models\Batch;
+use App\Models\BiometricPunch;
 use App\Models\ClassSession;
 use App\Models\User;
 use App\Services\AttendanceService;
 use App\Support\ListQuery;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class AttendanceController extends Controller
 {
@@ -103,7 +105,7 @@ class AttendanceController extends Controller
         $session->load(['batch.course:id,name,level', 'attendances.student:id,name']);
 
         $session->load(['makeupFor', 'makeupClasses', 'teachingRecorder:id,name']);
-        $teacherPunches = \App\Models\BiometricPunch::where('user_id', $session->batch->teacher_id)
+        $teacherPunches = BiometricPunch::where('user_id', $session->batch->teacher_id)
             ->where('result', 'teacher')->whereDate('punched_at', $session->session_date->toDateString())
             ->orderBy('punched_at')->get(['punched_at']);
 
@@ -132,7 +134,7 @@ class AttendanceController extends Controller
     {
         try {
             $this->attendanceService->selfMarkOnline($session, $request->user());
-        } catch (\Illuminate\Validation\ValidationException $e) {
+        } catch (ValidationException $e) {
             return back()->with('error', collect($e->errors())->flatten()->first());
         }
 

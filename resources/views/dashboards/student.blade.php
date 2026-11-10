@@ -18,8 +18,8 @@
                 <form method="POST" action="{{ route('student.session.join', $session) }}" class="tw:inline-block tw:ml-2">@csrf
                     <button type="submit" class="btn btn-sm btn-primary">Join Class</button>
                 </form>
-            @elseif($session->meeting_link ?? $session->batch->meeting_link)
-                <a href="{{ $session->meeting_link ?? $session->batch->meeting_link }}" rel="noopener noreferrer">Join meeting</a>
+            @elseif($session->meeting_link ?: $session->batch->meeting_link)
+                <a href="{{ $session->meeting_link ?: $session->batch->meeting_link }}" rel="noopener noreferrer">Join meeting</a>
                 @if($session->isOnline() && $state['message'])<small class="text-muted tw:ml-2">{{ $state['message'] }}</small>@endif
             @endif
         </li>

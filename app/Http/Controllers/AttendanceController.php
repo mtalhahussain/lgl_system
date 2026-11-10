@@ -9,6 +9,7 @@ use App\Models\ClassSession;
 use App\Models\User;
 use App\Services\AttendanceService;
 use App\Support\ListQuery;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -136,6 +137,9 @@ class AttendanceController extends Controller
             $this->attendanceService->selfMarkOnline($session, $request->user());
         } catch (ValidationException $e) {
             return back()->with('error', collect($e->errors())->flatten()->first());
+        } catch (QueryException $e) {
+            // A concurrent self-mark won the unique (class_session_id, student_id) race;
+            // the student is already recorded, so fall through to the meeting link.
         }
 
         $link = $session->meeting_link ?: $session->batch->meeting_link;

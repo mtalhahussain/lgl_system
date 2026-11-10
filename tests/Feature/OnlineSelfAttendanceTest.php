@@ -165,4 +165,23 @@ class OnlineSelfAttendanceTest extends TestCase
         $response->assertSee(route('student.session.join', $this->session), false);
         $response->assertSee('Join Class');
     }
+
+    public function test_dashboard_still_shows_join_button_once_class_is_ongoing(): void
+    {
+        // A teacher starting the class flips it to 'ongoing'; the student must still see Join Class.
+        $this->session->update(['status' => 'ongoing']);
+
+        $response = $this->actingAs($this->student)->get(route('student.dashboard'));
+        $response->assertOk();
+        $response->assertSee(route('student.session.join', $this->session), false);
+        $response->assertSee('Join Class');
+    }
+
+    public function test_self_mark_blocked_for_completed_session(): void
+    {
+        $this->session->update(['status' => 'completed']);
+
+        $this->expectException(\Illuminate\Validation\ValidationException::class);
+        app(\App\Services\AttendanceService::class)->selfMarkOnline($this->session->fresh(), $this->student);
+    }
 }

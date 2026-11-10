@@ -186,6 +186,9 @@ class ClassSession extends Model
         if ($this->status === 'cancelled' || $this->batch->status === 'cancelled') {
             return ['open' => false, 'status' => null, 'message' => 'This class has been cancelled.'];
         }
+        if ($this->status === 'completed') {
+            return ['open' => false, 'status' => null, 'message' => 'Attendance for this class is already finalized.'];
+        }
         if (! $this->session_date->isSameDay($now)) {
             return ['open' => false, 'status' => null, 'message' => 'Self check-in is only available on the class day.'];
         }

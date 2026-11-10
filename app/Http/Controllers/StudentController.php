@@ -216,7 +216,7 @@ class StudentController extends Controller
     {
         $enrollments = auth()->user()->enrollments()->with('batch.course:id,name,level')->orderByDesc('id')->get();
         $sessions = ClassSession::whereHas('batch.enrollments', fn ($query) => $query->where('student_id', auth()->id())->where('status', 'active'))
-            ->where('status', 'scheduled')->whereDate('session_date', '>=', today())->with('batch:id,name,meeting_link')->orderBy('session_date')->orderBy('start_time')->limit(10)->get();
+            ->where('status', 'scheduled')->whereDate('session_date', '>=', today())->with('batch:id,name,meeting_link,meeting_platform,status')->orderBy('session_date')->orderBy('start_time')->limit(10)->get();
         $attendance = Attendance::getAttendanceStats(auth()->id());
         $unmarked = max(0, app(AttendanceService::class)->expectedStudentSessions(auth()->id()) - $attendance['total']);
 

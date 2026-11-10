@@ -157,4 +157,12 @@ class OnlineSelfAttendanceTest extends TestCase
         $this->assertSame('absent', $row->status);
         $this->assertDatabaseHas('audit_logs', ['action' => 'attendance.corrected']);
     }
+
+    public function test_dashboard_shows_join_class_button_for_online_session_in_window(): void
+    {
+        $response = $this->actingAs($this->student)->get(route('student.dashboard'));
+        $response->assertOk();
+        $response->assertSee(route('student.session.join', $this->session), false);
+        $response->assertSee('Join Class');
+    }
 }

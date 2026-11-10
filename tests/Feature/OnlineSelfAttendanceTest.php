@@ -116,4 +116,28 @@ class OnlineSelfAttendanceTest extends TestCase
         $this->expectException(\Symfony\Component\HttpKernel\Exception\HttpException::class);
         app(\App\Services\AttendanceService::class)->selfMarkOnline($this->session, $this->student->fresh());
     }
+
+    public function test_join_route_marks_present_and_redirects_to_meeting(): void
+    {
+        $response = $this->actingAs($this->student)->post(route('student.session.join', $this->session));
+
+        $response->assertRedirect('https://zoom.us/j/123');
+        $this->assertDatabaseHas('attendances', ['class_session_id' => $this->session->id, 'student_id' => $this->student->id, 'status' => 'present', 'source' => 'self_online']);
+    }
+
+    public function test_join_route_out_of_window_redirects_back_with_error_and_no_record(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-11-10 08:40:00', config('app.timezone')));
+        $response = $this->actingAs($this->student)->from(route('student.dashboard'))->post(route('student.session.join', $this->session));
+
+        $response->assertRedirect(route('student.dashboard'));
+        $response->assertSessionHas('error');
+        $this->assertDatabaseMissing('attendances', ['class_session_id' => $this->session->id, 'student_id' => $this->student->id]);
+    }
+
+    public function test_join_route_rejects_teacher_role(): void
+    {
+        $teacher = User::factory()->create(['role' => 'teacher', 'is_active' => true]);
+        $this->actingAs($teacher)->post(route('student.session.join', $this->session))->assertForbidden();
+    }
 }

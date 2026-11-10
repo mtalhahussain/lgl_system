@@ -16,7 +16,7 @@ class AttendanceController extends Controller
     public function __construct(private AttendanceService $attendanceService)
     {
         $this->middleware('auth');
-        $this->middleware('role:admin,teacher')->except(['myAttendance', 'studentAttendance']);
+        $this->middleware('role:admin,teacher')->except(['myAttendance', 'studentAttendance', 'joinOnline']);
     }
 
     private function batches()
@@ -126,6 +126,22 @@ class AttendanceController extends Controller
     public function myAttendance(Request $request)
     {
         return $this->attendanceReport($request, $request->user());
+    }
+
+    public function joinOnline(Request $request, ClassSession $session)
+    {
+        try {
+            $this->attendanceService->selfMarkOnline($session, $request->user());
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return back()->with('error', collect($e->errors())->flatten()->first());
+        }
+
+        $link = $session->meeting_link ?: $session->batch->meeting_link;
+        if (! $link) {
+            return back()->with('error', 'No meeting link is set for this class.');
+        }
+
+        return redirect()->away($link);
     }
 
     private function attendanceReport(Request $request, ?User $student = null)

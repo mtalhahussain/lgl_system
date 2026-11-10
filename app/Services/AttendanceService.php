@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Attendance;
 use App\Models\Batch;
 use App\Models\ClassSession;
+use App\Models\User;
 use Carbon\Carbon;
 
 class AttendanceService
@@ -49,6 +50,56 @@ class AttendanceService
             }
 
             return $results;
+        });
+    }
+
+    /**
+     * A student marks their own attendance for today's online session.
+     * Separate from markBulkAttendance (which is admin/teacher only).
+     *
+     * @return array{status: string, already: bool}
+     */
+    public function selfMarkOnline(ClassSession $session, User $student): array
+    {
+        abort_unless($student->is_active && $student->role === 'student', 403);
+
+        return \Illuminate\Support\Facades\DB::transaction(function () use ($session, $student) {
+            $session = ClassSession::lockForUpdate()->findOrFail($session->id);
+
+            $state = $session->selfJoinState();
+            if (! $state['open']) {
+                throw \Illuminate\Validation\ValidationException::withMessages(['join' => $state['message']]);
+            }
+
+            $eligible = $session->eligibleEnrollments()->where('student_id', $student->id)->exists();
+            if (! $eligible) {
+                throw \Illuminate\Validation\ValidationException::withMessages(['join' => "You are not enrolled in this session's batch."]);
+            }
+
+            $existing = Attendance::where('class_session_id', $session->id)->where('student_id', $student->id)->first();
+            if ($existing) {
+                return ['status' => $existing->status, 'already' => true];
+            }
+
+            $record = Attendance::create([
+                'class_session_id' => $session->id,
+                'student_id' => $student->id,
+                'status' => $state['status'],
+                'source' => 'self_online',
+                'check_in_time' => now()->format('H:i:s'),
+            ]);
+
+            \App\Models\AuditLog::create([
+                'actor_id' => $student->id,
+                'action' => 'attendance.self_marked',
+                'subject_type' => 'attendance',
+                'subject_id' => $record->id,
+                'reason' => null,
+                'changes' => ['after' => ['status' => $record->status, 'source' => 'self_online']],
+                'created_at' => now(),
+            ]);
+
+            return ['status' => $record->status, 'already' => false];
         });
     }
 

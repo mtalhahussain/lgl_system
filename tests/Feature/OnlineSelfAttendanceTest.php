@@ -56,4 +56,64 @@ class OnlineSelfAttendanceTest extends TestCase
         Carbon::setTestNow(Carbon::parse('2026-11-10 11:05:00', config('app.timezone')));
         $this->assertFalse($this->session->selfJoinState()['open']);
     }
+
+    public function test_self_mark_present_persists_source_and_audit(): void
+    {
+        $result = app(\App\Services\AttendanceService::class)->selfMarkOnline($this->session, $this->student);
+
+        $this->assertSame('present', $result['status']);
+        $row = Attendance::where('class_session_id', $this->session->id)->where('student_id', $this->student->id)->sole();
+        $this->assertSame('present', $row->status);
+        $this->assertSame('self_online', $row->source);
+        $this->assertNotNull($row->check_in_time);
+        // Session is not completed by a self-mark.
+        $this->assertSame('scheduled', $this->session->fresh()->status);
+        $this->assertDatabaseHas('audit_logs', ['action' => 'attendance.self_marked', 'actor_id' => $this->student->id]);
+    }
+
+    public function test_self_mark_late_after_grace(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-11-10 09:30:00', config('app.timezone')));
+        $result = app(\App\Services\AttendanceService::class)->selfMarkOnline($this->session, $this->student);
+        $this->assertSame('late', $result['status']);
+    }
+
+    public function test_self_mark_blocked_before_window(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-11-10 08:40:00', config('app.timezone')));
+        $this->expectException(\Illuminate\Validation\ValidationException::class);
+        app(\App\Services\AttendanceService::class)->selfMarkOnline($this->session, $this->student);
+    }
+
+    public function test_self_mark_blocked_for_non_online_batch(): void
+    {
+        $this->batch->update(['meeting_platform' => 'in_person']);
+        $this->expectException(\Illuminate\Validation\ValidationException::class);
+        app(\App\Services\AttendanceService::class)->selfMarkOnline($this->session->fresh(), $this->student);
+    }
+
+    public function test_self_mark_blocked_for_non_enrolled_student(): void
+    {
+        $other = User::factory()->create(['role' => 'student', 'is_active' => true]);
+        $this->expectException(\Illuminate\Validation\ValidationException::class);
+        app(\App\Services\AttendanceService::class)->selfMarkOnline($this->session, $other);
+    }
+
+    public function test_self_mark_is_idempotent_and_never_overwrites(): void
+    {
+        // Teacher already marked the student absent.
+        Attendance::create(['class_session_id' => $this->session->id, 'student_id' => $this->student->id, 'status' => 'absent']);
+        $result = app(\App\Services\AttendanceService::class)->selfMarkOnline($this->session, $this->student);
+
+        $this->assertTrue($result['already']);
+        $this->assertSame(1, Attendance::where('class_session_id', $this->session->id)->where('student_id', $this->student->id)->count());
+        $this->assertSame('absent', Attendance::where('class_session_id', $this->session->id)->where('student_id', $this->student->id)->sole()->status);
+    }
+
+    public function test_self_mark_forbidden_for_inactive_student(): void
+    {
+        $this->student->update(['is_active' => false]);
+        $this->expectException(\Symfony\Component\HttpKernel\Exception\HttpException::class);
+        app(\App\Services\AttendanceService::class)->selfMarkOnline($this->session, $this->student->fresh());
+    }
 }

@@ -14,6 +14,7 @@ use App\Http\Controllers\EnrollmentPackageController;
 use App\Http\Controllers\ExamController;
 use App\Http\Controllers\FeeController;
 use App\Http\Controllers\InstallmentController;
+use App\Http\Controllers\LeadController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\PayrollController;
@@ -34,6 +35,19 @@ Route::middleware('guest')->group(function () {
     Route::post('/login', [AuthController::class, 'login'])->name('login.post');
 });
 
+// Public lead capture (no auth; web group gives session + CSRF). Throttled + honeypot.
+Route::middleware('throttle:30,1')->group(function () {
+    Route::get('/apply', [LeadController::class, 'showApplyForm'])->name('apply.form');
+    Route::post('/apply', [LeadController::class, 'storeApply'])->name('apply.store');
+    Route::get('/apply/thanks', [LeadController::class, 'thanks'])->name('apply.thanks');
+
+    // Prefilled completion of a qualified lead. Signed, time-limited, status-gated.
+    Route::middleware('signed')->group(function () {
+        Route::get('/apply/complete/{lead}', [LeadController::class, 'showComplete'])->name('apply.complete');
+        Route::post('/apply/complete/{lead}', [LeadController::class, 'storeComplete'])->name('apply.complete.submit');
+    });
+});
+
 // Authenticated Routes
 Route::middleware(['auth', EnsureActiveAccount::class])->group(function () {
 
@@ -52,6 +66,16 @@ Route::middleware(['auth', EnsureActiveAccount::class])->group(function () {
     Route::put('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::get('/accounts', [AccountController::class, 'index'])->name('accounts.index')->middleware('role:admin');
     Route::patch('/accounts/{user}', [AccountController::class, 'update'])->name('accounts.update')->middleware('role:admin');
+
+    // Leads pipeline (Admin): intake review, qualify, reject, convert to student.
+    Route::middleware('role:admin')->group(function () {
+        Route::get('/leads', [LeadController::class, 'index'])->name('leads.index');
+        Route::get('/leads/{lead}', [LeadController::class, 'show'])->name('leads.show');
+        Route::post('/leads/{lead}/qualify', [LeadController::class, 'qualify'])->name('leads.qualify');
+        Route::post('/leads/{lead}/reject', [LeadController::class, 'reject'])->name('leads.reject');
+        Route::get('/leads/{lead}/convert', [LeadController::class, 'convert'])->name('leads.convert');
+        Route::post('/leads/{lead}/convert', [LeadController::class, 'storeConvert'])->name('leads.convert.store');
+    });
 
     // Dashboard Routes based on role
     Route::get('/dashboard', function () {

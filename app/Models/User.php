@@ -71,6 +71,8 @@ class User extends Authenticatable
         'email',
         'phone',
         'role',
+        'cnic',
+        'father_name',
         'date_of_birth',
         'address',
         'emergency_contact',

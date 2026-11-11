@@ -133,7 +133,13 @@
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link {{ request()->is('teachers*') ? 'active' : '' }}" 
+                            <a class="nav-link {{ request()->is('leads*') ? 'active' : '' }}"
+                               href="{{ route('leads.index') }}">
+                                <i class="fas fa-user-tag me-2" aria-hidden="true"></i>Leads
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link {{ request()->is('teachers*') ? 'active' : '' }}"
                                href="{{ url('/teachers') }}">
                                 <i class="fas fa-chalkboard-teacher me-2"></i>Teachers
                             </a>

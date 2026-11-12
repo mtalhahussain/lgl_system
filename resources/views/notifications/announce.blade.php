@@ -8,8 +8,6 @@
     <a href="{{ route('notifications.index') }}" class="btn btn-outline-secondary"><i class="fas fa-arrow-left me-1"></i>Back</a>
 </div>
 
-@if(session('success'))<div class="alert alert-success">{{ session('success') }}</div>@endif
-
 <div class="card">
     <div class="card-body">
         <form method="POST" action="{{ route('notifications.announce.send') }}">

@@ -3,9 +3,6 @@
 @section('content')
 <x-list.header title="Attendance Machine" eyebrow="Attendance" subtitle="Hikvision face and fingerprint punches mark students present or late in their running class" />
 <x-list.kpis :items="$kpis" />
-@if($errors->any())
-    <div class="alert alert-danger" role="alert"><ul class="mb-0">@foreach($errors->all() as $error)<li>{{ $error }}</li>@endforeach</ul></div>
-@endif
 <div class="tw:grid tw:grid-cols-1 tw:gap-5 tw:lg:grid-cols-2 tw:mb-6">
     @foreach($devices as $device)
         <section class="panel" aria-labelledby="device-{{ $device->id }}">

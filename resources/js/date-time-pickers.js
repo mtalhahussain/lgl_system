@@ -4,6 +4,9 @@ const selector = 'input[type="date"], input[type="time"], input[type="datetime-l
 const managed = new Set();
 const messages = new WeakMap();
 const defaultValues = new WeakMap();
+const ranges = new Set();
+const rangeInputs = new WeakMap();
+let rangeSequence = 0;
 
 function friendlyControls(input, picker) {
     const calendar = picker.calendarContainer;
@@ -66,7 +69,7 @@ function friendlyControls(input, picker) {
         return control;
     };
     const current = button(picker.config.noCalendar ? 'Now' : 'Today', () => {
-        picker.setDate(new Date(), true);
+        picker.setDate(picker.config.mode === 'range' ? [new Date(), new Date()] : new Date(), true);
         if (!picker.config.enableTime) picker.close();
     });
     button('Clear', () => { picker.clear(); picker.close(); });
@@ -115,11 +118,140 @@ function validate(input) {
     }
 }
 
+function enhanceRanges() {
+    for (const form of document.forms) {
+        const pairs = [['from', 'to'], ...(form.method === 'get' ? [['start_date', 'end_date']] : [])];
+        for (const [fromName, toName] of pairs) {
+            const from = form.querySelector(`input[type="date"][name="${fromName}"]`);
+            const to = form.querySelector(`input[type="date"][name="${toName}"]`);
+            if (!from || !to || rangeInputs.has(from) || from._flatpickr || to._flatpickr
+                || [from, to].some(input => input.readOnly || input.hasAttribute('data-native'))) continue;
+            const labels = [...(from.labels || [])];
+            const endLabels = [...(to.labels || [])];
+            const display = document.createElement('input');
+            display.type = 'text';
+            display.className = `${from.className || 'form-control'} lgl-date-range`;
+            display.id = `${from.id || `range_${++rangeSequence}`}_range`;
+            display.placeholder = 'DD-MM-YYYY to DD-MM-YYYY';
+            display.setAttribute('aria-label', 'Date range');
+            display.autocomplete = 'off';
+            for (const name of ['aria-describedby', 'aria-labelledby']) {
+                if (from.hasAttribute(name)) display.setAttribute(name, from.getAttribute(name));
+            }
+            const state = {from, to, display, form, picker: null, syncing: false,
+                defaults: [from.defaultValue, to.defaultValue], labels, endLabels,
+                originalLabels: [...labels, ...endLabels].map(label => [label, label.htmlFor, label.textContent, label.hidden])};
+            rangeInputs.set(from, state);
+            rangeInputs.set(to, state);
+            ranges.add(state);
+            [from, to].forEach(input => { input.dataset.rangeSource = '1'; input.hidden = true; });
+            from.after(display);
+            labels.forEach(label => { label.htmlFor = display.id; label.textContent = 'Date range'; });
+            const endWrapper = to.closest('.list-field, [class*="col-"]');
+            if (endWrapper && !endWrapper.contains(from) && endWrapper.querySelectorAll('input, select, textarea').length === 1) {
+                endWrapper.hidden = true;
+                state.endWrapper = endWrapper;
+                const startWrapper = from.closest('[class*="col-"]');
+                if (startWrapper && !startWrapper.contains(to)) {
+                    state.startWrapper = startWrapper;
+                    state.startClass = startWrapper.className;
+                    for (const token of [...startWrapper.classList]) {
+                        const match = token.match(/^(col(?:-(?:sm|md|lg|xl|xxl))?)-(\d+)$/);
+                        if (!match) continue;
+                        const other = [...endWrapper.classList].find(name => name.startsWith(match[1] + '-'));
+                        const width = Number(match[2]) + Number(other?.split('-').at(-1) || 0);
+                        if (width <= 12 && other) startWrapper.classList.replace(token, `${match[1]}-${width}`);
+                    }
+                }
+            } else endLabels.forEach(label => { label.hidden = true; });
+            const firstWrapper = from.closest('.list-field');
+            firstWrapper?.classList.add('date-range-field');
+            const validateRange = () => {
+                const error = [from, to].find(input => !input.validity.valid);
+                display.setCustomValidity(error ? error.validationMessage : '');
+            };
+            const notify = () => display.dispatchEvent(new CustomEvent('date-range:change', {bubbles: true}));
+            const commit = dates => {
+                if (state.syncing) return;
+                if (dates.length === 1) {
+                    display.setCustomValidity('Select an end date to complete the range.');
+                    return;
+                }
+                state.syncing = true;
+                const oldFrom = from.value;
+                from.value = dates[0] ? state.picker.formatDate(dates[0], 'Y-m-d') : '';
+                to.value = dates[1] ? state.picker.formatDate(dates[1], 'Y-m-d') : '';
+                if (oldFrom && to.min === oldFrom) to.min = from.value;
+                [from, to].forEach(input => {
+                    input.dispatchEvent(new Event('input', {bubbles: true}));
+                    input.dispatchEvent(new Event('change', {bubbles: true}));
+                });
+                state.syncing = false;
+                state.committedDisplay = display.value;
+                validateRange();
+                if (display.validity.valid) notify();
+            };
+            state.picker = window.flatpickr(display, {
+                mode: 'range', dateFormat: 'd-m-Y', allowInput: true, disableMobile: true,
+                allowInvalidPreload: true, locale: {rangeSeparator: ' to '},
+                parseDate: (value, format) => {
+                    if (value instanceof Date) return value;
+                    const parsed = window.flatpickr.parseDate(value, format);
+                    return parsed && window.flatpickr.formatDate(parsed, format) === value ? parsed : undefined;
+                },
+                onChange: commit,
+            });
+            const checkTyped = event => {
+                if (display.value === state.committedDisplay) return;
+                const parts = display.value.trim() ? display.value.trim().split(' to ') : [];
+                const valid = parts.length <= 2 && parts.every(text => {
+                    const parsed = window.flatpickr.parseDate(text, 'd-m-Y');
+                    return /^\d{2}-\d{2}-\d{4}$/.test(text) && parsed
+                        && window.flatpickr.formatDate(parsed, 'd-m-Y') === text;
+                });
+                if (!valid || parts.length === 1) {
+                    display.setCustomValidity(valid ? 'Select an end date to complete the range.' : 'Use DD-MM-YYYY to DD-MM-YYYY.');
+                    event.stopImmediatePropagation();
+                    if (event.type === 'keydown') event.preventDefault();
+                } else {
+                    display.setCustomValidity('');
+                }
+            };
+            display.addEventListener('blur', checkTyped, true);
+            display.addEventListener('keydown', event => { if (event.key === 'Enter') checkTyped(event); }, true);
+            const refresh = () => {
+                if (state.syncing) return;
+                state.syncing = true;
+                const picker = state.picker;
+                const values = [from.value, to.value].filter(Boolean).map(value => window.flatpickr.parseDate(value, 'Y-m-d'));
+                picker.set('minDate', from.min || undefined);
+                picker.set('maxDate', to.max || undefined);
+                picker.setDate(values, false);
+                display.disabled = from.disabled || to.disabled;
+                display.required = from.required || to.required;
+                display.title = !from.value && to.value ? 'To date only' : from.value && !to.value ? 'From date only' : '';
+                state.committedDisplay = display.value;
+                validateRange();
+                state.syncing = false;
+            };
+            state.refresh = refresh;
+            [from, to].forEach(input => {
+                input.addEventListener('change', () => { if (!state.syncing) { refresh(); notify(); } });
+                input.addEventListener('invalid', event => {
+                    event.preventDefault(); validateRange(); display.focus();
+                });
+            });
+            friendlyControls(display, state.picker);
+            refresh();
+        }
+    }
+}
+
 function enhance(root) {
     const inputs = [...root.querySelectorAll(selector)];
     if (root.matches?.(selector)) inputs.unshift(root);
     for (const input of inputs) {
-        if (input._flatpickr || input.readOnly || input.hasAttribute('data-native')) continue;
+        if (input._flatpickr || rangeInputs.has(input) || input.readOnly || input.hasAttribute('data-native')) continue;
         const type = input.type;
         input.dataset.pickerType = type;
         const isTime = type === 'time';
@@ -181,13 +313,17 @@ function enhance(root) {
 }
 
 export function initDateTimePickers() {
+    enhanceRanges();
     enhance(document);
     new MutationObserver(records => {
+        if (records.some(record => record.type === 'childList')) enhanceRanges();
         for (const record of records) {
             if (record.type === 'childList') {
                 for (const node of record.addedNodes) {
                     if (node.nodeType === 1) enhance(node);
                 }
+            } else if (rangeInputs.has(record.target)) {
+                rangeInputs.get(record.target).refresh();
             } else if (managed.has(record.target)) {
                 const input = record.target;
                 const picker = input._flatpickr;
@@ -215,9 +351,31 @@ export function initDateTimePickers() {
                 managed.delete(input);
             }
         }
+        for (const range of ranges) {
+            if (!range.from.isConnected || !range.to.isConnected) {
+                range.picker.destroy();
+                delete range.display._flatpickr;
+                range.display.remove();
+                for (const input of [range.from, range.to]) {
+                    rangeInputs.delete(input); input.hidden = false; delete input.dataset.rangeSource;
+                }
+                if (range.endWrapper) range.endWrapper.hidden = false;
+                if (range.startWrapper) range.startWrapper.className = range.startClass;
+                for (const [label, htmlFor, text, hidden] of range.originalLabels) {
+                    label.htmlFor = htmlFor; label.textContent = text; label.hidden = hidden;
+                }
+                ranges.delete(range);
+            }
+        }
     }).observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['min', 'max', 'disabled', 'required', 'readonly'] });
     document.addEventListener('reset', event => {
         setTimeout(() => {
+            for (const range of ranges) {
+                if (range.form === event.target) {
+                    [range.from.value, range.to.value] = range.defaults;
+                    range.refresh();
+                }
+            }
             for (const input of managed) {
                 if (input.form === event.target) {
                     input._flatpickr.setDate(defaultValues.get(input) || '', false);

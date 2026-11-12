@@ -31,7 +31,7 @@
             <input type="hidden" name="student_exam_result_id" value="{{ old('student_exam_result_id', $preselectResultId) }}">
             <div class="alert alert-info small">Linked to a passed exam result. The certificate level follows that result.</div>
         @endif
-        @error('student_exam_result_id')<div class="alert alert-danger" role="alert">{{ $message }}</div>@enderror
+        @error('student_exam_result_id')<div class="text-danger small">{{ $message }}</div>@enderror
         <div class="mb-3">
             <label class="form-label" for="student_id">Student</label>
             <select class="form-select" id="student_id" name="student_id">
@@ -97,7 +97,6 @@
 
 <section class="panel mt-4" aria-labelledby="issued-heading">
     <div class="panel-heading flex-wrap"><div><h2 id="issued-heading">Issued certificates</h2><p class="page-subtitle mb-0 mt-1">Most recent 50 records. Open a certificate to view or print it.</p></div><span class="page-subtitle">{{ $certificates->count() }} shown</span></div>
-    @error('reason')<div class="alert alert-danger">{{ $message }}</div>@enderror
     <div class="table-responsive"><table class="table list-table">
         <thead><tr><th scope="col">Number</th><th scope="col">Student</th><th scope="col">Level</th><th scope="col">Completed</th><th scope="col">Issued</th><th scope="col">Status</th><th scope="col" class="d-print-none">Actions</th></tr></thead>
         <tbody>

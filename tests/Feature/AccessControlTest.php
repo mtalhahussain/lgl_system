@@ -157,6 +157,43 @@ class AccessControlTest extends TestCase
         $this->assertDatabaseHas('attendances', ['class_session_id' => $this->session->id, 'student_id' => $this->student->id, 'status' => 'late']);
     }
 
+    public function test_student_filter_scopes_attendance_sessions_and_cards_without_exposing_other_teacher_students(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin', 'is_active' => true]);
+        $this->actingAs($admin)->get('/attendance?student_id='.$this->otherStudent->id)->assertOk()
+            ->assertViewHas('sessions', fn ($sessions) => $sessions->count() === 1 && $sessions->first()->id === $this->otherSession->id)
+            ->assertViewHas('stats', fn ($stats) => $stats['total_sessions'] === 1);
+        $this->actingAs($this->teacher)->get('/attendance?student_id='.$this->otherStudent->id)->assertOk()
+            ->assertDontSee('Unrelated Student')->assertDontSee('Unrelated Batch')
+            ->assertViewHas('sessions', fn ($sessions) => $sessions->count() === 1 && $sessions->first()->id === $this->session->id);
+        $this->get('/attendance?from='.today()->addDay()->toDateString())->assertOk()
+            ->assertViewHas('sessions', fn ($sessions) => $sessions->isEmpty())
+            ->assertViewHas('stats', fn ($stats) => $stats['total_sessions'] === 0 && $stats['average_attendance'] === null);
+    }
+
+    public function test_student_overview_defaults_to_today_and_counts_only_recorded_attendance(): void
+    {
+        foreach (['late', 'absent', 'excused'] as $status) {
+            $session = $this->makeSession($this->batch);
+            Attendance::create(['class_session_id' => $session->id, 'student_id' => $this->student->id, 'status' => $status]);
+        }
+        $this->makeSession($this->batch); // Pending marking is not an absence.
+        $past = $this->makeSession($this->batch);
+        $past->update(['session_date' => today()->subDay()]);
+        Attendance::create(['class_session_id' => $past->id, 'student_id' => $this->student->id, 'status' => 'present']);
+
+        $this->actingAs($this->teacher)->get('/attendance')->assertOk()
+            ->assertDontSee('Attendance date range')->assertDontSee('This week')->assertDontSee('Custom dates')
+            ->assertSee('1 class needs attendance marking.')->assertSee('Excused: 1.')
+            ->assertViewHas('stats', fn ($stats) => $stats['present'] === 1 && $stats['late'] === 1
+                && $stats['absent'] === 1 && $stats['excused'] === 1 && $stats['unmarked_sessions'] === 1
+                && $stats['average_attendance'] === 66.7);
+        $this->get('/attendance?from='.today()->subDay()->toDateString().'&to='.today()->toDateString())->assertOk()
+            ->assertViewHas('stats', fn ($stats) => $stats['present'] === 2 && $stats['average_attendance'] === 75.0);
+        $this->get('/attendance?from='.today()->toDateString().'&to='.today()->subDay()->toDateString())
+            ->assertSessionHasErrors('to');
+    }
+
     public function test_device_operations_reject_unassigned_session_before_any_network_call(): void
     {
         $this->actingAs($this->teacher);

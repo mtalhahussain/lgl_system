@@ -29,26 +29,54 @@ class AttendanceController extends Controller
 
     public function index(Request $request)
     {
+        if (in_array($request->query('tab'), ['teachers', 'staff'], true)) {
+            abort_unless($request->user()->isAdmin(), 403);
+
+            return app(BiometricController::class)->teachers($request);
+        }
+        $request->validate(['from' => 'nullable|date_format:Y-m-d', 'to' => 'nullable|date_format:Y-m-d']);
+        if ($request->filled('from') && $request->filled('to') && $request->query('to') < $request->query('from')) {
+            throw ValidationException::withMessages(['to' => 'To date must be on or after From date.']);
+        }
+        if (! $request->query->has('from') && ! $request->query->has('to')) {
+            $request->query->set('from', today()->toDateString());
+            $request->query->set('to', today()->toDateString());
+        }
         $visible = ClassSession::whereIn('batch_id', $this->batches()->select('id'));
         $batches = $this->batches()->orderBy('name')->pluck('name', 'id');
+        $students = User::students()->whereHas('enrollments', fn ($query) => $query->whereIn('batch_id', $batches->keys()))
+            ->orderBy('name')->pluck('name', 'id');
+        $selectedStudent = $students->has((int) $request->query('student_id')) ? (int) $request->query('student_id') : null;
+        if ($selectedStudent) {
+            $visible->whereHas('batch.enrollments', fn ($query) => $query->where('student_id', $selectedStudent)
+                ->whereColumn('enrollment_date', '<=', 'class_sessions.session_date')
+                ->where(fn ($query) => $query->whereIn('status', ['active', 'completed'])
+                    ->orWhere(fn ($query) => $query->where('status', 'transferred')->whereColumn('transfer_date', '>=', 'class_sessions.session_date'))
+                    ->orWhere(fn ($query) => $query->where('status', 'dropped')->whereColumn('dropout_date', '>=', 'class_sessions.session_date'))));
+        }
+        $recordScope = fn ($query) => $query->when($selectedStudent, fn ($query) => $query->where('student_id', $selectedStudent));
         $statuses = ['scheduled' => 'Scheduled', 'ongoing' => 'Ongoing', 'completed' => 'Completed', 'cancelled' => 'Cancelled'];
-        $list = ListQuery::for((clone $visible)->with(['batch:id,name,course_id', 'batch.course:id,name'])->withCount('attendances'), $request)
+        $list = ListQuery::for((clone $visible)->with(['batch:id,name,course_id', 'batch.course:id,name'])->withCount(['attendances' => $recordScope]), $request)
             ->search(['topic', 'batch.name'])
             ->filter('batch_id', fn ($query, $id) => $query->where('batch_id', $id), $batches->keys()->all())
             ->filter('status', fn ($query, $status) => $query->where('status', $status), array_keys($statuses))
             ->filter('marking', fn ($query, $marking) => $marking === 'unmarked'
-                ? $query->where('status', '!=', 'cancelled')->whereDate('session_date', '<=', today())->doesntHave('attendances')
-                : $query->has('attendances'), ['marked', 'unmarked'])
+                ? $query->where('status', '!=', 'cancelled')->whereDate('session_date', '<=', today())->whereDoesntHave('attendances', $recordScope)
+                : $query->whereHas('attendances', $recordScope), ['marked', 'unmarked'])
             ->dateRange('session_date')
             ->sorts(['date' => 'session_date'], '-date');
+        $visible = $list->totalsQuery();
         $sessions = $list->paginate();
-        $attendance = Attendance::whereHas('classSession', fn ($query) => $query->where('status', '!=', 'cancelled')->whereIn('batch_id', $this->batches()->select('id')));
+        $attendance = Attendance::whereIn('class_session_id', (clone $visible)->select('class_sessions.id')->toBase())
+            ->whereHas('classSession', fn ($query) => $query->where('status', '!=', 'cancelled'))
+            ->when($selectedStudent, fn ($query) => $query->where('student_id', $selectedStudent));
         $summary = $this->attendanceService->statistics($attendance);
         $stats = ['total_sessions' => (clone $visible)->count(), 'completed_sessions' => (clone $visible)->where('status', 'completed')->count(),
             'upcoming_sessions' => (clone $visible)->where('status', 'scheduled')->whereDate('session_date', '>=', today())->count(),
-            'unmarked_sessions' => (clone $visible)->where('status', '!=', 'cancelled')->whereDate('session_date', '<=', today())->doesntHave('attendances')->count(),
-            'average_attendance' => $summary['attendance_rate']];
-        $filters = [['name' => 'batch_id', 'label' => 'Batch', 'options' => $batches], ['name' => 'status', 'label' => 'Status', 'options' => $statuses],
+            'unmarked_sessions' => (clone $visible)->where('status', '!=', 'cancelled')->whereDate('session_date', '<=', today())->whereDoesntHave('attendances', $recordScope)->count(),
+            'average_attendance' => $summary['attendance_rate'],
+            'present' => $summary['present'], 'late' => $summary['late'], 'absent' => $summary['absent'], 'excused' => $summary['excused']];
+        $filters = [['name' => 'student_id', 'label' => 'Student', 'options' => $students], ['name' => 'batch_id', 'label' => 'Batch', 'options' => $batches], ['name' => 'status', 'label' => 'Status', 'options' => $statuses],
             ['name' => 'marking', 'label' => 'Marking', 'options' => ['unmarked' => 'Needs marking', 'marked' => 'Marked']],
             ['name' => 'from', 'label' => 'From', 'type' => 'date'], ['name' => 'to', 'label' => 'To', 'type' => 'date']];
 

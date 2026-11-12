@@ -8,10 +8,6 @@
     @endif
 </div>
 
-@if($errors->any())
-    <div class="alert alert-danger">{{ $errors->first() }}</div>
-@endif
-
 <section class="panel" style="padding:14px 18px">
     <div>{{ $exam->batch->name }} &middot; Level {{ $exam->batch->course->level }} &middot; {{ $exam->exam_date->format('d M Y') }} &middot; {{ ucfirst($exam->type) }}</div>
 </section>

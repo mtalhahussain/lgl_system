@@ -2,20 +2,6 @@
 
 @section('title', 'Create Fee Installments')
 
-@push('styles')
-<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
-<link href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css" rel="stylesheet" />
-<style>
-.select2-container--bootstrap-5 .select2-selection {
-    min-height: 38px !important;
-}
-.select2-container--bootstrap-5 .select2-selection--single .select2-selection__rendered {
-    padding-top: 6px;
-    padding-left: 12px;
-}
-</style>
-@endpush
-
 @section('content')
 <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
     <h1 class="h2">
@@ -35,17 +21,6 @@
         </h5>
     </div>
     <div class="card-body">
-        @if($errors->any())
-            <div class="alert alert-danger">
-                <h6><i class="fas fa-exclamation-triangle me-2"></i>Please fix the following errors:</h6>
-                <ul class="mb-0">
-                    @foreach($errors->all() as $error)
-                        <li>{{ $error }}</li>
-                    @endforeach
-                </ul>
-            </div>
-        @endif
-
         <form action="{{ route('installments.store') }}" method="POST" id="installmentForm">
             @csrf
             
@@ -208,54 +183,8 @@
     </div>
 </div>
 
-@push('scripts')
-<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
-@endpush
-
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // Initialize Select2 for enrollment dropdown
-    $('#enrollmentSelect').select2({
-        theme: 'bootstrap-5',
-        placeholder: 'Search and select student enrollment',
-        allowClear: true,
-        width: '100%',
-        templateResult: function(data) {
-            if (!data.id) {
-                return data.text;
-            }
-            
-            const $option = $(data.element);
-            const studentName = $option.data('student');
-            const courseName = $option.data('course');
-            const batchName = $option.data('batch');
-            const fees = $option.data('fees');
-            
-            const $result = $(
-                `<div class="select2-result-student">
-                    <div class="student-name"><strong>${studentName}</strong></div>
-                    <div class="course-info text-muted small">
-                        Course: ${courseName} | Batch: ${batchName}
-                        <span class="badge bg-success ms-2">Rs. ${parseInt(fees).toLocaleString()}</span>
-                    </div>
-                </div>`
-            );
-            
-            return $result;
-        },
-        templateSelection: function(data) {
-            if (!data.id) {
-                return data.text;
-            }
-            
-            const $option = $(data.element);
-            const studentName = $option.data('student');
-            const courseName = $option.data('course');
-            
-            return `${studentName} - ${courseName}`;
-        }
-    });
-
     const enrollmentSelect = document.getElementById('enrollmentSelect');
     const installmentType = document.getElementById('installmentType');
     const firstPayment = document.getElementById('firstPayment');

@@ -53,6 +53,18 @@ class User extends Authenticatable
         return $this->hasManyThrough(TeacherPayment::class, BatchTeacherEarning::class, 'teacher_id', 'batch_teacher_earning_id');
     }
 
+    public function machineSyncRows()
+    {
+        return $this->hasMany(BiometricDeviceUser::class);
+    }
+
+    public function getConfirmedMachineNumberAttribute(): ?string
+    {
+        return $this->machineSyncRows->contains(fn ($row) => $row->employee_no === $this->device_employee_no
+            && $row->action === 'upsert' && $row->synced_at !== null)
+            ? $this->device_employee_no : null;
+    }
+
     public function batchTeacherEarnings()
     {
         return $this->hasMany(BatchTeacherEarning::class, 'teacher_id');

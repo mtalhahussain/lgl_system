@@ -63,7 +63,7 @@ class BiometricSyncTest extends TestCase
     {
         $this->assertNull($this->admin->fresh()->device_employee_no);
         $early = User::factory()->create(['role' => 'teacher', 'is_active' => true, 'name' => 'Early Teacher']);
-        $this->assertSame((string) $early->id, $early->fresh()->device_employee_no);
+        $this->assertNull($early->fresh()->device_employee_no);
         User::factory()->create(['role' => 'student', 'is_active' => false]);
         $device = $this->device();
         $this->assertSame([[(string) $early->id, 'upsert', 'pending']], $this->rows($device));
@@ -199,7 +199,61 @@ class BiometricSyncTest extends TestCase
         $code = $teacher->fresh()->device_employee_no;
 
         $html = $this->actingAs($this->admin)->get('/teachers/'.$teacher->id.'/edit')->assertOk();
-        $html->assertSee('Machine Employee No.')->assertSee($code)->assertSee('Sync now')->assertSee('Waiting');
+        $html->assertSee('Machine Employee No.')->assertSee('Not confirmed')->assertSee('Sync now')->assertSee('Waiting');
         $html->assertDontSee('name="device_employee_no"', false);
+    }
+
+    public function test_student_without_a_machine_has_no_number_and_manual_sync_reports_configuration_error(): void
+    {
+        $this->actingAs($this->admin)->post('/students', ['name' => 'Offline Student', 'email' => 'offline@example.test',
+            'phone' => '0300', 'address' => 'Karachi'])->assertSessionHasNoErrors();
+        $student = User::where('email', 'offline@example.test')->sole();
+        $this->assertNull($student->device_employee_no);
+        $this->get('/students')->assertOk()->assertSee('Not confirmed')
+            ->assertSee('Sync Offline Student to attendance machines')->assertSee(route('biometric.resync-user', $student), false);
+        $this->post('/people/'.$student->id.'/resync-machine')->assertSessionHasErrors('machine');
+        $this->assertNull($student->fresh()->device_employee_no);
+        $this->assertDatabaseCount('biometric_device_users', 0);
+        $this->assertDatabaseMissing('audit_logs', ['action' => 'biometric_device_user.resync', 'subject_id' => $student->id]);
+    }
+
+    public function test_machine_number_is_shown_only_after_matching_bridge_confirmation_and_is_reused(): void
+    {
+        $student = User::factory()->create(['role' => 'student', 'is_active' => true]);
+        $device = $this->device();
+        $student->refresh();
+        $row = BiometricDeviceUser::where('user_id', $student->id)->sole();
+        $code = $student->device_employee_no;
+        $this->assertNull($student->confirmed_machine_number);
+        $this->get('/students')->assertOk()->assertSee('Waiting for machine')->assertDontSee('ID: '.$code.'<', false);
+        $this->postJson('/biometric/bridge/'.$device->bridge_token.'/results', ['results' => [
+            ['id' => $row->id, 'version' => $row->version, 'ok' => false, 'error' => 'Device offline'],
+        ]])->assertOk()->assertJsonPath('applied', 1);
+        $this->assertNull($student->fresh()->confirmed_machine_number);
+        $this->get('/students')->assertOk()->assertSee('Sync failed')->assertDontSee('ID: '.$code.'<', false);
+        $this->postJson('/biometric/bridge/'.$device->bridge_token.'/results', ['results' => [
+            ['id' => $row->id, 'version' => $row->version, 'ok' => true],
+        ]])->assertOk()->assertJsonPath('applied', 1);
+        $this->assertSame($code, $student->fresh()->confirmed_machine_number);
+        $this->get('/students')->assertOk()->assertSee('ID: '.$code)->assertSee('Synced');
+        $this->post('/people/'.$student->id.'/resync-machine')->assertSessionHasNoErrors();
+        $this->assertSame($code, $student->fresh()->device_employee_no);
+        $this->assertSame($code, $row->fresh()->employee_no);
+        $this->assertSame($code, $student->fresh()->confirmed_machine_number);
+        $student->update(['is_active' => false]);
+        $delete = $row->fresh();
+        $this->postJson('/biometric/bridge/'.$device->bridge_token.'/results', ['results' => [
+            ['id' => $delete->id, 'version' => $delete->version, 'ok' => true],
+        ]])->assertOk();
+        $student->update(['is_active' => true]);
+        $this->assertNull($student->fresh()->confirmed_machine_number);
+    }
+
+    public function test_inactive_and_admin_accounts_cannot_be_sent_from_the_manual_endpoint(): void
+    {
+        $this->device();
+        $student = User::factory()->create(['role' => 'student', 'is_active' => false]);
+        $this->post('/people/'.$student->id.'/resync-machine')->assertUnprocessable();
+        $this->post('/people/'.$this->admin->id.'/resync-machine')->assertUnprocessable();
     }
 }

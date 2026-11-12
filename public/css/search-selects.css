@@ -1,0 +1,25 @@
+.select2-container { max-width:100%; min-width:0; }
+.select2-container--bootstrap-5 .select2-selection {
+    font-size:var(--field-font-size, 13px);
+    font-family:var(--field-font-family, inherit);
+    line-height:var(--field-line-height, 1.5);
+    border-radius:var(--field-border-radius, 8px);
+    border-color:var(--field-border-color, #d6d3cd);
+    padding:var(--field-padding-top, 10px) 2.25rem var(--field-padding-bottom, 10px) var(--field-padding-left, 12px);
+    min-height:calc(var(--field-line-height, 19.5px) + var(--field-padding-top, 10px) + var(--field-padding-bottom, 10px) + var(--field-border-top-width, 1px) + var(--field-border-bottom-width, 1px));
+}
+.select2-container--bootstrap-5 .select2-selection--single { height:auto; }
+.select2-container--bootstrap-5 .select2-selection--single .select2-selection__rendered { padding:0; line-height:inherit; }
+.select2-container--bootstrap-5 .select2-results__option--highlighted[aria-selected] { background-color:#a61b29; }
+.select2-container--bootstrap-5.select2-container--focus .select2-selection,
+.select2-container--bootstrap-5.select2-container--open .select2-selection { border-color:#a61b29; box-shadow:0 0 0 .25rem rgb(166 27 41 / 15%); }
+select.is-invalid + .select2-container .select2-selection,
+.select2-container .select2-selection[aria-invalid="true"] { border-color:#dc3545; }
+.select2-results__option small { display:block; font-size:11px; }
+.select2-container .select2-person-role,
+.select2-results__option .select2-person-role { display:inline; font-size:.8em; color:#6b7280; font-weight:400; }
+.select2-results__option--highlighted .select2-person-role { color:inherit; opacity:.8; }
+.select2-container--bootstrap-5 .select2-selection--single .select2-selection__rendered { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.list-field .select2-container { min-width:150px; }
+.select2-container--open { z-index:1060; }
+@media(max-width:767.98px) { .list-field .select2-container { width:100% !important; min-width:0; } }

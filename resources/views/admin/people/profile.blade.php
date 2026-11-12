@@ -184,4 +184,5 @@
         @endif
     </div>
 </div>
+@if($isAdmin) @include('partials.machine-sync') @endif
 @endsection

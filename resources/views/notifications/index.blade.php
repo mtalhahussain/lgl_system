@@ -15,10 +15,6 @@
     </div>
 </div>
 
-@if(session('success'))
-    <div class="alert alert-success">{{ session('success') }}</div>
-@endif
-
 <div class="card">
     <div class="list-group list-group-flush">
         @forelse($notifications as $n)

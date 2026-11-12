@@ -47,7 +47,7 @@ class StudentController extends Controller
         }
         $courses = Course::orderBy('name')->pluck('name', 'id');
         $batches = Batch::orderBy('name')->pluck('name', 'id');
-        $list = ListQuery::for(User::students()->with('enrollments.batch:id,name'), $request)
+        $list = ListQuery::for(User::students()->with(['enrollments.batch:id,name', 'machineSyncRows']), $request)
             ->search(['name', 'email', 'phone'])
             ->filter('status', fn ($query, $status) => $query->where('is_active', $status === 'active'), ['active', 'inactive'])
             ->filter('course_id', fn ($query, $id) => $query->whereHas('enrollments.batch', fn ($batch) => $batch->where('course_id', $id)), $courses->keys()->all())

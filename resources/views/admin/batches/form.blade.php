@@ -81,7 +81,7 @@
                 'end' => \Illuminate\Support\Carbon::parse($s->getRawOriginal('end_time'))->format('H:i'),
             ])->values()->all());
         @endphp
-        @error('schedule')<div class="alert alert-danger py-2">{{ $message }}</div>@enderror
+        @error('schedule')<div class="text-danger small py-2">{{ $message }}</div>@enderror
         <div id="schedule-rows">
             @foreach($scheduleRows as $i => $row)
                 <div class="row g-2 schedule-row align-items-end mb-2">

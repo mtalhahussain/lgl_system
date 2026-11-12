@@ -1,17 +1,24 @@
 @extends('layouts.admin')
 @section('title', 'Attendance')
 @section('content')
-@include('partials.attendance-tabs')
 <x-list.header title="Attendance" eyebrow="Students" subtitle="Mark past and current sessions; future sessions open on their date">
     <a class="btn btn-outline-primary" href="{{ route('attendance.reports') }}"><i class="fas fa-chart-bar me-1" aria-hidden="true"></i>Attendance report</a>
     <a class="btn btn-primary" href="{{ route('attendance.create') }}"><i class="fas fa-plus me-1" aria-hidden="true"></i>New session</a>
 </x-list.header>
+@include('partials.attendance-tabs')
 <x-list.kpis :items="[
-    ['label' => 'Sessions', 'value' => $stats['total_sessions'], 'icon' => 'fa-calendar-check'],
-    ['label' => 'Needs marking', 'value' => $stats['unmarked_sessions'], 'icon' => 'fa-pen-to-square', 'note' => 'Past or today, no records'],
-    ['label' => 'Upcoming', 'value' => $stats['upcoming_sessions'], 'icon' => 'fa-clock'],
+    ['label' => 'Present', 'value' => $stats['present'], 'icon' => 'fa-user-check'],
+    ['label' => 'Late', 'value' => $stats['late'], 'icon' => 'fa-clock'],
+    ['label' => 'Absent', 'value' => $stats['absent'], 'icon' => 'fa-user-times'],
     ['label' => 'Attendance rate', 'value' => $stats['average_attendance'] === null ? '—' : $stats['average_attendance'].'%', 'icon' => 'fa-percent', 'note' => '(present + late) ÷ marked, excused excluded'],
 ]" />
+<p class="text-muted small">Each student's attendance counts once per class. Excused: {{ $stats['excused'] }}. Unmarked attendance is not counted as absent.</p>
+@if($stats['unmarked_sessions'] > 0)
+    <div class="alert alert-warning d-flex align-items-baseline gap-2" role="status">
+        <i class="fas fa-pen-to-square flex-shrink-0" aria-hidden="true"></i>
+        <span>{{ $stats['unmarked_sessions'] }} {{ $stats['unmarked_sessions'] === 1 ? 'class needs' : 'classes need' }} attendance marking. <a href="{{ route('attendance.index', array_merge(request()->except('page'), ['marking' => 'unmarked'])) }}">View pending classes</a></span>
+    </div>
+@endif
 <div class="panel list-panel">
     <x-list.toolbar :filters="$filters" search="Search topic or batch…" />
     <div class="table-responsive">

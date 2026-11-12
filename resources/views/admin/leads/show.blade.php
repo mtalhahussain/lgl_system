@@ -18,13 +18,6 @@
     <a href="{{ route('leads.index') }}" class="btn btn-outline-secondary btn-sm">Back to leads</a>
 </div>
 
-@if (session('success'))
-    <div class="alert alert-success">{{ session('success') }}</div>
-@endif
-@if ($errors->any())
-    <div class="alert alert-danger"><ul class="mb-0 ps-3">@foreach ($errors->all() as $e)<li>{{ $e }}</li>@endforeach</ul></div>
-@endif
-
 @if ($hasDupes)
     <div class="alert alert-warning">
         <strong><i class="fas fa-triangle-exclamation"></i> Possible duplicate.</strong> This CNIC/phone already appears:

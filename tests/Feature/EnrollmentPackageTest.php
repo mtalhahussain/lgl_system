@@ -162,7 +162,8 @@ class EnrollmentPackageTest extends TestCase
         $this->assertDatabaseCount('enrollment_packages', 0);
         $this->a2->update(['max_students' => 10]);
         $this->purchase();
-        $this->postJson('/enrollment-packages', $this->data())->assertUnprocessable();
+        $this->postJson('/enrollment-packages', $this->data())->assertUnprocessable()
+            ->assertJsonValidationErrors(['package' => 'Student already has an enrollment in batch "'.$this->a1->name.'".']);
         $this->assertDatabaseCount('enrollments', 2);
         $this->assertDatabaseCount('payments', 2);
     }

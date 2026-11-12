@@ -1,17 +1,12 @@
-{{-- Attendance section tabs: Students (class sessions) + Teachers & Staff (biometric). --}}
-<ul class="nav nav-pills gap-2 mb-4" role="tablist">
-    <li class="nav-item">
-        <a class="nav-link {{ request()->is('attendance*') ? 'active' : '' }}"
-           href="{{ route('attendance.index') }}">
-            <i class="fas fa-user-graduate me-1" aria-hidden="true"></i>Students
-        </a>
-    </li>
+@php
+    $attendanceTab = $tab ?? 'students';
+    $attendanceDates = array_filter(['from' => request('from'), 'to' => request('to')]);
+@endphp
+<nav class="nav nav-pills gap-2 mb-4" aria-label="Attendance groups">
+    <a class="nav-link {{ $attendanceTab === 'students' ? 'active' : '' }}" @if($attendanceTab === 'students') aria-current="page" @endif href="{{ route('attendance.index', $attendanceDates) }}"><i class="fas fa-user-graduate me-1" aria-hidden="true"></i>Students</a>
     @if(auth()->user()->isAdmin())
-    <li class="nav-item">
-        <a class="nav-link {{ request()->is('biometric/teachers') ? 'active' : '' }}"
-           href="{{ route('biometric.teachers') }}">
-            <i class="fas fa-user-tie me-1" aria-hidden="true"></i>Teachers &amp; Staff
-        </a>
-    </li>
+        @foreach(['teachers' => ['Teachers', 'fa-chalkboard-teacher'], 'staff' => ['Staff', 'fa-user-tie']] as $key => [$label, $icon])
+            <a class="nav-link {{ $attendanceTab === $key ? 'active' : '' }}" @if($attendanceTab === $key) aria-current="page" @endif href="{{ route('attendance.index', $attendanceDates + ['tab' => $key]) }}"><i class="fas {{ $icon }} me-1" aria-hidden="true"></i>{{ $label }}</a>
+        @endforeach
     @endif
-</ul>
+</nav>

@@ -53,10 +53,10 @@
             </div>
         </div>
     </div>
-    @include('partials.machine-sync')
     <div class="form-actions">
         <a class="btn btn-outline-secondary" href="{{ route('accounts.index', ['role' => 'staff']) }}">Cancel</a>
         <button class="btn btn-primary">Save</button>
     </div>
 </form>
+@include('partials.machine-sync')
 @endsection

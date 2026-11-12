@@ -17,7 +17,7 @@ class SettingsSeeder extends Seeder
             // Institute Information
             [
                 'key' => 'institute_name',
-                'value' => 'German Language Learning Institute',
+                'value' => 'Land of German Language',
                 'type' => 'text',
                 'group' => 'institute',
                 'label' => 'Institute Name',
@@ -35,7 +35,7 @@ class SettingsSeeder extends Seeder
             ],
             [
                 'key' => 'institute_address',
-                'value' => '123 Main Street, City, Country',
+                'value' => 'FL 4/16, 2nd Floor, Block 5, Rashid Minhas Road, Gulshan-e-Iqbal, Karachi, Pakistan',
                 'type' => 'textarea',
                 'group' => 'institute',
                 'label' => 'Institute Address',
@@ -44,7 +44,7 @@ class SettingsSeeder extends Seeder
             ],
             [
                 'key' => 'institute_phone',
-                'value' => '+92-300-1234567',
+                'value' => '+923240229441',
                 'type' => 'text',
                 'group' => 'institute',
                 'label' => 'Phone Number',
@@ -53,7 +53,7 @@ class SettingsSeeder extends Seeder
             ],
             [
                 'key' => 'institute_email',
-                'value' => 'info@lgl.com',
+                'value' => 'landofgermanlanguage@gmail.com',
                 'type' => 'email',
                 'group' => 'institute',
                 'label' => 'Email Address',
@@ -62,7 +62,7 @@ class SettingsSeeder extends Seeder
             ],
             [
                 'key' => 'institute_website',
-                'value' => 'https://germanlanguage.edu',
+                'value' => 'https://landofgermanlanguage.com',
                 'type' => 'url',
                 'group' => 'institute',
                 'label' => 'Website URL',

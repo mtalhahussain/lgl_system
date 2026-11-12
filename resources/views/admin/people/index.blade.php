@@ -13,6 +13,7 @@
             <thead><tr>
                 <x-list.th sort="name" default="-joined">Name</x-list.th>
                 <th scope="col">Phone</th>
+                @if($students)<th scope="col">Attendance machine</th>@endif
                 <th scope="col">{{ $students ? 'Batches' : 'Batches taught' }}</th>
                 <th scope="col">Status</th>
                 <x-list.th sort="joined" default="-joined">Joined</x-list.th>
@@ -24,10 +25,26 @@
                     <td><div class="person-cell"><span class="user-avatar" aria-hidden="true">{{ mb_substr($person->name, 0, 1) }}</span>
                         <div><a class="cell-main" href="{{ route($kind.'.show', $person) }}">{{ $person->name }}</a><span class="cell-sub">{{ $person->email }}</span></div></div></td>
                     <td>{{ $person->phone ?: '—' }}</td>
+                    @if($students)
+                        @php
+                            $machineRows = $person->machineSyncRows->where('employee_no', $person->device_employee_no)->where('action', 'upsert');
+                            $machineNumber = $person->confirmed_machine_number;
+                        @endphp
+                        <td>
+                            @if($machineNumber)<span class="cell-main">ID: {{ $machineNumber }}</span>@endif
+                            <span class="cell-sub">{{ $machineRows->contains('status', 'failed') ? 'Sync failed' : ($machineRows->contains('status', 'pending') ? 'Waiting for machine' : ($machineNumber ? 'Synced' : 'Not confirmed')) }}</span>
+                        </td>
+                    @endif
                     <td>{{ $students ? ($person->enrollments->pluck('batch.name')->filter()->unique()->implode(', ') ?: '—') : $person->taught_batches_count }}</td>
                     <td><x-list.status :value="$person->is_active ? 'active' : 'inactive'" /></td>
                     <td>{{ $person->created_at?->format('d M Y') }}</td>
                     <td class="text-end">
+                        @if($students && $person->is_active)
+                            <form class="d-inline" method="post" action="{{ route('biometric.resync-user', $person) }}">
+                                @csrf
+                                <button class="btn btn-icon" type="submit" title="Send to attendance machines" aria-label="Sync {{ $person->name }} to attendance machines"><i class="fas fa-sync-alt" aria-hidden="true"></i></button>
+                            </form>
+                        @endif
                         <x-list.row-menu :label="$person->name">
                             <li><a class="dropdown-item" href="{{ route($kind.'.show', $person) }}"><i class="fas fa-eye me-2" aria-hidden="true"></i>View</a></li>
                             <li><a class="dropdown-item" href="{{ route($kind.'.edit', $person) }}"><i class="fas fa-pen me-2" aria-hidden="true"></i>Edit</a></li>
@@ -41,7 +58,7 @@
                     </td>
                 </tr>
             @empty
-                <x-list.empty colspan="6" />
+                <x-list.empty :colspan="$students ? 7 : 6" />
             @endforelse
             </tbody>
         </table>

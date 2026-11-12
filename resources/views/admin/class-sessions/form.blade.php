@@ -10,7 +10,7 @@
     @elseif(old('makeup_for_id'))
         <input type="hidden" name="makeup_for_id" value="{{ old('makeup_for_id') }}">
     @endif
-    @error('makeup_for_id')<div class="alert alert-danger m-3">{{ $message }}</div>@enderror
+    @error('makeup_for_id')<div class="text-danger small m-3">{{ $message }}</div>@enderror
     @if($classSession) @method('PUT') @endif
     <div class="form-section">
         <h2 class="form-section-title">Session</h2>

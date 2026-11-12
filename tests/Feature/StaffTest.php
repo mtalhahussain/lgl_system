@@ -41,7 +41,7 @@ class StaffTest extends TestCase
         $guard = $this->addStaff();
         $this->assertSame(['staff', 'Security guard', '25000.00', 'monthly', true], [$guard->role, $guard->designation, (string) $guard->monthly_salary, $guard->salary_type, $guard->is_active]);
         $this->assertSame('STF'.str_pad((string) $guard->id, 4, '0', STR_PAD_LEFT), $guard->employee_id);
-        $this->assertSame((string) $guard->id, $guard->device_employee_no);
+        $this->assertNull($guard->device_employee_no);
         $this->assertStringEndsWith('@staff.invalid', $guard->email);
 
         $this->get('/accounts?role=staff')->assertOk()->assertSee('Guard Gul')->assertSee('Security guard · 03001112233')
@@ -62,7 +62,7 @@ class StaffTest extends TestCase
         $this->get('/staff/'.$guard->id.'/edit')->assertOk()->assertSee('Guard Gul');
         $this->put('/staff/'.$guard->id, ['name' => 'Guard Gul Khan', 'designation' => 'Night guard', 'phone' => '0300', 'monthly_salary' => '27000'])
             ->assertSessionHasNoErrors();
-        $this->assertSame(['Guard Gul Khan', 'Night guard', '27000.00', (string) $guard->id], [$guard->fresh()->name, $guard->fresh()->designation,
+        $this->assertSame(['Guard Gul Khan', 'Night guard', '27000.00', null], [$guard->fresh()->name, $guard->fresh()->designation,
             (string) $guard->fresh()->monthly_salary, $guard->fresh()->device_employee_no]);
 
         $this->patchJson('/accounts/'.$guard->id, ['role' => 'staff', 'is_active' => false])->assertOk();
@@ -107,19 +107,52 @@ class StaffTest extends TestCase
                 json_encode($event(today()->toDateString().'T'.$time)))->assertOk();
         }
         $this->assertSame(['staff', 'staff'], BiometricPunch::pluck('result')->all());
-        $teacher = User::factory()->create(['role' => 'teacher', 'name' => 'Excluded Teacher', 'is_active' => true]);
+        $teacher = User::factory()->create(['role' => 'teacher', 'name' => 'Included Teacher', 'is_active' => true]);
         $teacherEvent = $event(today()->toDateString().'T20:06:00');
         $teacherEvent['AccessControllerEvent']['employeeNoString'] = $teacher->device_employee_no;
         $this->call('POST', '/biometric/hook/'.$device->webhook_token, [], [], [], ['CONTENT_TYPE' => 'application/json'],
             json_encode($teacherEvent))->assertOk();
-        $this->get('/biometric/teachers?month='.today()->format('Y-m'))->assertOk()->assertSee('Staff Attendance')
-            ->assertSee('Guard Gul')->assertSee('Security guard')->assertSee('08:01')->assertSee('08:05 PM')
-            ->assertDontSee('Excluded Teacher')
-            ->assertViewHas('teachers', fn ($people) => $people->keys()->all() === [$guard->id])
-            ->assertViewHas('days', fn ($days) => $days->count() === 1 && $days->first()->user_id === $guard->id && $days->first()->punches === 2);
+        $this->get('/biometric/teachers?month='.today()->format('Y-m'))->assertOk()->assertSee('Staff member')
+            ->assertSee('Guard Gul')->assertSee('Security guard')->assertSee('Check-in')->assertSee('Check-out')->assertSee('08:01:00 AM')->assertSee('08:05:00 PM')
+            ->assertSee('Included Teacher')
+            ->assertViewHas('teachers', fn ($people) => $people->count() === 2 && $people->has($guard->id) && $people->has($teacher->id))
+            ->assertViewHas('days', fn ($days) => $days->count() === 2 && $days->firstWhere('user_id', $guard->id)->punches === 2);
         $this->get('/biometric/teachers?month='.today()->format('Y-m').'&teacher_id='.$teacher->id)->assertOk()
-            ->assertDontSee('Excluded Teacher')->assertViewHas('days', fn ($days) => $days->every(fn ($day) => $day->user_id === $guard->id));
-        $this->get('/biometric?result=teacher')->assertOk()->assertSee('Excluded Teacher');
+            ->assertSee('Included Teacher')->assertViewHas('days', fn ($days) => $days->count() === 1 && $days->first()->user_id === $teacher->id);
+        $this->get('/biometric/teachers?month='.today()->format('Y-m').'&teacher_id='.$guard->id)->assertOk()
+            ->assertViewHas('days', fn ($days) => $days->count() === 1 && $days->first()->user_id === $guard->id);
+        $student = User::factory()->create(['role' => 'student', 'name' => 'Excluded Student']);
+        $this->get('/biometric/teachers?month='.today()->format('Y-m').'&teacher_id='.$student->id)->assertOk()
+            ->assertDontSee('Excluded Student')->assertViewHas('teachers', fn ($people) => ! $people->has($student->id))
+            ->assertViewHas('days', fn ($days) => $days->every(fn ($day) => in_array($day->user_id, [$guard->id, $teacher->id], true)));
+        $this->get('/biometric?result=teacher')->assertOk()->assertSee('Included Teacher');
         $this->get('/biometric?result=staff')->assertOk()->assertSee('Staff punch');
+    }
+
+    public function test_unified_attendance_tabs_scope_people_dates_summaries_and_punch_details(): void
+    {
+        $this->post('/biometric/devices', ['name' => 'Test gate', 'timezone' => 'Asia/Karachi']);
+        $device = BiometricDevice::sole();
+        $this->addStaff();
+        $teacher = User::factory()->create(['role' => 'teacher', 'name' => 'Tab Teacher', 'is_active' => true]);
+        $this->get('/attendance?tab=teachers')->assertOk()->assertSee('Tab Teacher')->assertDontSee('Guard Gul')
+            ->assertSee('No punches recorded')->assertViewHas('kpis', fn ($items) => $items[2]['value'] === 1)
+            ->assertViewHas('from', today()->toDateString())->assertViewHas('to', today()->toDateString());
+        $this->get('/attendance?tab=staff')->assertOk()->assertSee('Guard Gul')->assertDontSee('Tab Teacher');
+        foreach (['2026-11-02 09:00:00', '2026-11-02 17:00:00', '2026-11-03 10:00:00'] as $time) {
+            BiometricPunch::create(['biometric_device_id' => $device->id, 'employee_no' => $teacher->device_employee_no,
+                'user_id' => $teacher->id, 'punched_at' => $time, 'result' => 'teacher']);
+        }
+        $this->get('/attendance?tab=teachers&from=2026-11-02&to=2026-11-02&teacher_id='.$teacher->id)->assertOk()
+            ->assertSee('Details')->assertSee('Test gate')->assertSee('05:00:00 PM')->assertSee('Punches recorded')
+            ->assertViewHas('days', fn ($days) => $days->count() === 1 && $days->first()->punches === 2)
+            ->assertViewHas('kpis', fn ($items) => $items[1]['value'] === 1 && $items[2]['value'] === 0 && $items[3]['value'] === 2);
+        $this->get('/attendance?tab=staff&from=2026-11-02&to=2026-11-02&teacher_id='.$teacher->id)->assertOk()
+            ->assertDontSee('Tab Teacher')->assertViewHas('days', fn ($days) => $days->isEmpty());
+        $this->get('/attendance?tab=teachers&from=2026-11-03&to=2026-11-02')->assertSessionHasErrors('to');
+        $this->actingAs($teacher)->get('/attendance?tab=staff')->assertForbidden();
+        $this->get('/attendance?tab=teachers')->assertForbidden();
+        $this->actingAs(User::factory()->create(['role' => 'student', 'is_active' => true]))
+            ->get('/attendance?tab=teachers')->assertForbidden();
     }
 }

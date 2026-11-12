@@ -7,10 +7,6 @@
     <a href="{{ route('leads.show', $lead) }}" class="btn btn-outline-secondary btn-sm">Back to lead</a>
 </div>
 
-@if ($errors->any())
-    <div class="alert alert-danger"><ul class="mb-0 ps-3">@foreach ($errors->all() as $e)<li>{{ $e }}</li>@endforeach</ul></div>
-@endif
-
 @if ($duplicates['students']->isNotEmpty())
     <div class="alert alert-warning">
         <strong><i class="fas fa-triangle-exclamation"></i> Possible duplicate student.</strong>
@@ -67,7 +63,7 @@
         <div class="col-12"><hr class="my-1"></div>
         <div class="col-md-6">
             <label class="form-label" for="batch_id">Enroll in batch (optional)</label>
-            <select class="form-select" id="batch_id" name="batch_id" data-native>
+            <select class="form-select" id="batch_id" name="batch_id">
                 <option value="">No enrollment now</option>
                 @foreach ($batches as $batch)
                     <option value="{{ $batch->id }}" @selected(old('batch_id')==$batch->id)>{{ $batch->name }}</option>

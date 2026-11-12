@@ -2,9 +2,6 @@
 @section('title', 'Multi-level Package')
 @section('content')
 <x-list.header title="Multi-level package" eyebrow="Admissions" subtitle="Two to four levels in a row (A1 + A2, A1 to B1, A1 to B2) at one agreed price." />
-@if($errors->any())
-    <div class="alert alert-danger" role="alert"><ul class="mb-0">@foreach($errors->all() as $error)<li>{{ $error }}</li>@endforeach</ul></div>
-@endif
 <form method="post" action="{{ route('enrollment-packages.store') }}" data-confirm="Enroll this student in every selected batch with this package price?">
     @csrf
     <input type="hidden" name="submission_key" value="{{ old('submission_key', (string) \Illuminate\Support\Str::uuid()) }}">

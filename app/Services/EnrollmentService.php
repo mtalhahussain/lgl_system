@@ -36,7 +36,7 @@ class EnrollmentService
                 throw new \InvalidArgumentException('Batch is full. No available spots.');
             }
             if (Enrollment::where('batch_id', $batch->id)->where('student_id', $student->id)->exists()) {
-                throw new \InvalidArgumentException('Student already has an enrollment in this batch.');
+                throw new \InvalidArgumentException('Student already has an enrollment in batch "'.$batch->name.'".');
             }
             $structure = $this->feeCalculator->calculateFeeStructure($batch->course_id, $discountPercentage, $schedule === null ? $installments : count($schedule));
             $enrollment = Enrollment::create([

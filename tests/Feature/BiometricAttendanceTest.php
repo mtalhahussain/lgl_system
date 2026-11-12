@@ -146,7 +146,8 @@ class BiometricAttendanceTest extends TestCase
             ->assertSee('Student Sara')->assertSee('Marked present');
         $this->get('/biometric?result=teacher')->assertOk()->assertSee('Teacher Tina')->assertDontSee('Student Sara');
         $this->get('/biometric?export=csv')->assertOk();
-        $this->get('/biometric/teachers?month=2026-11')->assertOk()->assertDontSee('Teacher Tina')->assertSee('No staff punches in this month.');
+        $this->get('/biometric/teachers?month=2026-11')->assertOk()->assertSee('Teacher Tina')->assertDontSee('Student Sara')
+            ->assertViewHas('days', fn ($days) => $days->count() === 1 && $days->first()->user_id === $this->teacher->id && $days->first()->punches === 2);
 
         $this->post('/biometric/devices', ['name' => 'Back door', 'timezone' => 'Asia/Karachi'])->assertRedirect('/biometric');
         $this->post('/biometric/devices', ['name' => 'Bad', 'timezone' => 'Mars/Base'])->assertSessionHasErrors('timezone');
@@ -181,6 +182,6 @@ class BiometricAttendanceTest extends TestCase
         $this->put('/teachers/'.$this->teacher->id, ['name' => 'Teacher Tina', 'email' => $this->teacher->email, 'phone' => '0300',
             'address' => 'Karachi', 'device_employee_no' => '901'])->assertSessionHasNoErrors();
         $this->assertSame($teacherCode, $this->teacher->fresh()->device_employee_no);
-        $this->get('/teachers/'.$this->teacher->id.'/edit')->assertOk()->assertSee('Machine Employee No.')->assertSee($teacherCode);
+        $this->get('/teachers/'.$this->teacher->id.'/edit')->assertOk()->assertSee('Machine Employee No.')->assertSee('Not confirmed');
     }
 }

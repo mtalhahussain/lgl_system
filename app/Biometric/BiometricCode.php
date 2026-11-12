@@ -20,6 +20,13 @@ class BiometricCode
         if ($user->device_employee_no !== null && $user->device_employee_no !== '') {
             return $user->device_employee_no;
         }
+        // A machine may have numbered this person since this model was loaded.
+        $stored = User::whereKey($user->id)->value('device_employee_no');
+        if ($stored !== null && $stored !== '') {
+            $user->forceFill(['device_employee_no' => $stored]);
+
+            return $stored;
+        }
         $preferred = (string) $user->id;
         for ($attempt = 1; ; $attempt++) {
             $code = $this->nextFree($preferred);

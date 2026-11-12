@@ -36,8 +36,9 @@ export function initListFilters(root = document) {
         });
 
         form.querySelectorAll('select, input[type=date]').forEach((field) => {
-            field.addEventListener('change', () => form.requestSubmit());
+            field.addEventListener('change', () => { if (!field.dataset.rangeSource) form.requestSubmit(); });
         });
+        form.addEventListener('date-range:change', () => form.requestSubmit());
 
         const search = form.elements.namedItem('search');
         if (search) {
@@ -289,175 +290,11 @@ export function initSidebarCollapse() {
     sync();
 }
 
-const COMBOBOX_SELECTOR ='select[data-combobox], select.form-select:not([data-native]):not([multiple])';
-
-// Turns selects into a type-to-search list (Select2-style, no jQuery). The select stays in the
-// form as the submitted value; options may carry data-meta for a secondary line.
-export function initComboboxes(root = document) {
-    root.querySelectorAll(COMBOBOX_SELECTOR).forEach((select, index) => {
-        if (select.dataset.comboboxReady) return;
-        select.dataset.comboboxReady = '1';
-        const options = [...select.options];
-        const baseId = select.id || `combobox${index}`;
-        const listId = `${baseId}_list`;
-        const wrapper = document.createElement('div');
-        wrapper.className = 'combobox';
-        const input = document.createElement('input');
-        input.type = 'text';
-        input.className = select.className;
-        input.id = `${baseId}_search`;
-        input.autocomplete = 'off';
-        input.spellcheck = false;
-        input.disabled = select.disabled;
-        input.placeholder = select.dataset.combobox || 'Type to search…';
-        input.setAttribute('role', 'combobox');
-        input.setAttribute('aria-autocomplete', 'list');
-        input.setAttribute('aria-expanded', 'false');
-        input.setAttribute('aria-controls', listId);
-        if (select.required) input.setAttribute('aria-required', 'true');
-        const list = document.createElement('ul');
-        list.id = listId;
-        list.className = 'combobox-list';
-        list.setAttribute('role', 'listbox');
-        list.hidden = true;
-        const empty = document.createElement('li');
-        empty.className = 'combobox-empty';
-        empty.textContent = 'No matches';
-        empty.hidden = true;
-
-        const items = options.map((option, i) => {
-            const item = document.createElement('li');
-            item.id = `${listId}_${i}`;
-            item.setAttribute('role', 'option');
-            item.dataset.index = String(i);
-            const title = document.createElement('strong');
-            title.textContent = option.textContent.trim();
-            item.append(title);
-            if (option.dataset.meta) {
-                const meta = document.createElement('small');
-                meta.textContent = option.dataset.meta;
-                item.append(meta);
-            }
-            if (option.value === '') item.classList.add('is-placeholder');
-            if (option.disabled) item.setAttribute('aria-disabled', 'true');
-            item.dataset.search = `${option.textContent} ${option.dataset.meta ?? ''}`.toLowerCase();
-            list.append(item);
-            return item;
-        });
-        list.append(empty);
-
-        const label = () => {
-            const chosen = select.selectedOptions[0];
-            return chosen ? chosen.textContent.trim() : '';
-        };
-        let active = -1;
-        const visible = () => items.filter((item) => !item.hidden && item.getAttribute('aria-disabled') !== 'true');
-        const setActive = (next) => {
-            const shown = visible();
-            items.forEach((item) => item.removeAttribute('aria-selected'));
-            active = shown.length ? (next + shown.length) % shown.length : -1;
-            if (active >= 0) {
-                shown[active].setAttribute('aria-selected', 'true');
-                shown[active].scrollIntoView({ block: 'nearest' });
-                input.setAttribute('aria-activedescendant', shown[active].id);
-            } else {
-                input.removeAttribute('aria-activedescendant');
-            }
-        };
-        // Fixed positioning keeps the list visible inside panels and tables that clip overflow.
-        const place = () => {
-            const box = input.getBoundingClientRect();
-            const below = window.innerHeight - box.bottom;
-            const height = Math.min(260, list.scrollHeight || 260);
-            list.style.left = `${box.left}px`;
-            list.style.width = `${box.width}px`;
-            if (below < height + 8 && box.top > below) {
-                list.style.top = '';
-                list.style.bottom = `${window.innerHeight - box.top + 4}px`;
-            } else {
-                list.style.bottom = '';
-                list.style.top = `${box.bottom + 4}px`;
-            }
-        };
-        const onViewportChange = () => { if (!list.hidden) place(); };
-        const open = () => {
-            if (!list.hidden) return;
-            list.hidden = false;
-            input.setAttribute('aria-expanded', 'true');
-            place();
-            window.addEventListener('scroll', onViewportChange, true);
-            window.addEventListener('resize', onViewportChange);
-        };
-        const close = () => {
-            list.hidden = true;
-            input.setAttribute('aria-expanded', 'false');
-            setActive(-1);
-            window.removeEventListener('scroll', onViewportChange, true);
-            window.removeEventListener('resize', onViewportChange);
-        };
-        const showAll = () => { items.forEach((item) => { item.hidden = false; }); empty.hidden = true; };
-        const choose = (item) => {
-            const option = options[Number(item.dataset.index)];
-            input.value = option.textContent.trim();
-            close();
-            if (select.value !== option.value) {
-                select.value = option.value;
-                select.dispatchEvent(new Event('change', { bubbles: true }));
-            }
-            input.classList.remove('is-invalid');
-        };
-        const filter = () => {
-            const term = input.value.trim().toLowerCase();
-            items.forEach((item) => { item.hidden = term !== '' && !item.dataset.search.includes(term); });
-            empty.hidden = visible().length > 0;
-            open();
-            place();
-            setActive(0);
-        };
-
-        input.addEventListener('input', filter);
-        input.addEventListener('focus', () => {
-            input.select();
-            showAll();
-            open();
-            setActive(Math.max(0, visible().findIndex((item) => options[Number(item.dataset.index)].value === select.value)));
-        });
-        input.addEventListener('blur', () => { close(); input.value = label(); });
-        input.addEventListener('keydown', (event) => {
-            if (event.key === 'ArrowDown') { event.preventDefault(); list.hidden ? (showAll(), open(), setActive(0)) : setActive(active + 1); }
-            else if (event.key === 'ArrowUp') { event.preventDefault(); setActive(active - 1); }
-            else if (event.key === 'Enter' && !list.hidden) { event.preventDefault(); if (active >= 0) choose(visible()[active]); }
-            else if (event.key === 'Escape' && !list.hidden) { event.preventDefault(); close(); input.value = label(); input.select(); }
-            else if (event.key === 'Tab' && !list.hidden && active >= 0 && input.value !== label()) { choose(visible()[active]); }
-        });
-        list.addEventListener('mousedown', (event) => event.preventDefault());
-        list.addEventListener('click', (event) => {
-            const item = event.target.closest('[role=option]');
-            if (item && item.getAttribute('aria-disabled') !== 'true') choose(item);
-        });
-        // Keep the visible text in sync when code or a form reset changes the select.
-        select.addEventListener('change', () => { if (document.activeElement !== input) input.value = label(); });
-        select.form?.addEventListener('reset', () => setTimeout(() => { input.value = label(); }));
-        // A hidden required select cannot show the browser message itself; point it at the input.
-        select.addEventListener('invalid', () => { input.classList.add('is-invalid'); input.focus(); });
-
-        const labelElement = select.id ? document.querySelector(`label[for="${select.id}"]`) : null;
-        if (labelElement) labelElement.htmlFor = input.id;
-        select.classList.add('visually-hidden');
-        select.tabIndex = -1;
-        select.setAttribute('aria-hidden', 'true');
-        input.value = label();
-        select.after(wrapper);
-        wrapper.append(input, list);
-    });
-}
-
 export function initLists() {
     initContactInputs();
     initListFilters();
     initConfirmForms();
     initNumberWheelGuard();
-    initComboboxes();
     initPasswordToggles();
     initSidebarCollapse();
     initAutoSave();

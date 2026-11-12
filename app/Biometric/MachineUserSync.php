@@ -26,12 +26,16 @@ class MachineUserSync
         if (! $this->ready() || (! $created && ! $user->wasChanged(self::FIELDS))) {
             return;
         }
+        $devices = BiometricDevice::where('is_active', true)->orderBy('id')->get();
+        if ($devices->isEmpty()) {
+            return;
+        }
         $previous = $created ? null : $user->getOriginal('device_employee_no');
         if ($this->eligible($user)) {
             $this->codes->ensure($user);
         }
-        DB::transaction(function () use ($user, $previous) {
-            foreach (BiometricDevice::where('is_active', true)->orderBy('id')->get() as $device) {
+        DB::transaction(function () use ($user, $previous, $devices) {
+            foreach ($devices as $device) {
                 if ($previous && $previous !== $user->device_employee_no) {
                     $this->queue($device, $previous, $user, 'delete');
                 }
@@ -59,8 +63,8 @@ class MachineUserSync
     /** Re-send one person to every active machine (per-user analogue of queueAll). */
     public function resyncUser(User $user): void
     {
-        if (! $this->ready()) {
-            return;
+        if (! $this->ready() || ! BiometricDevice::where('is_active', true)->exists()) {
+            throw \Illuminate\Validation\ValidationException::withMessages(['machine' => 'No active attendance machine configured. Add a machine before sending this person.']);
         }
         if ($this->eligible($user)) {
             $this->codes->ensure($user);
@@ -94,6 +98,9 @@ class MachineUserSync
         }
         if ($row->exists && $row->action === $action && $row->name === $name && $row->user_id === $user->id && $row->status === 'synced') {
             return;
+        }
+        if ($row->action !== $action || $row->user_id !== $user->id) {
+            $row->synced_at = null;
         }
         $row->fill(['user_id' => $user->id, 'name' => $name, 'action' => $action, 'status' => 'pending', 'attempts' => 0, 'last_error' => null]);
         $row->version = $row->exists ? $row->version + 1 : 1;

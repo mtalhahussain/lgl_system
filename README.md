@@ -27,11 +27,15 @@ Demo seeders refuse production. Never use these accounts for production provisio
 
 ## Documentation
 
+Student tables include an attendance-machine status and sync icon. Without an active configured machine, new people receive no machine number. Configured machines receive the app's reserved Employee No. through the institute bridge; the same ID appears as confirmed only after a successful bridge result. Pending/failed syncs remain visible, and existing numbers are preserved. Sync queues work for the bridge's next run; it does not directly contact the device.
+
+Portal success, error, warning and validation alerts use one shared display with inline icons and deduplicated messages. Field-level validation guidance remains beside inputs.
+
 Displayed times across dashboards, class/attendance pages, notifications, machine logs, fee history and printable receipts/payroll slips use 12-hour AM/PM format. Stored times, native form values, calculations and CSV exports retain their existing formats.
 
 Date/time pickers have separate month/year dropdowns, labelled Hour/Minute/AM–PM choices and Today/Now, Clear and Done actions. Dates display DD-MM-YYYY and times display hh:mm AM/PM; submitted values retain existing controller formats. Calendar layouts fit narrow screens and keep existing date limits.
 
-Staff Attendance lists only non-teaching users with the staff role, including the staff selector and daily punch totals. Teacher punch history remains available in the machine punch log; this report does not affect payroll.
+Attendance is one workspace at `/attendance`, with Students, Teachers and Staff tabs for Admin. Each tab has summary cards and date/person filters. All three tabs default to Today; choose another date span through the shared range picker. Their cards show recorded Present, Late, Absent and Attendance rate for the selected filters; Excused is excluded from the rate and unmarked is not Absent. Counts are per student per class; a separate notice links to classes needing marking. Students retain batch/session marking and a student filter. Teachers/Staff show Check-in/Check-out (first/last recorded machine punches) in hh:mm:ss AM/PM format, punch counts, recorded/single-punch status and expandable punch details. Their cards show people with/without punches for the selected range; no punches does not mean absent. Teachers retain assigned-batch student attendance only. Payroll is unchanged; the older combined machine-attendance route remains compatible.
 
 Phone and Emergency contact fields accept digits with an optional leading + and preserve leading zeroes. Forms use telephone keyboards and remove letters/pasted formatting; server validation also rejects text. Emergency contact remains optional.
 
@@ -64,6 +68,8 @@ Teacher Dashboard class names and dates/times open class details; assigned weekl
 
 Teacher create/edit uses searchable Select2 dropdowns for qualification, German-teaching specialization and experience (0–50 years). Existing custom values remain available when editing their teacher.
 
+Across portal modules, Teacher, Course, Student, Batch and Enrollment selectors (including report/list filters) use searchable Select2, as do long choice lists. Small fixed choices, Rows per page and date/time controls stay native. Select2, jQuery and Bootstrap theme assets are served locally; no runtime CDN is needed for these dropdowns. Run `node scripts/verify-search-selects.mjs` for isolated browser checks.
+
 For an unpaid mistaken admission, open Enrollments > View > Correct batch. Admin can choose another available batch of the same course and provide a reason before academic records exist. The original stays linked in history; fees, installments and admission date are preserved. Package admissions and any payment history require a separate reviewed process.
 
 Admin sidebar includes Enrollments below Students for admissions, batch correction, transfers and withdrawals.
@@ -74,4 +80,4 @@ Enrollment, class-session, profile, fee-ledger and enrollment/dues report tables
 
 Shared tables place Rows per page at the top left with search on the right; filters sit in a separate compact group below. On mobile, search wraps to a full-width row. Result count and pagination stay below the table. Changing page size preserves filters and sorting and returns to the first page. Financial histories with fixed page sizes retain their existing pagination.
 
-Date/time fields use a locally bundled Flatpickr calendar and AM/PM time picker with the portal's red/gold theme, including dynamically added schedule rows. Displayed and typed dates use DD-MM-YYYY; submitted dates remain YYYY-MM-DD and submitted times remain HH:MM. Existing required fields and date bounds remain enforced. Rebuild assets after frontend changes.
+From/To fields across filters, reports and class-generation forms use one DD-MM-YYYY range picker, submitting the original separate date values. Attendance shortcut buttons are removed. Run `node scripts/verify-date-ranges.mjs` for isolated range checks. Single date/time fields use a locally bundled Flatpickr calendar and AM/PM time picker with the portal's red/gold theme, including dynamically added schedule rows. Displayed and typed dates use DD-MM-YYYY; submitted dates remain YYYY-MM-DD and submitted times remain HH:MM. Existing required fields and date bounds remain enforced. Rebuild assets after frontend changes.

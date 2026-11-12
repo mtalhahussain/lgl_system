@@ -114,23 +114,48 @@ class BiometricController extends Controller
 
     public function teachers(Request $request)
     {
+        abort_unless($request->user()->isAdmin(), 403);
+        $tab = in_array($request->query('tab'), ['teachers', 'staff'], true) ? $request->query('tab') : 'team';
+        if ($tab !== 'team' && ! $request->query->has('from') && ! $request->query->has('to') && ! $request->query->has('month')) {
+            $request->query->set('from', today()->toDateString());
+            $request->query->set('to', today()->toDateString());
+        }
         $month = preg_match('/^\d{4}-(0[1-9]|1[0-2])$/D', (string) $request->query('month')) ? $request->query('month') : now()->format('Y-m');
-        $start = Carbon::createFromFormat('Y-m-d', $month.'-01')->startOfDay();
-        $people = User::where('role', 'staff')->orderBy('name')->get(['id', 'name', 'role', 'designation']);
+        $dates = $request->validate(['from' => 'nullable|date_format:Y-m-d', 'to' => 'nullable|date_format:Y-m-d']);
+        $start = Carbon::createFromFormat('Y-m-d', $dates['from'] ?? $month.'-01')->startOfDay();
+        $end = isset($dates['to']) ? Carbon::createFromFormat('Y-m-d', $dates['to'])->endOfDay() : $start->copy()->endOfMonth();
+        if ($end->lt($start)) {
+            throw \Illuminate\Validation\ValidationException::withMessages(['to' => 'To date must be on or after From date.']);
+        }
+        $from = $start->toDateString();
+        $to = $end->toDateString();
+        $people = User::whereIn('role', $tab === 'team' ? User::PAID_ROLES : [$tab === 'teachers' ? 'teacher' : 'staff'])
+            ->orderBy('name')->get(['id', 'name', 'role', 'designation']);
         $teachers = $people->pluck('name', 'id');
+        $roleLabels = $people->mapWithKeys(fn ($person) => [$person->id => ucfirst($person->role)]);
         $roles = $people->mapWithKeys(fn ($person) => [$person->id => $person->isStaff() ? ($person->designation ?: 'Staff') : 'Teacher']);
         $teacherId = $teachers->has((int) $request->query('teacher_id')) ? (int) $request->query('teacher_id') : null;
-        $days = BiometricPunch::where('result', 'staff')->whereIn('user_id', $people->pluck('id'))
-            ->whereBetween('punched_at', [$start, $start->copy()->endOfMonth()])
-            ->when($teacherId, fn ($query) => $query->where('user_id', $teacherId))
+        $punchQuery = BiometricPunch::whereIn('result', ['staff', 'teacher'])->whereIn('user_id', $people->pluck('id'))
+            ->whereBetween('punched_at', [$start, $end])
+            ->when($teacherId, fn ($query) => $query->where('user_id', $teacherId));
+        $days = (clone $punchQuery)
             ->selectRaw('user_id, DATE(punched_at) as day, MIN(punched_at) as first_in, MAX(punched_at) as last_out, COUNT(*) as punches')
             ->groupBy('user_id', 'day')->orderByDesc('day')->get();
+        $withPunches = $days->pluck('user_id')->unique()->count();
+        $totalPeople = $teacherId ? 1 : $people->count();
+        $kpis = [['label' => 'People', 'value' => $totalPeople, 'icon' => 'fa-users'],
+            ['label' => 'With punches', 'value' => $withPunches, 'icon' => 'fa-user-check'],
+            ['label' => 'No punches recorded', 'value' => $totalPeople - $withPunches, 'icon' => 'fa-clock', 'note' => 'Not an absence status'],
+            ['label' => 'Machine punches', 'value' => $days->sum('punches'), 'icon' => 'fa-fingerprint']];
+        $punchDetails = (clone $punchQuery)->with('device:id,name')->orderBy('punched_at')->get()
+            ->groupBy(fn ($punch) => $punch->user_id.'|'.$punch->punched_at->toDateString());
 
-        return view('biometric.teachers', ['days' => $days, 'teachers' => $teachers, 'roles' => $roles, 'month' => $month, 'teacherId' => $teacherId]);
+        return view('biometric.teachers', compact('days', 'teachers', 'roles', 'roleLabels', 'month', 'teacherId', 'tab', 'from', 'to', 'kpis', 'punchDetails'));
     }
 
     public function resyncUser(Request $request, User $user, MachineUserSync $sync)
     {
+        abort_unless($user->is_active && in_array($user->role, ['student', ...User::PAID_ROLES], true), 422, 'Only active students, teachers and staff can be sent to attendance machines.');
         $sync->resyncUser($user);
         AuditLog::create(['actor_id' => $request->user()->id, 'action' => 'biometric_device_user.resync',
             'subject_type' => 'user', 'subject_id' => $user->id, 'changes' => [], 'created_at' => now()]);

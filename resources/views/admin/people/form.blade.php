@@ -30,7 +30,6 @@
             </div>
         </div>
     </div>
-    @include('partials.machine-sync')
     @if($kind === 'teachers')
         <div class="form-section">
             <h2 class="form-section-title">Teaching profile</h2>
@@ -133,22 +132,11 @@
         <button class="btn btn-primary">Save</button>
     </div>
 </form>
+@include('partials.machine-sync')
 @endsection
 
 @if($kind === 'teachers')
-    @push('styles')
-        <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet">
-        <link href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css" rel="stylesheet">
-        <style>
-            .select2-container--bootstrap-5 .select2-results__option--highlighted[aria-selected] { background-color: #a61b29; }
-            .select2-container--bootstrap-5.select2-container--focus .select2-selection,
-            .select2-container--bootstrap-5.select2-container--open .select2-selection { border-color: #a61b29; box-shadow: 0 0 0 .25rem rgb(166 27 41 / 15%); }
-            .teaching-select.is-invalid + .select2-container .select2-selection { border-color: #dc3545; }
-        </style>
-    @endpush
     @push('scripts')
-        <script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
-        <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
         <script>
             const salaryType = document.getElementById('salary_type');
             const monthlySalaryGroup = document.getElementById('monthly_salary_group');
@@ -163,18 +151,6 @@
             salaryType.addEventListener('change', updateSalaryVisibility);
             updateSalaryVisibility();
 
-            if (window.jQuery && window.jQuery.fn.select2) {
-                window.jQuery('.teaching-select').each(function () {
-                    window.jQuery(this).select2({
-                        theme: 'bootstrap-5',
-                        width: '100%',
-                        placeholder: this.dataset.placeholder,
-                        allowClear: true,
-                        minimumResultsForSearch: 0,
-                        tags: false
-                    });
-                });
-            }
         </script>
     @endpush
 @endif

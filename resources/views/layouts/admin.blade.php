@@ -187,14 +187,11 @@
                         @if(auth()->user()->isAdmin() || auth()->user()->isTeacher())
                         <!-- Attendance Management -->
                         <li class="nav-item">
-                            <a class="nav-link {{ request()->is('attendance*') ? 'active' : '' }}" 
+                            <a class="nav-link {{ request()->is('attendance*') || request()->is('biometric/teachers') ? 'active' : '' }}"
                                href="{{ url('/attendance') }}">
                                 <i class="fas fa-clipboard-check me-2"></i>Attendance
                             </a>
                         </li>
-                        @endif
-                        @if(auth()->user()->isAdmin())
-                        <li class="nav-item"><a class="nav-link {{ request()->is('biometric/teachers') ? 'active' : '' }}" href="{{ route('biometric.teachers') }}"><i class="fas fa-user-clock me-2" aria-hidden="true"></i>Staff Attendance</a></li>
                         @endif
 
                         @if(auth()->user()->isAdmin())

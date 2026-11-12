@@ -1,7 +1,8 @@
 @extends('layouts.admin')
 @section('title', 'Attendance')
 @section('content')
-<x-list.header title="Attendance" eyebrow="Classes" subtitle="Mark past and current sessions; future sessions open on their date">
+@include('partials.attendance-tabs')
+<x-list.header title="Attendance" eyebrow="Students" subtitle="Mark past and current sessions; future sessions open on their date">
     <a class="btn btn-outline-primary" href="{{ route('attendance.reports') }}"><i class="fas fa-chart-bar me-1" aria-hidden="true"></i>Attendance report</a>
     <a class="btn btn-primary" href="{{ route('attendance.create') }}"><i class="fas fa-plus me-1" aria-hidden="true"></i>New session</a>
 </x-list.header>

@@ -1,7 +1,8 @@
 @extends('layouts.admin')
-@section('title', 'Staff Attendance')
+@section('title', 'Attendance · Teachers & Staff')
 @section('content')
-<x-list.header title="Staff Attendance" eyebrow="Attendance" subtitle="First and last machine punch per staff member per day. For records only; payroll is not affected." />
+@include('partials.attendance-tabs')
+<x-list.header title="Attendance" eyebrow="Teachers & Staff" subtitle="First and last machine punch per staff member per day. For records only; payroll is not affected." />
 <form method="get" class="panel row g-2 align-items-end mb-4" style="padding:18px 22px">
     <div class="col-sm-4"><label class="form-label" for="month">Month</label><input class="form-control" type="month" id="month" name="month" value="{{ $month }}" max="{{ now()->format('Y-m') }}"></div>
     <div class="col-sm-5"><label class="form-label" for="teacher_id">Staff member</label>

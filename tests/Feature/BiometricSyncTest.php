@@ -159,8 +159,8 @@ class BiometricSyncTest extends TestCase
         User::factory()->create(['role' => 'student', 'is_active' => true]);
         $device = $this->device();
         BiometricDeviceUser::query()->update(['status' => 'failed', 'attempts' => 3, 'last_error' => 'Device said no']);
-        $this->get('/biometric')->assertOk()->assertSee('User sync')->assertSee('Failed users')->assertSee('Device said no')
-            ->assertSee('hikvision-bridge.ps1');
+        $this->get('/biometric')->assertOk()->assertSee('Bridge → Machine')->assertSee('Latest error')->assertSee('Device said no')
+            ->assertSee('Connection log')->assertSee('hikvision-bridge.ps1');
         $this->get('/biometric/bridge-script')->assertOk()->assertDownload('hikvision-bridge.ps1');
         $config = $this->get('/biometric/devices/'.$device->id.'/bridge-config')->assertOk()->streamedContent();
         $this->assertSame($device->bridge_token, json_decode($config, true)['BridgeToken']);

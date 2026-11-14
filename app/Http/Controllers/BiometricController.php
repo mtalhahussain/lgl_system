@@ -43,9 +43,68 @@ class BiometricController extends Controller
             ['name' => 'device', 'label' => 'Machine', 'options' => $devices->pluck('name', 'id')],
             ['name' => 'from', 'label' => 'From', 'type' => 'date'], ['name' => 'to', 'label' => 'To', 'type' => 'date']];
         $steps = $devices->mapWithKeys(fn ($device) => [$device->id => $driver->setupSteps($device, $request->root())]);
+        // Connection check + recent sync log, built from data the server already has (no bridge-script change needed).
+        $activity = $devices->mapWithKeys(fn ($device) => [$device->id => BiometricDeviceUser::with('user:id,name')
+            ->where('biometric_device_id', $device->id)->whereIn('status', ['synced', 'failed'])
+            ->latest('updated_at')->limit(12)->get()]);
+        $health = $devices->mapWithKeys(fn ($device) => [$device->id => $this->health($device, $sync[$device->id] ?? collect())]);
 
         return view('biometric.index', ['devices' => $devices, 'punches' => $list->paginate(25), 'kpis' => $kpis,
-            'filters' => $filters, 'steps' => $steps, 'sync' => $sync, 'failed' => $failed]);
+            'filters' => $filters, 'steps' => $steps, 'sync' => $sync, 'failed' => $failed, 'activity' => $activity, 'health' => $health]);
+    }
+
+    /**
+     * Traffic-light connection check for a machine, read from signals the server already records:
+     * last_seen_at (machine pushes punches), bridge_seen_at (bridge polls each minute) and the user-sync counts.
+     *
+     * @param  \Illuminate\Support\Collection<string,int>  $counts
+     * @return array{overall:string,checks:array<int,array<string,mixed>>}
+     */
+    private function health(BiometricDevice $device, $counts): array
+    {
+        $synced = $counts['synced'] ?? 0;
+        $pending = $counts['pending'] ?? 0;
+        $failed = $counts['failed'] ?? 0;
+
+        // 1) Machine -> server. Only updates on a punch, so an old time is normal; "never" means not configured.
+        $machine = $device->last_seen_at
+            ? ['tone' => 'ok', 'label' => 'Last punch '.$device->last_seen_at->diffForHumans(),
+                'fix' => 'Updates only when someone punches, so quiet periods are normal.']
+            : ['tone' => 'bad', 'label' => 'Never reached the server',
+                'fix' => "Enter this machine's push URL on the device (Setup steps on the machine, below)."];
+
+        // 2) Bridge PC -> server. The bridge polls every minute, so this is a reliable heartbeat.
+        if (! $device->bridge_seen_at) {
+            $bridge = ['tone' => 'bad', 'label' => 'Bridge PC has never contacted the server',
+                'fix' => 'Set up the bridge PC (Bridge PC setup, below) and run it once.'];
+        } elseif ($device->bridge_seen_at->lt(now()->subMinutes(10))) {
+            $bridge = ['tone' => 'warn', 'label' => 'Last ran '.$device->bridge_seen_at->diffForHumans(),
+                'fix' => 'The scheduled task may be stopped. Check the bridge PC is on and its task runs every minute.'];
+        } else {
+            $bridge = ['tone' => 'ok', 'label' => 'Active, last ran '.$device->bridge_seen_at->diffForHumans(), 'fix' => null];
+        }
+
+        // 3) Bridge -> machine, proven by the ISAPI user-sync result.
+        if ($failed > 0) {
+            $isapi = ['tone' => 'bad', 'label' => $failed.' user(s) could not be sent to the machine',
+                'fix' => 'The bridge reached the server but not the machine, or the machine rejected them. See the log below.'];
+        } elseif ($pending > 0 && $synced === 0) {
+            $isapi = ['tone' => 'warn', 'label' => $pending.' user(s) waiting to be sent',
+                'fix' => 'The bridge sends them on its next run (every minute).'];
+        } elseif ($synced > 0) {
+            $isapi = ['tone' => 'ok', 'label' => 'All '.$synced.' user(s) on the machine'.($pending ? ', '.$pending.' queued' : ''), 'fix' => null];
+        } else {
+            $isapi = ['tone' => 'muted', 'label' => 'No users queued yet', 'fix' => null];
+        }
+
+        $rank = ['bad' => 3, 'warn' => 2, 'muted' => 1, 'ok' => 0];
+        $overall = collect([$machine, $bridge, $isapi])->sortByDesc(fn ($c) => $rank[$c['tone']])->first()['tone'];
+
+        return ['overall' => $overall, 'checks' => [
+            ['title' => 'Machine → Server', 'desc' => 'Machine sends punches'] + $machine,
+            ['title' => 'Bridge PC → Server', 'desc' => 'Bridge fetches updates'] + $bridge,
+            ['title' => 'Bridge → Machine', 'desc' => 'Users pushed to device'] + $isapi,
+        ]];
     }
 
     public function store(Request $request, MachineUserSync $sync)

@@ -41,16 +41,16 @@
     </section>
     <section class="panel">
         <div class="panel-heading"><h2>Fee overview</h2><span class="status-pill">Ledger</span></div>
-        <div style="padding:22px">
-            <p class="page-subtitle" style="margin-bottom:14px">All-time collection and scheduled debt</p>
+        <div class="fee-overview-body">
+            <p class="page-subtitle fee-overview-subtitle">All-time collection and scheduled debt</p>
             @if($finance)
                 @php
                     $collected = \App\Support\Money::minor($finance['Net collected']);
                     $outstanding = \App\Support\Money::minor($finance['Outstanding']);
                     $ratio = ($collected + $outstanding) > 0 ? round($collected / ($collected + $outstanding) * 100) : 0;
                 @endphp
-                <div style="font-size:32px;font-weight:750;letter-spacing:-1px">{{ $ratio }}<span style="font-size:17px;color:#9aa5b5">%</span></div>
-                <div class="balance-bar" role="progressbar" aria-label="Scheduled fees collected" aria-valuenow="{{ $ratio }}" aria-valuemin="0" aria-valuemax="100" style="margin:12px 0 20px"><span style="width:{{ $ratio }}%"></span></div>
+                <div class="fee-overview-ratio">{{ $ratio }}<span>%</span></div>
+                <progress class="fee-overview-progress" aria-label="Scheduled fees collected" value="{{ $ratio }}" max="100">{{ $ratio }}%</progress>
                 @foreach($finance as $label => $amount)<div class="finance-row"><span>{{ $label }}</span><strong>{{ currency_format($amount) }}</strong></div>@endforeach
             @else<p class="empty-state">Fee collection is temporarily unavailable.</p>@endif
             <a class="btn btn-outline-primary w-100 mt-3" href="{{ route('fees.index') }}">Manage collections <i class="fas fa-arrow-right ms-2" aria-hidden="true"></i></a>

@@ -7,7 +7,7 @@
 </div>
 <div class="tw:grid tw:grid-cols-1 tw:gap-4 tw:sm:grid-cols-2 tw:xl:grid-cols-4 tw:mb-6">
     @foreach($stats as $label => $value)
-        <div class="panel metric"><div><div class="metric-label">{{ $label }}</div><div class="metric-value">{{ number_format($value) }}</div><div class="metric-note">Currently active</div></div><span class="metric-icon" style="color:{{ ['var(--accent)','var(--navy)','var(--gold-ink)'][$loop->index % 3] }}"><i class="fas {{ ['fa-user-graduate','fa-address-book','fa-layer-group'][$loop->index % 3] }}" aria-hidden="true"></i></span></div>
+        <div class="panel metric"><div><div class="metric-label">{{ $label }}</div><div class="metric-value">{{ number_format($value) }}</div><div class="metric-note">Currently active</div></div><span class="metric-icon" style="color:{{ ['var(--accent)','var(--navy)','var(--gold-ink)'][$loop->index % 3] }}"><i class="fas {{ ['fa-user-graduate','fa-chalkboard-teacher','fa-layer-group'][$loop->index % 3] }}" aria-hidden="true"></i></span></div>
     @endforeach
     <div class="panel metric"><div><div class="metric-label">This month collected</div><div class="metric-value" style="font-size:23px">{{ $finance ? currency_format($finance['This month net collected']) : 'Unavailable' }}</div><div class="metric-note">Net of period reversals</div></div><span class="metric-icon" style="color:#24b7a0"><i class="fas fa-wallet" aria-hidden="true"></i></span></div>
 </div>

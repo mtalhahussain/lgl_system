@@ -20,7 +20,7 @@ class AdminController extends Controller
     public function dashboard()
     {
         $stats = ['Active students' => User::students()->where('is_active', true)->whereHas('enrollments', fn ($query) => $query->where('status', 'active'))->count(),
-            'Active enrollments' => Enrollment::active()->count(), 'Ongoing batches' => Batch::where('status', 'ongoing')->count()];
+            'Teachers' => User::teachers()->where('is_active', true)->count(), 'Ongoing batches' => Batch::where('status', 'ongoing')->count()];
         $finance = \Illuminate\Support\Facades\Schema::hasTable('payments') ? app(\App\Services\OverviewService::class)->financialTotals() : null;
         $recent = Enrollment::with(['student:id,name', 'batch:id,name'])->orderByDesc('id')->limit(10)->get();
         $reminders = app(\App\Services\OverviewService::class)->batchReminders();

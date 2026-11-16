@@ -139,6 +139,73 @@ class LeadController extends Controller
         return view('admin.leads.index', compact('leads'));
     }
 
+    // ---- Manual leads (walk-in, phone call, referral) -------------------------
+
+    /** Statuses an Admin may set by hand; qualify/reject/convert keep their own actions. */
+    private const MANUAL_STATUSES = [Lead::STATUS_NEW, Lead::STATUS_CONTACTED];
+
+    public function create()
+    {
+        return view('admin.leads.form', ['lead' => null, 'statuses' => self::MANUAL_STATUSES]);
+    }
+
+    public function store(Request $request)
+    {
+        $data = $this->validatedManual($request);
+        $lead = Lead::create($data + ['source' => Lead::SOURCE_MANUAL, 'raw_payload' => $data, 'assigned_to' => auth()->id()]);
+
+        return redirect()->route('leads.show', $lead)->with('success', 'Lead added.');
+    }
+
+    public function edit(Lead $lead)
+    {
+        $this->assertEditable($lead);
+
+        return view('admin.leads.form', ['lead' => $lead, 'statuses' => self::MANUAL_STATUSES]);
+    }
+
+    public function update(Request $request, Lead $lead)
+    {
+        $this->assertEditable($lead);
+        $data = $this->validatedManual($request, $lead);
+        $lead->update($data);
+
+        return redirect()->route('leads.show', $lead)->with('success', 'Lead updated.');
+    }
+
+    public function destroy(Lead $lead)
+    {
+        // A converted lead is the admission record of a student; keep it.
+        abort_if($lead->isConverted(), 422, 'Converted leads cannot be deleted.');
+        $lead->delete();
+
+        return redirect()->route('leads.index')->with('success', 'Lead deleted.');
+    }
+
+    private function assertEditable(Lead $lead): void
+    {
+        abort_if(in_array($lead->status, [Lead::STATUS_SUBMITTED, Lead::STATUS_CONVERTED], true), 422,
+            'Submitted or converted leads cannot be edited.');
+    }
+
+    private function validatedManual(Request $request, ?Lead $lead = null): array
+    {
+        // Status is chosen only while the lead is still new/contacted; other states keep their workflow status.
+        $statusEditable = ! $lead || in_array($lead->status, self::MANUAL_STATUSES, true);
+        $data = $request->validate([
+            'name' => 'required|string|max:255',
+            'father_name' => 'nullable|string|max:255',
+            'cnic' => ['nullable', 'string', 'max:20', 'regex:/^[0-9\-]{13,20}$/'],
+            'phone' => ['required', 'string', 'max:20', 'regex:/^\+?[0-9]+$/D'],
+            'email' => 'nullable|string|email|max:255',
+            'program_interest' => 'nullable|string|max:255',
+            'message' => 'nullable|string|max:1000',
+            'status' => [$statusEditable ? 'required' : 'prohibited', 'in:'.implode(',', self::MANUAL_STATUSES)],
+        ]);
+
+        return $data;
+    }
+
     public function show(Lead $lead)
     {
         $lead->load(['verifiedBy:id,name', 'assignedTo:id,name', 'student:id,name']);

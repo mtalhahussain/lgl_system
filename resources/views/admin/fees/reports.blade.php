@@ -73,8 +73,8 @@
                                         <td>{{ \Carbon\Carbon::parse($collection->date)->format('M d, Y') }}</td>
                                         <td class="fw-bold text-success">{{ currency_format($collection->total) }}</td>
                                         <td>
-                                            <div class="progress" style="height: 20px;">
-                                                <div class="progress-bar bg-success" style="width: {{ $maxAmount > 0 ? ($collection->total / $maxAmount) * 100 : 0 }}%">
+                                            <div class="progress progress-h-20">
+                                                <div class="progress-bar bg-success {{ pct_class($maxAmount > 0 ? ($collection->total / $maxAmount) * 100 : 0) }}">
                                                     {{ number_format(($collection->total / $dailyCollection->sum('total')) * 100, 1) }}%
                                                 </div>
                                             </div>
@@ -204,8 +204,8 @@
                                 <td class="fw-bold text-success">{{ currency_format($course->total) }}</td>
                                 <td>
                                     <div class="d-flex align-items-center">
-                                        <div class="progress me-2" style="width: 100px; height: 15px;">
-                                            <div class="progress-bar" style="width: {{ $totalCourseCollection > 0 ? ($course->total / $totalCourseCollection) * 100 : 0 }}%"></div>
+                                        <div class="progress me-2 w-100px progress-h-15">
+                                            <div class="progress-bar {{ pct_class($totalCourseCollection > 0 ? ($course->total / $totalCourseCollection) * 100 : 0) }}"></div>
                                         </div>
                                         <span>{{ $totalCourseCollection > 0 ? number_format(($course->total / $totalCourseCollection) * 100, 1) : 0 }}%</span>
                                     </div>
@@ -255,8 +255,8 @@
                                 </td>
                                 <td class="fw-bold text-success">{{ currency_format($trend->total) }}</td>
                                 <td>
-                                    <div class="progress" style="height: 20px;">
-                                        <div class="progress-bar bg-primary" style="width: {{ $maxMonthlyAmount > 0 ? ($trend->total / $maxMonthlyAmount) * 100 : 0 }}%">
+                                    <div class="progress progress-h-20">
+                                        <div class="progress-bar bg-primary {{ pct_class($maxMonthlyAmount > 0 ? ($trend->total / $maxMonthlyAmount) * 100 : 0) }}">
                                             {{ number_format(($trend->total / $monthlyTrends->sum('total')) * 100, 1) }}%
                                         </div>
                                     </div>

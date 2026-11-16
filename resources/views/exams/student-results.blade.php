@@ -32,7 +32,7 @@
     <div class="panel-heading mt-3"><h2>Results</h2></div>
 @endif
 @foreach($results as $result)
-    <section class="panel mt-3" style="padding:14px 18px">
+    <section class="panel mt-3 pad-compact">
         <div class="d-flex justify-content-between align-items-center">
             <div><strong>{{ $result->batchExam->name }}</strong><span class="cell-sub">{{ $result->batchExam->batch->name }} &middot; Level {{ $result->batchExam->batch->course->level }} &middot; {{ $result->batchExam->exam_date->format('d M Y') }}</span></div>
             <span class="badge {{ $result->overall_passed ? 'bg-success' : 'bg-danger' }}">{{ $result->overall_passed ? 'Passed' : 'Failed' }}</span>

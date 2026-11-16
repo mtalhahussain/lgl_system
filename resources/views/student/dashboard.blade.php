@@ -214,8 +214,7 @@
                                                 $progress = $enrollment->progress_percentage ?? 0;
                                             @endphp
                                             <div class="progress mb-1">
-                                                <div class="progress-bar" role="progressbar" 
-                                                     style="width: {{ $progress }}%" 
+                                                <div class="progress-bar {{ pct_class($progress) }}" role="progressbar"
                                                      aria-valuenow="{{ $progress }}" 
                                                      aria-valuemin="0" aria-valuemax="100">
                                                 </div>
@@ -271,8 +270,7 @@
                                 </span>
                             </div>
                             <div class="progress mb-2">
-                                <div class="progress-bar bg-{{ $summary['attendance_rate'] >= 80 ? 'success' : ($summary['attendance_rate'] >= 60 ? 'warning' : 'danger') }}" 
-                                     style="width: {{ $summary['attendance_rate'] }}%"></div>
+                                <div class="progress-bar bg-{{ $summary['attendance_rate'] >= 80 ? 'success' : ($summary['attendance_rate'] >= 60 ? 'warning' : 'danger') }} {{ pct_class($summary['attendance_rate']) }}"></div>
                             </div>
                             <small class="text-muted">
                                 {{ $summary['attended_sessions'] }} out of {{ $summary['total_sessions'] }} classes attended

@@ -29,7 +29,7 @@
 <div class="tw:grid tw:grid-cols-1 tw:gap-5 tw:xl:grid-cols-3 tw:mb-6">
     <section class="panel" aria-labelledby="fee-heading">
         <div class="panel-heading"><h2 id="fee-heading">Fee agreement</h2><span class="status-pill">{{ $progress }}% paid</span></div>
-        <div style="padding:6px 22px 18px">
+        <div class="pad-panel-body-lg">
             <div class="finance-row"><span>Agreed fee</span><strong>{{ currency_format($enrollment->total_fee) }}</strong></div>
             <div class="finance-row"><span>Discount</span><strong>{{ $enrollment->discount_percentage }}% · {{ currency_format($enrollment->discount_amount) }}</strong></div>
             <div class="finance-row"><span>Net payable</span><strong>{{ currency_format($net) }}</strong></div>
@@ -41,10 +41,10 @@
                 <div class="finance-row"><span>Paid</span><strong>{{ currency_format($enrollment->paid_amount) }}</strong></div>
             @endif
             <div class="finance-row"><span>Outstanding</span><strong>{{ currency_format($enrollment->remaining_fee) }}</strong></div>
-            <div class="balance-bar mt-3" role="progressbar" aria-label="Fee paid" aria-valuenow="{{ $progress }}" aria-valuemin="0" aria-valuemax="100"><span style="width:{{ $progress }}%"></span></div>
+            <div class="balance-bar mt-3" role="progressbar" aria-label="Fee paid" aria-valuenow="{{ $progress }}" aria-valuemin="0" aria-valuemax="100"><span class="{{ pct_class($progress) }}"></span></div>
             @if($enrollment->status !== 'transferred' && ! $enrollment->enrollment_package_id)
                 <details class="mt-3 d-print-none" @if($errors->hasAny(['discount_percentage', 'reason', 'refund_method', 'submission_key'])) open @endif>
-                    <summary class="fw-semibold" style="cursor:pointer;font-size:13px"><i class="fas fa-percent me-1" aria-hidden="true"></i>Edit discount</summary>
+                    <summary class="fw-semibold summary-sm"><i class="fas fa-percent me-1" aria-hidden="true"></i>Edit discount</summary>
                     <form class="mt-3" method="post" action="{{ route('enrollments.discount', $enrollment) }}" data-confirm="Change the discount? The difference is applied to unpaid installments."
                         data-discount-preview data-gross="{{ \App\Support\Money::minor($enrollment->total_fee) }}" data-discount="{{ \App\Support\Money::minor($enrollment->discount_amount) }}"
                         data-kept="{{ \App\Support\Money::minor($enrollment->net_paid) }}" data-current-percent="{{ $enrollment->discount_percentage }}"
@@ -61,7 +61,7 @@
                         <p class="form-text">Of {{ currency_format($enrollment->total_fee) }}. Paid installments stay unchanged; the difference moves through the latest unpaid ones.</p>
                         @if(\App\Support\Money::minor($enrollment->net_paid) > 0)
                             <fieldset class="border rounded p-3 mb-3" data-refund-section>
-                                <legend class="float-none w-auto px-1 mb-1" style="font-size:12px;font-weight:700">Refund (only if needed)</legend>
+                                <legend class="float-none w-auto px-1 mb-1 legend-sm">Refund (only if needed)</legend>
                                 <p class="form-text mt-0">Fill this in when the new net fee is below the {{ currency_format($enrollment->net_paid) }} already paid; the difference is recorded as a refund with a slip.</p>
                                 <input type="hidden" name="submission_key" value="{{ old('submission_key', (string) \Illuminate\Support\Str::uuid()) }}">
                                 <label class="form-label" for="refund_method">Refunded by</label>
@@ -139,7 +139,7 @@
     @if($enrollment->status === 'active')
         <section class="panel d-print-none" aria-labelledby="actions-heading">
             <div class="panel-heading"><h2 id="actions-heading">Change enrollment</h2></div>
-            <div style="padding:16px 22px">
+            <div class="pad-panel-sm">
                 @if($transferBatches->isNotEmpty() && $enrollment->payments->isEmpty() && $enrollment->paid_amount == 0 && !$enrollment->enrollment_package_id)
                     <form method="post" action="{{ route('enrollments.correct-batch', $enrollment) }}" data-confirm="Correct this mistaken batch? The original enrollment will remain linked in history.">
                         @csrf @method('PATCH')

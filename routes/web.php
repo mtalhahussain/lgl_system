@@ -26,6 +26,7 @@ use App\Http\Controllers\StudentController;
 use App\Http\Controllers\TeacherController;
 use App\Http\Controllers\WhatsAppReminderController;
 use App\Http\Middleware\EnsureActiveAccount;
+use App\Http\Middleware\EnsureModuleAccess;
 use Illuminate\Support\Facades\Route;
 
 // Authentication Routes
@@ -49,7 +50,7 @@ Route::middleware('throttle:30,1')->group(function () {
 });
 
 // Authenticated Routes
-Route::middleware(['auth', EnsureActiveAccount::class])->group(function () {
+Route::middleware(['auth', EnsureActiveAccount::class, EnsureModuleAccess::class])->group(function () {
 
     Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 
@@ -65,12 +66,20 @@ Route::middleware(['auth', EnsureActiveAccount::class])->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::put('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::get('/accounts', [AccountController::class, 'index'])->name('accounts.index')->middleware('role:admin');
+    Route::get('/accounts/create', [AccountController::class, 'create'])->name('accounts.create')->middleware('role:admin');
+    Route::post('/accounts', [AccountController::class, 'store'])->name('accounts.store')->middleware('role:admin');
+    Route::put('/accounts/permissions', [AccountController::class, 'updatePermissions'])->name('accounts.permissions')->middleware('role:admin');
     Route::patch('/accounts/{user}', [AccountController::class, 'update'])->name('accounts.update')->middleware('role:admin');
 
     // Leads pipeline (Admin): intake review, qualify, reject, convert to student.
     Route::middleware('role:admin')->group(function () {
         Route::get('/leads', [LeadController::class, 'index'])->name('leads.index');
+        Route::get('/leads/create', [LeadController::class, 'create'])->name('leads.create');
+        Route::post('/leads', [LeadController::class, 'store'])->name('leads.store');
         Route::get('/leads/{lead}', [LeadController::class, 'show'])->name('leads.show');
+        Route::get('/leads/{lead}/edit', [LeadController::class, 'edit'])->name('leads.edit');
+        Route::put('/leads/{lead}', [LeadController::class, 'update'])->name('leads.update');
+        Route::delete('/leads/{lead}', [LeadController::class, 'destroy'])->name('leads.destroy');
         Route::post('/leads/{lead}/qualify', [LeadController::class, 'qualify'])->name('leads.qualify');
         Route::post('/leads/{lead}/reject', [LeadController::class, 'reject'])->name('leads.reject');
         Route::get('/leads/{lead}/convert', [LeadController::class, 'convert'])->name('leads.convert');

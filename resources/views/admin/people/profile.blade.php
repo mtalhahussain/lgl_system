@@ -69,15 +69,15 @@
         @if($isTeacherProfile)
             <section class="panel" aria-labelledby="teaching-heading">
                 <div class="panel-heading"><h2 id="teaching-heading">Teaching and pay</h2></div>
-                <div style="padding:6px 22px 14px">
+                <div class="pad-panel-body">
                     <div class="finance-row"><span>Qualification</span><strong>{{ $person->qualification ?: '—' }}</strong></div>
                     <div class="finance-row"><span>Experience</span><strong>{{ $person->experience_years ? $person->experience_years.' '.\Illuminate\Support\Str::plural('year', $person->experience_years) : '—' }}</strong></div>
                     @if($isAdmin)
-                        <div class="finance-row"><span>Pay type</span><strong>{{ $person->salary_type === 'per_student' ? 'Per student per month' : 'Fixed monthly salary' }}</strong></div>
+                        <div class="finance-row"><span>Pay type</span><strong>{{ $person->salary_type === 'per_student' ? 'Per student per batch' : 'Fixed monthly salary' }}</strong></div>
                         @if($person->salary_type !== 'per_student')
                             <div class="finance-row"><span>Monthly salary</span><strong>{{ $person->monthly_salary ? currency_format($person->monthly_salary) : 'Not set' }}</strong></div>
                         @else
-                            <div class="finance-row"><span>Per student per month</span><strong>{{ $person->per_student_amount ? currency_format($person->per_student_amount) : 'Not set' }}</strong></div>
+                            <div class="finance-row"><span>Per student per batch</span><strong>{{ $person->per_student_amount ? currency_format($person->per_student_amount) : 'Not set' }}</strong></div>
                         @endif
                     @endif
                 </div>
@@ -97,8 +97,8 @@
                         <tr>
                             <td><a class="cell-main" href="{{ route('batches.show', $batch) }}">{{ $batch->name }}</a><span class="cell-sub">{{ $batch->course?->name }}@if($batch->course?->level) ({{ $batch->course?->level }})@endif</span></td>
                             <td class="text-nowrap">{{ $batch->start_date?->format('d M Y') }}<span class="cell-sub">{{ $batch->end_date ? 'to '.$batch->end_date->format('d M Y') : 'No end date' }}</span></td>
-                            <td style="min-width:120px">{{ $batch->active_enrollments_count }} / {{ $batch->max_students }}
-                                <div class="balance-bar" role="progressbar" aria-label="{{ $batch->name }} capacity used" aria-valuenow="{{ $fill }}" aria-valuemin="0" aria-valuemax="100" style="margin-top:6px"><span style="width:{{ $fill }}%"></span></div></td>
+                            <td class="min-w-120">{{ $batch->active_enrollments_count }} / {{ $batch->max_students }}
+                                <div class="balance-bar mt-6px" role="progressbar" aria-label="{{ $batch->name }} capacity used" aria-valuenow="{{ $fill }}" aria-valuemin="0" aria-valuemax="100"><span class="{{ pct_class($fill) }}"></span></div></td>
                             <td><x-list.status :value="$batch->status" /></td>
                         </tr>
                     @empty
@@ -109,7 +109,7 @@
             </section>
             @if($isAdmin)
                 <section class="panel" aria-labelledby="pay-heading">
-                    <div class="panel-heading"><h2 id="pay-heading">Recent pay</h2><a href="{{ route('payroll.index', ['teacher_id' => $person->id]) }}" style="font-size:11px;color:var(--accent)">View all <i class="fas fa-arrow-right ms-1" aria-hidden="true"></i></a></div>
+                    <div class="panel-heading"><h2 id="pay-heading">Recent pay</h2><a href="{{ route('payroll.index', ['teacher_id' => $person->id]) }}" class="link-mini">View all <i class="fas fa-arrow-right ms-1" aria-hidden="true"></i></a></div>
                     <div class="table-responsive"><table class="table list-table">
                         <thead><tr><th scope="col">For</th><th scope="col" class="num">Amount</th><th scope="col" class="num">Outstanding</th><th scope="col">Status</th></tr></thead>
                         <tbody>
@@ -128,12 +128,12 @@
                 </section>
                 <section class="panel" aria-labelledby="offboard-heading">
                     <div class="panel-heading"><h2 id="offboard-heading">Reassign batches / offboard</h2>@if($openBatchCount)<span class="page-subtitle">{{ $openBatchCount }} active/upcoming</span>@endif</div>
-                    <div style="padding:6px 22px 18px">
+                    <div class="pad-panel-body-lg">
                     @if($openBatchCount > 0)
                         @if($otherTeachers->isEmpty())
                             <p class="text-muted mb-0">No other active teacher is available to receive these batches. Add or activate another teacher first.</p>
                         @else
-                            <p class="page-subtitle" style="margin-bottom:14px">When this teacher leaves, move their {{ $openBatchCount }} active/upcoming {{ \Illuminate\Support\Str::plural('batch', $openBatchCount) }} to another teacher. Classes, sessions, attendance and future pay follow the new teacher; completed batches and past pay stay unchanged.</p>
+                            <p class="page-subtitle mb-14px">When this teacher leaves, move their {{ $openBatchCount }} active/upcoming {{ \Illuminate\Support\Str::plural('batch', $openBatchCount) }} to another teacher. Classes, sessions, attendance and future pay follow the new teacher; completed batches and past pay stay unchanged.</p>
                             <form method="post" action="{{ route('teachers.reassign', $person) }}" class="tw:flex tw:flex-col tw:gap-3">
                                 @csrf
                                 <div>

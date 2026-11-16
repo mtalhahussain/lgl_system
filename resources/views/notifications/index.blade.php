@@ -29,12 +29,12 @@
                     <div class="fw-semibold">
                         @if($destination)<a href="{{ $destination }}" class="text-decoration-none text-body stretched-link">{{ $d['title'] ?? 'Notification' }}</a>
                         @else{{ $d['title'] ?? 'Notification' }}@endif
-                        @unless($n->read_at)<span class="badge bg-{{ $color }} ms-1" style="font-size:.6rem;">new</span>@endunless
+                        @unless($n->read_at)<span class="badge bg-{{ $color }} ms-1 fs-06rem">new</span>@endunless
                     </div>
                     <div class="text-muted small">{{ $d['body'] ?? '' }}</div>
-                    <div class="text-muted" style="font-size:.75rem;">{{ $n->created_at->diffForHumans() }} &middot; {{ $n->created_at->format('d.m.Y h:i A') }}</div>
+                    <div class="text-muted fs-075rem">{{ $n->created_at->diffForHumans() }} &middot; {{ $n->created_at->format('d.m.Y h:i A') }}</div>
                 </div>
-                <form method="POST" action="{{ route('notifications.destroy', $n->id) }}" class="position-relative" style="z-index:2;">
+                <form method="POST" action="{{ route('notifications.destroy', $n->id) }}" class="position-relative z-2">
                     @csrf @method('DELETE')
                     <button type="submit" class="btn btn-sm btn-outline-danger" title="Remove"><i class="fas fa-times"></i></button>
                 </form>

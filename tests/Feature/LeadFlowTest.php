@@ -225,4 +225,54 @@ class LeadFlowTest extends TestCase
         $this->actingAs($this->admin)->get(route('leads.show', $lead))
             ->assertOk()->assertSee('Existing Dup');
     }
+
+    // ---- Manual leads ---------------------------------------------------------
+
+    public function test_admin_adds_edits_and_deletes_a_manual_lead(): void
+    {
+        $this->actingAs($this->admin)->get(route('leads.index'))->assertOk()->assertSee('Add lead');
+        $this->get(route('leads.create'))->assertOk()->assertSee('Add lead');
+
+        $this->post(route('leads.store'), ['name' => 'Walk In', 'phone' => '03001230000', 'cnic' => '3520112345670',
+            'program_interest' => 'A1', 'message' => 'Came to office', 'status' => 'contacted'])->assertRedirect();
+        $lead = Lead::sole();
+        $this->assertSame([Lead::SOURCE_MANUAL, Lead::STATUS_CONTACTED, 'Walk In', $this->admin->id],
+            [$lead->source, $lead->status, $lead->name, $lead->assigned_to]);
+
+        $this->get(route('leads.edit', $lead))->assertOk()->assertSee('Walk In');
+        $this->put(route('leads.update', $lead), ['name' => 'Walk In Two', 'phone' => '03001230001', 'status' => 'new'])
+            ->assertRedirect(route('leads.show', $lead));
+        $this->assertSame(['Walk In Two', '03001230001', 'new'], [$lead->fresh()->name, $lead->fresh()->phone, $lead->fresh()->status]);
+
+        // Workflow statuses cannot be set by hand.
+        $this->putJson(route('leads.update', $lead), ['name' => 'X', 'phone' => '0300', 'status' => 'converted'])
+            ->assertUnprocessable()->assertJsonValidationErrors('status');
+        $this->postJson(route('leads.store'), ['name' => 'Y', 'phone' => 'abc', 'status' => 'new'])
+            ->assertUnprocessable()->assertJsonValidationErrors('phone');
+
+        $this->delete(route('leads.destroy', $lead))->assertRedirect(route('leads.index'));
+        $this->assertDatabaseCount('leads', 0);
+    }
+
+    public function test_converted_and_submitted_leads_are_protected_and_non_admins_are_blocked(): void
+    {
+        $converted = Lead::create(['name' => 'Done', 'phone' => '03001110000', 'status' => Lead::STATUS_CONVERTED]);
+        $submitted = Lead::create(['name' => 'Sent', 'phone' => '03001110001', 'status' => Lead::STATUS_SUBMITTED]);
+        $qualified = Lead::create(['name' => 'Qual', 'phone' => '03001110002', 'status' => Lead::STATUS_QUALIFIED]);
+        $this->actingAs($this->admin);
+
+        $this->delete(route('leads.destroy', $converted))->assertStatus(422);
+        $this->get(route('leads.edit', $converted))->assertStatus(422);
+        $this->put(route('leads.update', $submitted), ['name' => 'Z', 'phone' => '0300'])->assertStatus(422);
+        // Qualified lead keeps its workflow status; details remain editable.
+        $this->put(route('leads.update', $qualified), ['name' => 'Qual Two', 'phone' => '03001110002'])->assertRedirect();
+        $this->assertSame(['Qual Two', Lead::STATUS_QUALIFIED], [$qualified->fresh()->name, $qualified->fresh()->status]);
+        $this->assertDatabaseCount('leads', 3);
+
+        foreach ([$this->teacher, $this->student] as $user) {
+            $this->actingAs($user)->get(route('leads.create'))->assertForbidden();
+            $this->post(route('leads.store'), ['name' => 'N', 'phone' => '0300', 'status' => 'new'])->assertForbidden();
+            $this->delete(route('leads.destroy', $qualified))->assertForbidden();
+        }
+    }
 }

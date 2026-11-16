@@ -209,9 +209,8 @@
                                 <p class="card-text">
                                     <span class="badge bg-primary">{{ $enrollment->batch->name }}</span>
                                 </p>
-                                <div class="progress mb-2" style="height: 10px;">
-                                    <div class="progress-bar bg-success" role="progressbar" 
-                                         style="width: {{ $attendanceRate }}%" 
+                                <div class="progress mb-2 progress-h-10">
+                                    <div class="progress-bar bg-success {{ pct_class($attendanceRate) }}" role="progressbar"
                                          aria-valuenow="{{ $attendanceRate }}" aria-valuemin="0" aria-valuemax="100">
                                     </div>
                                 </div>

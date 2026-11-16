@@ -52,86 +52,52 @@ class PayrollService
         return ['created' => $created, 'skipped' => $skipped];
     }
 
-    /** Salaries plus every eligible per-student batch earning for one month; existing or ineligible items are skipped. */
+    /** Month run: fixed monthly salaries only. Per-student teachers are paid per completed batch (generateBatchDue). */
     public function generateMonth(string $period, User $actor): array
     {
-        $salaries = $this->generateSalaries($period, $actor);
-        [$start, $end] = $this->monthRange($period);
-        $created = 0;
-        $skipped = 0;
-        $batchIds = Batch::whereIn('status', ['ongoing', 'completed'])->where('start_date', '<=', $end)
-            ->where(fn ($query) => $query->whereNull('end_date')->orWhere('end_date', '>=', $start))
-            ->whereHas('teacher', fn ($query) => $query->where('salary_type', 'per_student'))->orderBy('id')->pluck('id');
-        foreach ($batchIds as $batchId) {
-            try {
-                $this->generateBatchDue((int) $batchId, $period, $actor);
-                $created++;
-            } catch (ValidationException) {
-                $skipped++;
-            }
-        }
-
-        return ['salaries' => $salaries, 'batches' => ['created' => $created, 'skipped' => $skipped]];
+        return ['salaries' => $this->generateSalaries($period, $actor)];
     }
 
     /**
-     * Monthly earning for a per-student teacher: teacher rate x students enrolled in the batch during the month.
-     * Active/completed students count when enrolled by month end; dropped or transferred ones count until they left.
+     * One-time earning for a per-student teacher once the batch is completed, however long it ran:
+     * teacher rate x students who stayed to the end (active/completed enrollments; dropped/transferred excluded).
      */
-    public function generateBatchDue(int $batchId, string $period, User $actor): TeacherDue
+    public function generateBatchDue(int $batchId, User $actor): TeacherDue
     {
         $this->assertAdmin($actor);
-        [$start, $end] = $this->monthRange($period);
         try {
-            return DB::transaction(function () use ($batchId, $period, $start, $end, $actor) {
+            return DB::transaction(function () use ($batchId, $actor) {
                 $batch = Batch::lockForUpdate()->findOrFail($batchId);
                 $teacher = User::lockForUpdate()->find($batch->teacher_id);
-                $batch->setRelation('teacher', $teacher);
                 $rate = Money::minor((string) ($teacher?->per_student_amount ?? '0'));
-                $count = $this->studentsInMonth($batch, $start, $end);
+                $count = $this->studentsInBatch($batch);
                 $error = match (true) {
-                    ! in_array($batch->status, ['ongoing', 'completed'], true) => 'Only ongoing or completed batches can earn.',
-                    $batch->start_date->gt($end) || ($batch->end_date && $batch->end_date->lt($start)) => 'The batch did not run in this month.',
-                    $batch->teacher?->role !== 'teacher' || $batch->teacher->salary_type !== 'per_student' => 'The batch teacher is not paid per student.',
-                    $rate <= 0 => 'Set the teacher amount per student per month first.',
-                    $count === 0 => 'The batch had no students in this month.',
-                    TeacherDue::where('active_key', 'batch:'.$batch->id)->exists() => 'This batch already has a whole-batch earning from before monthly pay. Void it first to switch to monthly.',
-                    TeacherDue::where('active_key', "batch:{$batch->id}:{$period}")->exists() => 'This batch already has an earning for this month.',
+                    $batch->status !== 'completed' => 'Only completed batches can be paid. Pay is generated once the whole batch is finished.',
+                    $teacher?->role !== 'teacher' || $teacher->salary_type !== 'per_student' => 'The batch teacher is not paid per student.',
+                    $rate <= 0 => 'Set the teacher amount per student first.',
+                    $count === 0 => 'The batch has no students who completed it.',
+                    TeacherDue::where('active_key', 'batch:'.$batch->id)->exists() => 'This batch has already been paid.',
+                    TeacherDue::where('active_key', 'like', 'batch:'.$batch->id.':%')->exists() => 'This batch has earlier monthly earnings. Void them first to pay the whole batch.',
                     default => null,
                 };
                 if ($error) {
                     throw ValidationException::withMessages(['batch_id' => $error]);
                 }
-                $due = TeacherDue::create(['teacher_id' => $batch->teacher_id, 'kind' => 'batch', 'period' => $period, 'batch_id' => $batch->id,
+                $due = TeacherDue::create(['teacher_id' => $batch->teacher_id, 'kind' => 'batch', 'period' => null, 'batch_id' => $batch->id,
                     'student_count' => $count, 'rate' => Money::decimal($rate), 'amount' => Money::decimal($rate * $count),
-                    'active_key' => "batch:{$batch->id}:{$period}", 'created_by' => $actor->id, 'created_at' => now()]);
-                $this->audit($actor, 'teacher_due.created', $due, ['amount' => $due->amount, 'batch_id' => $batch->id, 'period' => $period, 'students' => $count]);
+                    'active_key' => 'batch:'.$batch->id, 'created_by' => $actor->id, 'created_at' => now()]);
+                $this->audit($actor, 'teacher_due.created', $due, ['amount' => $due->amount, 'batch_id' => $batch->id, 'students' => $count]);
 
                 return $due;
             }, 3);
         } catch (UniqueConstraintViolationException) {
-            throw ValidationException::withMessages(['batch_id' => 'This batch already has an earning for this month.']);
+            throw ValidationException::withMessages(['batch_id' => 'This batch has already been paid.']);
         }
     }
 
-    public function studentsInMonth(Batch $batch, \Carbon\CarbonInterface $start, \Carbon\CarbonInterface $end): int
+    public function studentsInBatch(Batch $batch): int
     {
-        return $batch->enrollments()->whereDate('enrollment_date', '<=', $end->toDateString())
-            ->where(fn ($query) => $query->whereIn('status', ['active', 'completed'])
-                ->orWhere(fn ($left) => $left->where('status', 'dropped')->whereDate('dropout_date', '>=', $start->toDateString()))
-                ->orWhere(fn ($left) => $left->where('status', 'transferred')->whereDate('transfer_date', '>=', $start->toDateString())))
-            ->count();
-    }
-
-    /** @return array{0: \Illuminate\Support\Carbon, 1: \Illuminate\Support\Carbon} */
-    private function monthRange(string $period): array
-    {
-        if (! preg_match('/^\d{4}-(0[1-9]|1[0-2])$/D', $period) || $period > now()->format('Y-m')) {
-            throw ValidationException::withMessages(['period' => 'Choose the current or a past month.']);
-        }
-        $start = \Illuminate\Support\Carbon::createFromFormat('Y-m-d', $period.'-01')->startOfDay();
-
-        return [$start, $start->copy()->endOfMonth()->startOfDay()];
+        return $batch->enrollments()->whereIn('status', ['active', 'completed'])->count();
     }
 
     public function void(TeacherDue $due, User $actor, string $reason): TeacherDue

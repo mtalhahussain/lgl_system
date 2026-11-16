@@ -130,11 +130,10 @@
                                 </td>
                                 <td>
                                     <div>
-                                        <div class="progress mb-1" style="height: 20px;">
+                                        <div class="progress mb-1 progress-h-20">
                                             <div class="progress-bar 
-                                                {{ $paymentPercentage == 100 ? 'bg-success' : ($paymentPercentage > 50 ? 'bg-warning' : 'bg-danger') }}" 
-                                                role="progressbar" 
-                                                style="width: {{ $paymentPercentage }}%">
+                                                {{ $paymentPercentage == 100 ? 'bg-success' : ($paymentPercentage > 50 ? 'bg-warning' : 'bg-danger') }} {{ pct_class($paymentPercentage) }}"
+                                                role="progressbar">
                                                 {{ $paymentPercentage }}%
                                             </div>
                                         </div>

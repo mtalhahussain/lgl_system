@@ -19,7 +19,7 @@
 <div class="tw:grid tw:grid-cols-1 tw:gap-5 tw:lg:grid-cols-3 tw:mb-6">
     <section class="panel" aria-labelledby="due-summary">
         <div class="panel-heading"><h2 id="due-summary">Summary</h2></div>
-        <div style="padding:18px 22px">
+        <div class="pad-panel">
             <div class="finance-row"><span>Type</span><strong>{{ $due->kind === 'salary' ? 'Monthly salary' : 'Per student (batch)' }}</strong></div>
             @if($due->kind === 'batch')
                 <div class="finance-row"><span>Students</span><strong>{{ $due->student_count }} × {{ currency_format($due->rate) }}</strong></div>
@@ -33,7 +33,7 @@
     @if($isAdmin && ! $due->voided_at)
         <section class="panel tw:lg:col-span-2 d-print-none" aria-labelledby="record-payout">
             <div class="panel-heading"><h2 id="record-payout">Record payout</h2></div>
-            <div style="padding:18px 22px">
+            <div class="pad-panel">
                 @if($due->outstandingMinor() > 0)
                     <form method="post" action="{{ route('payroll.pay', $due) }}" class="row g-3">
                         @csrf

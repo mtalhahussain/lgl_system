@@ -15,7 +15,18 @@
         <span class="badge bg-{{ $badges[$lead->status] ?? 'secondary' }}">{{ ucfirst($lead->status) }}</span>
         <span class="badge bg-light text-dark border">{{ ucfirst($lead->source) }}</span>
     </div>
-    <a href="{{ route('leads.index') }}" class="btn btn-outline-secondary btn-sm">Back to leads</a>
+    <div class="d-flex flex-wrap gap-2">
+        @unless(in_array($lead->status, ['submitted', 'converted'], true))
+            <a href="{{ route('leads.edit', $lead) }}" class="btn btn-outline-secondary btn-sm"><i class="fas fa-pen me-1" aria-hidden="true"></i>Edit</a>
+        @endunless
+        @unless($lead->status === 'converted')
+            <form method="POST" action="{{ route('leads.destroy', $lead) }}" class="d-inline" onsubmit="return confirm('Delete this lead permanently?')">
+                @csrf @method('DELETE')
+                <button type="submit" class="btn btn-outline-danger btn-sm"><i class="fas fa-trash me-1" aria-hidden="true"></i>Delete</button>
+            </form>
+        @endunless
+        <a href="{{ route('leads.index') }}" class="btn btn-outline-secondary btn-sm">Back to leads</a>
+    </div>
 </div>
 
 @if ($hasDupes)
@@ -64,7 +75,7 @@
             @if (in_array($lead->status, ['new','contacted']))
                 <form method="POST" action="{{ route('leads.qualify', $lead) }}" class="mb-3">
                     @csrf
-                    <button type="submit" class="btn btn-lgl w-100" style="background:#c8102e;border-color:#c8102e;color:#fff;">
+                    <button type="submit" class="btn btn-lgl btn-lgl-red w-100">
                         <i class="fas fa-check"></i> Qualify &amp; generate application link
                     </button>
                 </form>
@@ -86,7 +97,7 @@
 
             @elseif ($lead->status === 'submitted')
                 <div class="alert alert-success small">Applicant completed their registration on {{ optional($lead->submitted_at)->format('d-m-Y h:i A') }}.</div>
-                <a href="{{ route('leads.convert', $lead) }}" class="btn btn-lgl w-100" style="background:#c8102e;border-color:#c8102e;color:#fff;">
+                <a href="{{ route('leads.convert', $lead) }}" class="btn btn-lgl btn-lgl-red w-100">
                     <i class="fas fa-user-plus"></i> Review &amp; create student
                 </a>
 

@@ -2,41 +2,37 @@
 @section('title', $isAdmin ? 'Payroll' : 'My Earnings')
 @section('content')
 <x-list.header :title="$isAdmin ? 'Payroll' : 'My Earnings'" eyebrow="Finance"
-    :subtitle="$isAdmin ? 'Teacher and staff salaries, per-student batch earnings and payouts' : 'Your salary and batch earnings with payment slips'" />
+    :subtitle="$isAdmin ? 'Teacher and staff salaries, per-student batch earnings and payouts' : 'Your salary and completed-batch earnings with payment slips'" />
 <x-list.kpis :items="$kpis" />
 @if($isAdmin)
     <div class="tw:grid tw:grid-cols-1 tw:gap-5 tw:lg:grid-cols-2 tw:mb-6 d-print-none">
         <section class="panel" aria-labelledby="generate-salaries">
             <div class="panel-heading"><h2 id="generate-salaries">Generate month</h2></div>
-            <form method="post" action="{{ route('payroll.salaries') }}" class="row g-2 align-items-end" style="padding:18px 22px">
+            <form method="post" action="{{ route('payroll.salaries') }}" class="row g-2 align-items-end pad-panel">
                 @csrf
                 <div class="col-sm-7">
                     <label class="form-label" for="period">Month</label>
                     <input class="form-control" type="month" id="period" name="period" max="{{ now()->format('Y-m') }}" value="{{ old('period', now()->format('Y-m')) }}" required>
                 </div>
                 <div class="col-sm-5"><button class="btn btn-primary w-100">Generate</button></div>
-                <p class="form-text mb-0">Creates fixed monthly salaries for teachers and staff, and per-student earnings (rate × students in the batch that month) for per-student teachers. Anything already generated is skipped.</p>
+                <p class="form-text mb-0">Creates fixed monthly salaries for teachers and staff. Per-student teachers are not paid monthly; use Completed batch payout. Anything already generated is skipped.</p>
             </form>
         </section>
         <section class="panel" aria-labelledby="generate-batch">
-            <div class="panel-heading"><h2 id="generate-batch">One batch, one month</h2></div>
-            <form method="post" action="{{ route('payroll.batches') }}" class="row g-2 align-items-end" style="padding:18px 22px">
+            <div class="panel-heading"><h2 id="generate-batch">Completed batch payout</h2></div>
+            <form method="post" action="{{ route('payroll.batches') }}" class="row g-2 align-items-end pad-panel">
                 @csrf
-                <div class="col-sm-4">
-                    <label class="form-label" for="batch_period">Month</label>
-                    <input class="form-control" type="month" id="batch_period" name="period" max="{{ now()->format('Y-m') }}" value="{{ old('period', now()->format('Y-m')) }}" required>
-                </div>
-                <div class="col-sm-5">
-                    <label class="form-label" for="batch_id">Batch</label>
+                <div class="col-sm-8">
+                    <label class="form-label" for="batch_id">Completed batch</label>
                     <select class="form-select" id="batch_id" name="batch_id" required @disabled($eligibleBatches->isEmpty())>
-                        <option value="">{{ $eligibleBatches->isEmpty() ? 'No eligible batches' : 'Choose batch' }}</option>
+                        <option value="">{{ $eligibleBatches->isEmpty() ? 'No completed batches awaiting pay' : 'Choose batch' }}</option>
                         @foreach($eligibleBatches as $batch)
-                            <option value="{{ $batch->id }}" data-meta="{{ $batch->teacher?->name }} · {{ currency_format($batch->teacher?->per_student_amount ?? 0) }} per student per month" @selected(old('batch_id') == $batch->id)>{{ $batch->name }}</option>
+                            <option value="{{ $batch->id }}" data-meta="{{ $batch->teacher?->name }} · {{ $batch->finished_students }} students × {{ currency_format($batch->teacher?->per_student_amount ?? 0) }}{{ $batch->end_date ? ' · ended '.$batch->end_date->format('d M Y') : '' }}" @selected(old('batch_id') == $batch->id)>{{ $batch->name }}</option>
                         @endforeach
                     </select>
                 </div>
-                <div class="col-sm-3"><button class="btn btn-primary w-100" @disabled($eligibleBatches->isEmpty())>Generate</button></div>
-                <p class="form-text mb-0">Per-student teachers are paid monthly: course rate × students enrolled during that month (students who left count until they left).</p>
+                <div class="col-sm-4"><button class="btn btn-primary w-100" @disabled($eligibleBatches->isEmpty())>Generate</button></div>
+                <p class="form-text mb-0">Per-student teachers are paid once per batch, after the whole batch is completed (2, 3 or 6 months — any length): teacher rate × students who completed the batch. Dropped or transferred students are not counted.</p>
             </form>
         </section>
     </div>

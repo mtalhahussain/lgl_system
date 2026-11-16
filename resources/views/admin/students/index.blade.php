@@ -213,7 +213,7 @@
                                             <i class="fas fa-edit"></i>
                                         </a>
                                         <form method="POST" action="{{ route('students.destroy', $student) }}" 
-                                              style="display: inline;" onsubmit="return confirm('Are you sure you want to delete this student?')">
+                                              class="d-inline" onsubmit="return confirm('Are you sure you want to delete this student?')">
                                             @csrf
                                             @method('DELETE')
                                             <button type="submit" class="btn btn-sm btn-outline-danger" title="Delete">

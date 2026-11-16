@@ -18,7 +18,7 @@
     <!-- Fee Overview Cards -->
     <div class="row mb-4">
         <div class="col-md-3">
-            <div class="card dashboard-card stat-card-info h-100" style="background-color: #17a2b8; color: white;">
+            <div class="card dashboard-card stat-card-info h-100 stat-solid-info">
                 <div class="card-body text-center">
                     <i class="fas fa-calculator fa-2x mb-3"></i>
                     <h3>{{ currency_format($feeStats['total_fees'] ?? 0) }}</h3>
@@ -27,7 +27,7 @@
             </div>
         </div>
         <div class="col-md-3">
-            <div class="card dashboard-card stat-card-success h-100" style="background-color: #28a745; color: white;">
+            <div class="card dashboard-card stat-card-success h-100 stat-solid-success">
                 <div class="card-body text-center">
                     <i class="fas fa-check-circle fa-2x mb-3"></i>
                     <h3>{{ currency_format($feeStats['paid_fees'] ?? 0) }}</h3>
@@ -36,7 +36,7 @@
             </div>
         </div>
         <div class="col-md-3">
-            <div class="card dashboard-card stat-card-warning h-100" style="background-color: #ffc107; color: black;">
+            <div class="card dashboard-card stat-card-warning h-100 stat-solid-warning">
                 <div class="card-body text-center">
                     <i class="fas fa-clock fa-2x mb-3"></i>
                     <h3>{{ currency_format($feeStats['pending_fees'] ?? 0) }}</h3>
@@ -45,7 +45,7 @@
             </div>
         </div>
         <div class="col-md-3">
-            <div class="card dashboard-card stat-card-danger h-100" style="background-color: #dc3545; color: white;">
+            <div class="card dashboard-card stat-card-danger h-100 stat-solid-danger">
                 <div class="card-body text-center">
                     <i class="fas fa-exclamation-triangle fa-2x mb-3"></i>
                     <h3>{{ currency_format($feeStats['overdue_fees'] ?? 0) }}</h3>
@@ -107,8 +107,8 @@
                                 $courseTotal = $enrollment->feeInstallments->sum('amount');
                                 $percentage = $courseTotal > 0 ? round(($coursePaid / $courseTotal) * 100, 1) : 0;
                             @endphp
-                            <div class="progress mb-1" style="height: 10px;">
-                                <div class="progress-bar bg-success" role="progressbar" style="width: {{ $percentage }}%"></div>
+                            <div class="progress mb-1 progress-h-10">
+                                <div class="progress-bar bg-success {{ pct_class($percentage) }}" role="progressbar"></div>
                             </div>
                             <small class="text-muted">{{ $percentage }}% Paid ({{ currency_format($coursePaid) }} / {{ currency_format($courseTotal) }})</small>
                         </div>

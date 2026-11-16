@@ -133,7 +133,7 @@
                                 <br>
                                 <small class="text-muted">{{ $earning->batch->course->name }} - {{ $earning->batch->name }}</small>
                             </div>
-                            <span class="text-muted" style="font-size: 0.8em;">
+                            <span class="text-muted fs-08em">
                                 {{ $earning->created_at->diffForHumans() }}
                             </span>
                         </div>

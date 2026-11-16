@@ -2,7 +2,7 @@
 @section('title', 'Users')
 @section('content')
 <x-list.header title="Users" eyebrow="Administration" subtitle="Change a role or switch an account on or off; it saves immediately. Admins can manage the whole institute, and deactivation preserves history. Staff are paid and use the machine but do not sign in.">
-    <a class="btn btn-primary" href="{{ route('staff.create') }}"><i class="fas fa-plus me-1" aria-hidden="true"></i>Add staff</a>
+    <a class="btn btn-primary" href="{{ route('accounts.create') }}"><i class="fas fa-plus me-1" aria-hidden="true"></i>Add user</a>
 </x-list.header>
 <x-list.kpis :items="$kpis" />
 <div class="panel list-panel">
@@ -59,4 +59,31 @@
     </div>
     <x-list.footer :paginator="$accounts" label="users" />
 </div>
+
+<section class="panel mt-4" id="role-permissions" aria-labelledby="role-permissions-heading">
+    <div class="panel-heading"><h2 id="role-permissions-heading"><i class="fas fa-user-lock me-2" aria-hidden="true"></i>Role permissions</h2><span class="page-subtitle">Admin always has every module</span></div>
+    <form method="post" action="{{ route('accounts.permissions') }}" class="pad-panel">
+        @csrf @method('PUT')
+        <p class="form-text mt-0">Tick a module to show it to that role. Unticked modules disappear from the menu and their pages are blocked. Dashboard, notifications and own profile settings always stay available.</p>
+        <div class="row g-4">
+            @foreach($permissionRoles as $permissionRole => $modules)
+                <div class="col-md-6">
+                    <fieldset>
+                        <legend class="h6">{{ ucfirst($permissionRole) }}</legend>
+                        @foreach($modules as $module => $meta)
+                            @php $fieldId = 'perm_'.$permissionRole.'_'.$module; @endphp
+                            <div class="form-check form-switch mb-2">
+                                <input class="form-check-input" type="checkbox" role="switch" id="{{ $fieldId }}" name="permissions[{{ $permissionRole }}][{{ $module }}]" value="1" @checked($permissions[$permissionRole.'.'.$module] ?? true)>
+                                <label class="form-check-label" for="{{ $fieldId }}"><i class="fas {{ $meta['icon'] }} me-2 text-muted" aria-hidden="true"></i>{{ $meta['label'] }}</label>
+                            </div>
+                        @endforeach
+                    </fieldset>
+                </div>
+            @endforeach
+        </div>
+        <div class="form-actions px-0 pb-0">
+            <button class="btn btn-primary">Save permissions</button>
+        </div>
+    </form>
+</section>
 @endsection

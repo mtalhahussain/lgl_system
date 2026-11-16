@@ -76,12 +76,13 @@ class PayrollController extends Controller
             ['name' => 'kind', 'label' => 'Type', 'options' => $kinds],
             ['name' => 'state', 'label' => 'Status', 'options' => $states],
         ]));
+        // Completed per-student batches not yet paid as a whole batch (monthly-paid batches show and explain on submit).
         $eligibleBatches = $isAdmin ? Batch::with(['teacher:id,name,per_student_amount'])
-            ->whereIn('status', ['ongoing', 'completed'])
+            ->withCount(['enrollments as finished_students' => fn ($query) => $query->whereIn('status', ['active', 'completed'])])
+            ->where('status', 'completed')
             ->whereHas('teacher', fn ($query) => $query->where('salary_type', 'per_student'))
-            // Batches with a pre-monthly whole-batch earning (no period) stay excluded until it is voided.
             ->whereNotIn('id', TeacherDue::whereNotNull('active_key')->where('kind', 'batch')->whereNull('period')->select('batch_id'))
-            ->orderBy('name')->get(['id', 'name', 'teacher_id', 'course_id']) : collect();
+            ->orderByDesc('end_date')->orderBy('name')->get(['id', 'name', 'teacher_id', 'course_id', 'end_date']) : collect();
 
         return view('payroll.index', ['dues' => $list->paginate(), 'kpis' => $kpis, 'filters' => $filters,
             'isAdmin' => $isAdmin, 'eligibleBatches' => $eligibleBatches]);
@@ -111,15 +112,15 @@ class PayrollController extends Controller
         $result = $service->generateMonth($data['period'], $request->user());
 
         return redirect()->route('payroll.index')->with('success', "Salaries: {$result['salaries']['created']} created, {$result['salaries']['skipped']} already existed. "
-            ."Per-student batch earnings: {$result['batches']['created']} created, {$result['batches']['skipped']} skipped (already generated, no students or no rate).");
+            .'Per-student teachers are paid per completed batch below.');
     }
 
     public function storeBatch(Request $request, PayrollService $service)
     {
-        $data = $request->validate(['batch_id' => 'required|integer|exists:batches,id', 'period' => 'required|date_format:Y-m']);
-        $due = $service->generateBatchDue((int) $data['batch_id'], $data['period'], $request->user());
+        $data = $request->validate(['batch_id' => 'required|integer|exists:batches,id']);
+        $due = $service->generateBatchDue((int) $data['batch_id'], $request->user());
 
-        return redirect()->route('payroll.show', $due)->with('success', 'Teacher earning generated for the batch month.');
+        return redirect()->route('payroll.show', $due)->with('success', 'Teacher earning generated for the completed batch.');
     }
 
     public function void(Request $request, TeacherDue $due, PayrollService $service)

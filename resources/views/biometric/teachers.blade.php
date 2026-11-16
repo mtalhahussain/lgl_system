@@ -4,7 +4,7 @@
 <x-list.header title="Attendance" :eyebrow="$tab === 'team' ? 'Teachers & Staff' : ucfirst($tab)" subtitle="Daily machine punches for the selected dates. No punch does not automatically mean absent; payroll is not affected." />
 @include('partials.attendance-tabs')
 <x-list.kpis :items="$kpis" />
-<form method="get" class="panel row g-2 align-items-end mb-4" style="padding:18px 22px">
+<form method="get" class="panel row g-2 align-items-end mb-4 pad-panel">
     @if($tab !== 'team')<input type="hidden" name="tab" value="{{ $tab }}">@endif
     <div class="col-sm-3"><label class="form-label" for="from">From</label><input class="form-control" type="date" id="from" name="from" value="{{ $from }}" required></div>
     <div class="col-sm-3"><label class="form-label" for="to">To</label><input class="form-control" type="date" id="to" name="to" value="{{ $to }}" min="{{ $from }}" required></div>

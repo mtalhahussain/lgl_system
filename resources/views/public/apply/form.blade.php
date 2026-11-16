@@ -23,7 +23,7 @@
             @csrf
 
             {{-- Honeypot: hidden from humans, bots fill it. --}}
-            <div style="position:absolute;left:-9999px;" aria-hidden="true">
+            <div class="hp-field" aria-hidden="true">
                 <label>Website<input type="text" name="website" tabindex="-1" autocomplete="off"></label>
             </div>
 

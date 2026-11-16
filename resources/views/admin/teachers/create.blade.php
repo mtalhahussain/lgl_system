@@ -199,7 +199,7 @@
                             </div>
 
                             <!-- Per Batch Salary Fields -->
-                            <div id="per_batch_salary_fields" class="salary-fields" style="display: none;">
+                            <div id="per_batch_salary_fields" class="salary-fields is-hidden">
                                 <div class="mb-3">
                                     <label for="per_batch_amount" class="form-label">Amount Per Batch *</label>
                                     <div class="input-group">
@@ -216,7 +216,7 @@
                             </div>
 
                             <!-- Per Student Salary Fields -->
-                            <div id="per_student_salary_fields" class="salary-fields" style="display: none;">
+                            <div id="per_student_salary_fields" class="salary-fields is-hidden">
                                 <div class="mb-3">
                                     <label for="per_student_amount" class="form-label">Amount Per Student *</label>
                                     <div class="input-group">
@@ -225,7 +225,7 @@
                                                id="per_student_amount" name="per_student_amount" step="0.01" min="0"
                                                value="{{ old('per_student_amount') }}" disabled>
                                     </div>
-                                    <div class="form-text">Amount teacher will receive per student per month in each batch</div>
+                                    <div class="form-text">Amount teacher will receive per student when each batch is completed</div>
                                     @error('per_student_amount')
                                         <div class="invalid-feedback">{{ $message }}</div>
                                     @enderror

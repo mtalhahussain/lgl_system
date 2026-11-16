@@ -125,7 +125,7 @@
                         <span class="fw-bold">85%</span>
                     </div>
                     <div class="progress mt-1">
-                        <div class="progress-bar bg-success" style="width: 85%"></div>
+                        <div class="progress-bar bg-success w-pct-85"></div>
                     </div>
                 </div>
                 
@@ -135,7 +135,7 @@
                         <span class="fw-bold">92%</span>
                     </div>
                     <div class="progress mt-1">
-                        <div class="progress-bar bg-info" style="width: 92%"></div>
+                        <div class="progress-bar bg-info w-pct-92"></div>
                     </div>
                 </div>
                 
@@ -145,7 +145,7 @@
                         <span class="fw-bold">78%</span>
                     </div>
                     <div class="progress mt-1">
-                        <div class="progress-bar bg-warning" style="width: 78%"></div>
+                        <div class="progress-bar bg-warning w-pct-78"></div>
                     </div>
                 </div>
                 
@@ -155,7 +155,7 @@
                         <span class="fw-bold">96%</span>
                     </div>
                     <div class="progress mt-1">
-                        <div class="progress-bar bg-primary" style="width: 96%"></div>
+                        <div class="progress-bar bg-primary w-pct-96"></div>
                     </div>
                 </div>
             </div>

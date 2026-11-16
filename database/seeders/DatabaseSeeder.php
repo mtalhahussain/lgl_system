@@ -25,6 +25,7 @@ class DatabaseSeeder extends Seeder
         }
         // Seed Settings first
         $this->call(SettingsSeeder::class);
+        $this->call(RolePermissionSeeder::class);
         // Create Admin User
         $admin = User::create([
             'name' => 'System Administrator',

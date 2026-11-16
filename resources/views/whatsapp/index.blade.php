@@ -9,7 +9,7 @@
 <div class="tw:grid tw:grid-cols-1 tw:gap-5 tw:lg:grid-cols-2 tw:mb-6">
     <section class="panel" aria-labelledby="wa-settings">
         <div class="panel-heading"><h2 id="wa-settings">Reminder settings</h2></div>
-        <form method="post" action="{{ route('whatsapp.settings') }}" class="row g-3" style="padding:18px 22px">
+        <form method="post" action="{{ route('whatsapp.settings') }}" class="row g-3 pad-panel">
             @csrf @method('PUT')
             <div class="col-12 form-check form-switch ms-2">
                 <input class="form-check-input" type="checkbox" id="enabled" name="enabled" value="1" @checked(old('enabled', $settings['enabled']))>
@@ -41,11 +41,11 @@
     </section>
     <section class="panel" aria-labelledby="wa-setup">
         <div class="panel-heading"><h2 id="wa-setup">Setup</h2></div>
-        <div style="padding:18px 22px">
+        <div class="pad-panel">
             <ol>
                 <li>In Meta Business Manager create a WhatsApp Business account and add the institute number (WhatsApp Manager → Phone numbers).</li>
                 <li>Create a <strong>Utility</strong> message template named <code>{{ $settings['template'] }}</code> with five body variables, for example:
-                    @verbatim<pre class="mt-2 p-2 bg-light border rounded" style="white-space:pre-wrap">Assalam o Alaikum {{1}}, this is a reminder from {{5}}: your fee installment of {{2}} for {{4}} is due on {{3}}. Please ignore this message if you have already paid.</pre>@endverbatim
+                    @verbatim<pre class="mt-2 p-2 bg-light border rounded ws-pre-wrap">Assalam o Alaikum {{1}}, this is a reminder from {{5}}: your fee installment of {{2}} for {{4}} is due on {{3}}. Please ignore this message if you have already paid.</pre>@endverbatim
                     1 student name · 2 amount · 3 due date · 4 course · batch · 5 institute name. Wait until Meta approves it.</li>
                 <li>Create a System User with a permanent access token (whatsapp_business_messaging permission) and note the Phone number ID.</li>
                 <li>On the server set <code>WHATSAPP_TOKEN</code> and <code>WHATSAPP_PHONE_NUMBER_ID</code> in <code>.env</code>, then run <code>php artisan config:cache</code>. The token is never stored in the database.</li>

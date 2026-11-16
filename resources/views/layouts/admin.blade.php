@@ -42,7 +42,7 @@
                             @if(auth()->user()->isAdmin())<li><a class="dropdown-item" href="{{ route('settings.index') }}"><i class="fas fa-cog me-2"></i>Settings</a></li>@endif
                             <li><hr class="dropdown-divider"></li>
                             <li>
-                                <form method="POST" action="{{ route('logout') }}" style="display: inline;">
+                                <form method="POST" action="{{ route('logout') }}" class="d-inline">
                                     @csrf
                                     <button type="submit" class="dropdown-item">
                                         <i class="fas fa-sign-out-alt me-2"></i>Logout
@@ -88,34 +88,44 @@
                                     <i class="fas fa-tachometer-alt me-2"></i>Dashboard
                                 </a>
                             </li>
+                            @if(module_visible('timetable'))
                             <li class="nav-item">
                                 <a class="nav-link {{ request()->routeIs('student.timetable') ? 'active' : '' }}"
                                    href="{{ route('student.timetable') }}">
                                     <i class="fas fa-calendar-week me-2"></i>My Timetable
                                 </a>
                             </li>
+                            @endif
+                            @if(module_visible('attendance'))
                             <li class="nav-item">
                                 <a class="nav-link {{ request()->routeIs('student.attendance') ? 'active' : '' }}"
                                    href="{{ route('student.attendance') }}">
                                     <i class="fas fa-clipboard-check me-2"></i>My Attendance
                                 </a>
                             </li>
+                            @endif
+                            @if(module_visible('results'))
                             <li class="nav-item"><a class="nav-link {{ request()->is('student/results*') ? 'active' : '' }}" href="{{ route('student.results') }}"><i class="fas fa-clipboard-check me-2" aria-hidden="true"></i>My Result</a></li>
+                            @endif
+                            @if(module_visible('profile'))
                             <li class="nav-item">
                                 <a class="nav-link {{ request()->is('students/' . auth()->id()) ? 'active' : '' }}" 
                                    href="{{ route('students.show', auth()->user()) }}">
                                     <i class="fas fa-user me-2"></i>My Profile
                                 </a>
                             </li>
+                            @endif
+                            @if(module_visible('fees'))
                             <li class="nav-item">
                                 <a class="nav-link {{ request()->is('fees/student/' . auth()->id()) ? 'active' : '' }}" 
                                    href="{{ route('fees.student', auth()->user()) }}">
                                     <i class="fas fa-money-bill-wave me-2"></i>My Fees
                                 </a>
                             </li>
+                            @endif
                         @endif
                         
-                        @if(auth()->user()->isAdmin() || auth()->user()->isTeacher())
+                        @if((auth()->user()->isAdmin() || auth()->user()->isTeacher()) && module_visible('students'))
                         <!-- Student Management -->
                         <li class="nav-item">
                             <a class="nav-link {{ request()->is('students*') ? 'active' : '' }}" 
@@ -148,22 +158,28 @@
                         @endif
                         
                         @if(auth()->user()->isAdmin() || auth()->user()->isTeacher())
+                        @if(module_visible('class_sessions'))
                         <li class="nav-item"><a class="nav-link {{ request()->is('class-sessions*') ? 'active' : '' }}" href="{{ route('class-sessions.index') }}"><i class="fas fa-calendar-alt me-2" aria-hidden="true"></i>Class Sessions</a></li>
+                        @endif
                         <!-- Course Management -->
+                        @if(module_visible('courses'))
                         <li class="nav-item">
                             <a class="nav-link {{ request()->is('courses*') ? 'active' : '' }}" 
                                href="{{ url('/courses') }}">
                                 <i class="fas fa-book me-2"></i>{{ auth()->user()->isTeacher() ? 'View Courses' : 'Courses' }}
                             </a>
                         </li>
+                        @endif
                         
                         <!-- Batch Management -->
+                        @if(module_visible('batches'))
                         <li class="nav-item">
                             <a class="nav-link {{ request()->is('batches*') ? 'active' : '' }}" 
                                href="{{ url('/batches') }}">
                                 <i class="fas fa-layer-group me-2"></i>{{ auth()->user()->isTeacher() ? 'My Batches' : 'Batches' }}
                             </a>
                         </li>
+                        @endif
                         @endif
                         
                         @if(auth()->user()->isAdmin())
@@ -177,7 +193,7 @@
 
                         @endif
 
-                        @if(auth()->user()->isAdmin() || auth()->user()->isTeacher())
+                        @if((auth()->user()->isAdmin() || auth()->user()->isTeacher()) && module_visible('payroll'))
                         <li class="nav-item">
                             <a class="nav-link {{ request()->is('payroll*') ? 'active' : '' }}" href="{{ route('payroll.index') }}">
                                 <i class="fas fa-hand-holding-usd me-2"></i>{{ auth()->user()->isTeacher() ? 'My Earnings' : 'Payroll' }}
@@ -185,7 +201,7 @@
                         </li>
                         @endif
                         
-                        @if(auth()->user()->isAdmin() || auth()->user()->isTeacher())
+                        @if((auth()->user()->isAdmin() || auth()->user()->isTeacher()) && module_visible('attendance'))
                         <!-- Attendance Management -->
                         <li class="nav-item">
                             <a class="nav-link {{ request()->is('attendance*') || request()->is('biometric/teachers') ? 'active' : '' }}"
@@ -199,7 +215,7 @@
                         <li class="nav-item"><a class="nav-link {{ request()->is('certificates*') ? 'active' : '' }}" href="{{ route('certificates.index') }}"><i class="fas fa-award me-2" aria-hidden="true"></i>Certificates</a></li>
                         @endif
 
-                        @if(auth()->user()->isAdmin() || auth()->user()->isTeacher())
+                        @if((auth()->user()->isAdmin() || auth()->user()->isTeacher()) && module_visible('exams'))
                         <li class="nav-item"><a class="nav-link {{ request()->is('exams*') ? 'active' : '' }}" href="{{ route('exams.index') }}"><i class="fas fa-clipboard-list me-2" aria-hidden="true"></i>Exams</a></li>
                         @endif
 

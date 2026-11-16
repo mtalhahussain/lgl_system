@@ -25,7 +25,7 @@
                     <td>{{ $batch->teacher?->name ?? 'Not assigned' }}</td>
                     <td>{{ $batch->start_date->format('d M Y') }}@if($batch->end_date)<span class="cell-sub">to {{ $batch->end_date->format('d M Y') }}</span>@endif</td>
                     <td>{{ $batch->active_enrollments_count }} / {{ $batch->max_students }}
-                        <div class="balance-bar mt-1" style="max-width:90px" aria-hidden="true"><span style="width:{{ $batch->max_students ? min(100, round(100 * $batch->active_enrollments_count / $batch->max_students)) : 0 }}%"></span></div></td>
+                        <div class="balance-bar mt-1 max-w-90" aria-hidden="true"><span class="{{ pct_class($batch->max_students ? 100 * $batch->active_enrollments_count / $batch->max_students : 0) }}"></span></div></td>
                     <td><x-list.status :value="$batch->status" /></td>
                     <td><i class="fas {{ $batch->meeting_platform === 'in_person' ? 'fa-users' : 'fa-video' }} me-1 text-muted" aria-hidden="true"></i>{{ $platforms[$batch->meeting_platform] ?? $batch->meeting_platform }}</td>
                     <td class="text-end">

@@ -48,7 +48,7 @@
                         <div class="form-text">Search by student name or course name</div>
                     </div>
 
-                    <div id="enrollmentDetails" class="alert alert-info" style="display: none;">
+                    <div id="enrollmentDetails" class="alert alert-info is-hidden">
                         <h6><i class="fas fa-info-circle me-2"></i>Enrollment Details</h6>
                         <p><strong>Student:</strong> <span id="studentName"></span></p>
                         <p><strong>Course:</strong> <span id="courseName"></span></p>
@@ -69,7 +69,7 @@
                         </select>
                     </div>
 
-                    <div class="mb-3" id="installmentCountDiv" style="display: none;">
+                    <div class="mb-3 is-hidden" id="installmentCountDiv">
                         <label class="form-label">Number of Installments</label>
                         <select name="number_of_installments" id="numberOfInstallments" class="form-select">
                             <option value="2">2 Installments</option>
@@ -101,7 +101,7 @@
                                 </div>
                             </h6>
 
-                            <div id="firstPaymentDetails" style="{{ old('first_payment') ? 'display: block;' : 'display: none;' }}">
+                            <div id="firstPaymentDetails" class="{{ old('first_payment') ? '' : 'is-hidden' }}">
                                 <div class="row">
                                     <div class="col-md-4">
                                         <div class="mb-3">
@@ -145,7 +145,7 @@
             </div>
 
             <!-- Preview Section -->
-            <div id="installmentPreview" class="mt-4" style="display: none;">
+            <div id="installmentPreview" class="mt-4 is-hidden">
                 <div class="card">
                     <div class="card-header">
                         <h6 class="card-title mb-0">

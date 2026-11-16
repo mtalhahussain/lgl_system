@@ -16,6 +16,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Certificate {{ $cert->certificate_number }}</title>
     <style>
+        .revoked-overlay { position:absolute; top:0; left:0; right:0; bottom:0; display:flex; align-items:center; justify-content:center; pointer-events:none; }
+        .revoked-stamp { border:6px solid #c0202a; color:#c0202a; font-size:54pt; font-weight:700; letter-spacing:6pt; padding:6mm 16mm; transform:rotate(-18deg); opacity:.75; }
+        .revoked-reason { position:absolute; bottom:3mm; left:10mm; font-size:8pt; color:#c0202a; }
         @page { size: A4 landscape; margin: 0; }
         * { box-sizing: border-box; }
         html, body { margin: 0; padding: 0; }
@@ -66,10 +69,10 @@
         </div>
         <div class="cert-number">{{ $cert->certificate_number }}</div>
         @if($cert->isRevoked())
-            <div style="position:absolute;top:0;left:0;right:0;bottom:0;display:flex;align-items:center;justify-content:center;pointer-events:none">
-                <span style="border:6px solid #c0202a;color:#c0202a;font-size:54pt;font-weight:700;letter-spacing:6pt;padding:6mm 16mm;transform:rotate(-18deg);opacity:.75">REVOKED</span>
+            <div class="revoked-overlay">
+                <span class="revoked-stamp">REVOKED</span>
             </div>
-            <div style="position:absolute;bottom:3mm;left:10mm;font-size:8pt;color:#c0202a">Revoked: {{ $cert->revoke_reason }}</div>
+            <div class="revoked-reason">Revoked: {{ $cert->revoke_reason }}</div>
         @endif
     </div>
 </body>

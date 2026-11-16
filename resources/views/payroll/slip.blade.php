@@ -16,8 +16,8 @@
             'Due amount' => isset($details['due_amount']) ? ($details['currency_code'] ?? 'PKR').' '.number_format((float) $details['due_amount'], 2) : null,
             'Method' => \App\Services\PayrollService::METHODS[$payout->method] ?? $payout->method, 'Reference' => $payout->reference]" />
     @if(auth()->user()->isAdmin() && ! $payout->reversal)
-        <details class="panel mt-4 d-print-none" style="padding:16px 22px">
-            <summary class="fw-semibold" style="cursor:pointer">Reverse this payout</summary>
+        <details class="panel mt-4 d-print-none pad-panel-sm">
+            <summary class="fw-semibold cursor-pointer">Reverse this payout</summary>
             <form class="mt-3" method="post" action="{{ route('payroll.reverse', $payout) }}" data-confirm="Reverse this payout and restore the outstanding amount?">
                 @csrf
                 <label class="form-label" for="reason">Reversal reason</label>

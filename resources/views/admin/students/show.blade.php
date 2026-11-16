@@ -29,7 +29,7 @@
             <div class="card-body">
                 <div class="text-center mb-3">
                     <div class="avatar avatar-xl mb-3">
-                        <span class="badge bg-primary rounded-circle" style="font-size: 2rem; padding: 1rem;">
+                        <span class="badge bg-primary rounded-circle avatar-badge-lg">
                             {{ substr($student->name, 0, 1) }}
                         </span>
                     </div>
@@ -155,8 +155,8 @@
                                             @php
                                                 $progress = $enrollment->progress ?? 0;
                                             @endphp
-                                            <div class="progress" style="width: 100px;">
-                                                <div class="progress-bar" style="width: {{ $progress }}%">
+                                            <div class="progress w-100px">
+                                                <div class="progress-bar {{ pct_class($progress) }}">
                                                     {{ $progress }}%
                                                 </div>
                                             </div>

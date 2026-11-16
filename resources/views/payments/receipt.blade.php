@@ -26,7 +26,7 @@
         :rows="['Received from' => $student, 'Course' => $details['course_name'] ?? null, 'Batch' => $details['batch_name'] ?? 'Historical details unavailable',
             'Method' => ucfirst($payment->method), 'Reference' => $payment->reference]">
         @if($payment->allocations->isNotEmpty())
-            <div style="padding:0 28px 18px">
+            <div class="pad-receipt">
                 <h2 class="h6 mb-2">Applied to installments</h2>
                 <table class="table table-sm mb-0">
                     <thead><tr><th scope="col">Installment due date</th><th scope="col" class="num">Allocated</th></tr></thead>
@@ -40,8 +40,8 @@
         @endif
     </x-show.document>
     @if($isAdmin && ! $payment->reversal && ! $payment->legacy_source)
-        <details class="panel mt-4 d-print-none" style="padding:16px 22px">
-            <summary class="fw-semibold" style="cursor:pointer">{{ $packagePart ? 'Reverse entire package payment' : 'Reverse this payment' }}</summary>
+        <details class="panel mt-4 d-print-none pad-panel-sm">
+            <summary class="fw-semibold cursor-pointer">{{ $packagePart ? 'Reverse entire package payment' : 'Reverse this payment' }}</summary>
             <form class="mt-3" method="post" action="{{ route('payments.reverse', $payment) }}" data-confirm="{{ $packagePart ? 'Reverse both package module payments and restore both outstanding balances?' : 'Reverse this payment and restore its outstanding balance?' }}">
                 @csrf
                 <label class="form-label" for="reason">Reversal reason</label>

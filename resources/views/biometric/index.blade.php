@@ -37,7 +37,7 @@
                 <h2 id="device-{{ $device->id }}">{{ $device->name }} @unless($device->is_active)<span class="status-pill tone-muted">Inactive</span>@endunless</h2>
                 <span class="status-pill {{ $overall[0] }}">{{ $overall[1] }}</span>
             </div>
-            <div style="padding:18px 22px">
+            <div class="pad-panel">
                 {{-- Connection check: three traffic-lights the Admin can read without opening the bridge PC's log file. --}}
                 <div class="conn-grid">
                     @foreach($h['checks'] as $c)
@@ -94,8 +94,8 @@
                         <li>Use an always-on Windows PC on the same network as the machine. Create the folder <code>C:\LGL</code>.</li>
                         <li>Download <a href="{{ route('biometric.bridge-script') }}">hikvision-bridge.ps1</a> and <a href="{{ route('biometric.bridge-config', $device) }}">this machine's config file</a> into that folder.</li>
                         <li>Open the config file in Notepad and set <code>DeviceUrl</code> (for example <code>http://192.168.1.64</code>), <code>DeviceUser</code> and <code>DevicePassword</code> of the machine's admin account. The password stays on that PC only.</li>
-                        <li>Test once in PowerShell: <code class="text-wrap" style="white-space:normal">powershell -NoProfile -ExecutionPolicy Bypass -File C:\LGL\hikvision-bridge.ps1 -Config C:\LGL\hikvision-bridge-{{ $device->id }}.json</code> and check the .log file next to it.</li>
-                        <li>Run it every minute (Command Prompt as administrator): <code class="text-wrap" style="white-space:normal">schtasks /Create /SC MINUTE /MO 1 /TN "LGL Hikvision Bridge" /RU SYSTEM /TR "powershell -NoProfile -ExecutionPolicy Bypass -File C:\LGL\hikvision-bridge.ps1 -Config C:\LGL\hikvision-bridge-{{ $device->id }}.json"</code></li>
+                        <li>Test once in PowerShell: <code class="text-wrap ws-normal">powershell -NoProfile -ExecutionPolicy Bypass -File C:\LGL\hikvision-bridge.ps1 -Config C:\LGL\hikvision-bridge-{{ $device->id }}.json</code> and check the .log file next to it.</li>
+                        <li>Run it every minute (Command Prompt as administrator): <code class="text-wrap ws-normal">schtasks /Create /SC MINUTE /MO 1 /TN "LGL Hikvision Bridge" /RU SYSTEM /TR "powershell -NoProfile -ExecutionPolicy Bypass -File C:\LGL\hikvision-bridge.ps1 -Config C:\LGL\hikvision-bridge-{{ $device->id }}.json"</code></li>
                         <li>On the machine, open each synced user and enroll their face and fingerprint.</li>
                     </ol>
                     <div class="d-flex flex-wrap gap-2">
@@ -104,7 +104,7 @@
                 </details>
                 <details class="mb-3">
                     <summary class="fw-semibold">Setup steps on the machine</summary>
-                    <ol class="mt-2 mb-0">@foreach($steps[$device->id] as $step)<li><code class="text-wrap" style="white-space:normal">{{ $step }}</code></li>@endforeach</ol>
+                    <ol class="mt-2 mb-0">@foreach($steps[$device->id] as $step)<li><code class="text-wrap ws-normal">{{ $step }}</code></li>@endforeach</ol>
                     <p class="form-text mb-0">Keep this URL private: anyone with it can send punches.</p>
                 </details>
                 <details>
@@ -126,7 +126,7 @@
     @endforeach
     <section class="panel" aria-labelledby="add-device">
         <div class="panel-heading"><h2 id="add-device">Add machine</h2></div>
-        <form method="post" action="{{ route('biometric.store') }}" class="row g-2 align-items-end" style="padding:18px 22px">
+        <form method="post" action="{{ route('biometric.store') }}" class="row g-2 align-items-end pad-panel">
             @csrf
             <div class="col-sm-6"><label class="form-label" for="name">Name</label><input class="form-control" id="name" name="name" placeholder="Main gate" maxlength="100" value="{{ old('name') }}" required></div>
             <div class="col-sm-6"><label class="form-label" for="timezone">Machine time zone</label><input class="form-control" id="timezone" name="timezone" value="{{ old('timezone', config('app.timezone')) }}" required></div>

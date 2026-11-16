@@ -97,15 +97,15 @@
     <div class="tw:flex tw:flex-col tw:gap-5">
         <section class="panel" aria-labelledby="details-heading">
             <div class="panel-heading"><h2 id="details-heading">Details</h2></div>
-            <div style="padding:6px 22px 14px">
+            <div class="pad-panel-body">
                 <div class="finance-row"><span>Course</span><strong>{{ $classSession->batch->course?->name }}</strong></div>
                 <div class="finance-row"><span>Batch</span><strong>{{ $classSession->batch->name }}</strong></div>
-                @if($classSession->description)<p class="mt-3 mb-0" style="font-size:13px;white-space:pre-line">{{ $classSession->description }}</p>@endif
+                @if($classSession->description)<p class="mt-3 mb-0 text-pre-line-sm">{{ $classSession->description }}</p>@endif
             </div>
         </section>
         @if(!$cancelled && !$classSession->teaching_status)
-            <details class="panel d-print-none" style="padding:16px 22px">
-                <summary class="fw-semibold" style="cursor:pointer">Cancel this session</summary>
+            <details class="panel d-print-none pad-panel-sm">
+                <summary class="fw-semibold cursor-pointer">Cancel this session</summary>
                 <form class="mt-3" method="post" action="{{ route('class-sessions.destroy', $classSession) }}" data-confirm="Cancel this session? Attendance history will be preserved.">
                     @csrf @method('DELETE')
                     <p class="form-text">Attendance already marked stays on record.</p>

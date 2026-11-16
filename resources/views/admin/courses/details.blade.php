@@ -23,7 +23,7 @@
     <div class="tw:flex tw:flex-col tw:gap-5">
         <section class="panel" aria-labelledby="fees-heading">
             <div class="panel-heading"><h2 id="fees-heading">Fees</h2></div>
-            <div style="padding:6px 22px 14px">
+            <div class="pad-panel-body">
                 <div class="finance-row"><span>Default course fee</span><strong>{{ currency_format($course->total_fee) }}</strong></div>
                 <div class="finance-row"><span>Teacher amount per student</span><strong>{{ currency_format($course->teacher_per_student_amount) }}</strong></div>
                 <p class="form-text mb-0 mt-2">Fee changes apply to new admissions only.</p>
@@ -32,7 +32,7 @@
         @if($course->description)
             <section class="panel" aria-labelledby="about-heading">
                 <div class="panel-heading"><h2 id="about-heading">About</h2></div>
-                <p style="padding:16px 22px;margin:0;font-size:13px;white-space:pre-line">{{ $course->description }}</p>
+                <p class="panel-prose">{{ $course->description }}</p>
             </section>
         @endif
     </div>

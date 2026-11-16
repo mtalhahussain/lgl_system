@@ -18,6 +18,8 @@
     <style>
         :root { --lgl-black:#111; --lgl-red:#c8102e; --lgl-gold:#d4af37; }
         body { background:#f4f4f5; color:var(--lgl-black); min-height:100vh; }
+        .hp-field { position:absolute; left:-9999px; }
+        .thanks-icon { font-size:3rem; color:var(--lgl-gold); }
         .apply-top { background:var(--lgl-black); color:#fff; }
         .apply-top .brand { display:flex; align-items:center; gap:.6rem; font-weight:700; letter-spacing:.02em; }
         .apply-top .brand img, .apply-top .brand .brand-logo { height:34px; width:34px; object-fit:contain; border-radius:6px; background:#fff; color:var(--lgl-red); display:inline-flex; align-items:center; justify-content:center; font-weight:800; }

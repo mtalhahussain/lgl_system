@@ -7,14 +7,14 @@
      data-csrf="{{ csrf_token() }}">
     <a class="nav-link position-relative" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false" title="Notifications" aria-label="Notifications">
         <i class="fas fa-bell"></i>
-        <span class="badge rounded-pill bg-danger position-absolute top-0 start-100 translate-middle d-none" id="notifCount" style="font-size:.6rem;">0</span>
+        <span class="badge rounded-pill bg-danger position-absolute top-0 start-100 translate-middle d-none fs-06rem" id="notifCount">0</span>
     </a>
-    <div class="dropdown-menu dropdown-menu-end shadow" style="width:340px;max-width:92vw;">
+    <div class="dropdown-menu dropdown-menu-end shadow notif-menu">
         <div class="d-flex align-items-center justify-content-between px-3 py-2 border-bottom">
             <strong class="small text-uppercase text-muted">Notifications</strong>
             <button type="button" class="btn btn-link btn-sm p-0 text-decoration-none" id="notifReadAll">Mark all read</button>
         </div>
-        <div id="notifList" style="max-height:60vh;overflow-y:auto;">
+        <div id="notifList" class="notif-list">
             <div class="text-center text-muted small py-4">Loading…</div>
         </div>
         <a href="{{ route('notifications.index') }}" class="dropdown-item text-center small border-top py-2">View all</a>
@@ -50,14 +50,14 @@
         }
         listEl.innerHTML = items.map(function (n) {
             const color = levelColor[n.level] || 'secondary';
-            const unread = n.read ? '' : 'background:rgba(13,110,253,.06);';
+            const unread = n.read ? '' : ' notif-unread';
             const href = n.url || '#';
-            return '<a href="' + href + '" class="d-flex gap-2 px-3 py-2 text-decoration-none text-body border-bottom notif-item" data-id="' + n.id + '" style="' + unread + '">'
+            return '<a href="' + href + '" class="d-flex gap-2 px-3 py-2 text-decoration-none text-body border-bottom notif-item' + unread + '" data-id="' + n.id + '">'
                  + '<span class="text-' + color + '"><i class="fas ' + (n.icon || 'fa-bell') + '"></i></span>'
                  + '<span class="flex-grow-1 small"><span class="fw-semibold d-block">' + esc(n.title) + '</span>'
                  + '<span class="text-muted">' + esc(n.body) + '</span>'
-                 + '<span class="text-muted d-block" style="font-size:.7rem;">' + esc(n.time) + '</span></span>'
-                 + (n.read ? '' : '<span class="badge bg-' + color + ' align-self-start" style="font-size:.5rem;">new</span>')
+                 + '<span class="text-muted d-block fs-07rem">' + esc(n.time) + '</span></span>'
+                 + (n.read ? '' : '<span class="badge bg-' + color + ' align-self-start fs-05rem">new</span>')
                  + '</a>';
         }).join('');
         listEl.querySelectorAll('.notif-item').forEach(function (el) {

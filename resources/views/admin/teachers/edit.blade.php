@@ -224,8 +224,8 @@
                         <span class="text-muted">Active Batches</span>
                         <span class="badge bg-primary">{{ $teacher->batches()->where('status', 'active')->count() }}</span>
                     </div>
-                    <div class="progress" style="height: 6px;">
-                        <div class="progress-bar bg-primary" style="width: {{ $teacher->batches()->where('status', 'active')->count() * 20 }}%"></div>
+                    <div class="progress progress-h-6">
+                        <div class="progress-bar bg-primary {{ pct_class($teacher->batches()->where('status', 'active')->count() * 20) }}"></div>
                     </div>
                 </div>
 
@@ -234,8 +234,8 @@
                         <span class="text-muted">Total Students</span>
                         <span class="badge bg-success">{{ $teacher->batches()->withCount('activeEnrollments')->get()->sum('active_enrollments_count') }}</span>
                     </div>
-                    <div class="progress" style="height: 6px;">
-                        <div class="progress-bar bg-success" style="width: {{ min($teacher->batches()->withCount('activeEnrollments')->get()->sum('active_enrollments_count') * 5, 100) }}%"></div>
+                    <div class="progress progress-h-6">
+                        <div class="progress-bar bg-success {{ pct_class($teacher->batches()->withCount('activeEnrollments')->get()->sum('active_enrollments_count') * 5) }}"></div>
                     </div>
                 </div>
 
@@ -244,8 +244,8 @@
                         <span class="text-muted">Years Experience</span>
                         <span class="badge bg-info">{{ $teacher->experience_years ?? 0 }}</span>
                     </div>
-                    <div class="progress" style="height: 6px;">
-                        <div class="progress-bar bg-info" style="width: {{ min(($teacher->experience_years ?? 0) * 3.33, 100) }}%"></div>
+                    <div class="progress progress-h-6">
+                        <div class="progress-bar bg-info {{ pct_class(($teacher->experience_years ?? 0) * 3.33) }}"></div>
                     </div>
                 </div>
 

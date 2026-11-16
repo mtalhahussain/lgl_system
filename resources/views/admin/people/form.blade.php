@@ -62,12 +62,12 @@
         </div>
         <div class="form-section">
             <h2 class="form-section-title">Pay</h2>
-            <p class="form-section-note">Monthly per-student pay is this teacher's rate × students in each assigned batch. The same rate applies to all their batches. Changes apply only to dues generated afterwards.</p>
+            <p class="form-section-note">Per-student pay is this teacher's rate × students who completed each assigned batch, paid once when the batch is completed. The same rate applies to all their batches. Changes apply only to dues generated afterwards.</p>
             <div class="row g-3">
                 <div class="col-md-6">
                     <label class="form-label required" for="salary_type">Pay type</label>
                     <select class="form-select" id="salary_type" name="salary_type" required>
-                        @foreach(['monthly' => 'Fixed monthly salary', 'per_student' => 'Per student per month'] as $value => $label)
+                        @foreach(['monthly' => 'Fixed monthly salary', 'per_student' => 'Per student per batch'] as $value => $label)
                             <option value="{{ $value }}" @selected(old('salary_type', $person?->salary_type === 'per_student' ? 'per_student' : 'monthly') === $value)>{{ $label }}</option>
                         @endforeach
                     </select>
@@ -78,9 +78,9 @@
                     <div class="form-text" id="monthly_salary_help">Used only for fixed-salary teachers.</div>
                 </div>
                 <div class="col-md-6" id="per_student_amount_group" @if(old('salary_type', $person?->salary_type) !== 'per_student') hidden @endif>
-                    <label class="form-label required" for="per_student_amount">Amount per student per month</label>
+                    <label class="form-label required" for="per_student_amount">Amount per student per batch</label>
                     <input class="form-control @error('per_student_amount') is-invalid @enderror" id="per_student_amount" name="per_student_amount" type="number" min="0.01" step="0.01" max="99999999.99" value="{{ old('per_student_amount', $person?->per_student_amount) }}" aria-describedby="per_student_amount_help" @required(old('salary_type', $person?->salary_type) === 'per_student') @disabled(old('salary_type', $person?->salary_type) !== 'per_student')>
-                    <div class="form-text" id="per_student_amount_help">Monthly pay per batch = rate × students. Each batch is paid separately.</div>
+                    <div class="form-text" id="per_student_amount_help">Batch pay = rate × students in the batch, generated once the batch is completed.</div>
                     @error('per_student_amount')<div class="invalid-feedback">{{ $message }}</div>@enderror
                 </div>
             </div>

@@ -34,7 +34,7 @@ class StaffTest extends TestCase
 
     public function test_admin_adds_staff_who_is_listed_in_users_but_cannot_sign_in(): void
     {
-        $this->get('/accounts')->assertOk()->assertSee('Add staff')->assertSee(route('staff.create'), false);
+        $this->get('/accounts')->assertOk()->assertSee('Add user')->assertSee(route('accounts.create'), false);
         $this->get('/staff/create')->assertOk()->assertSee('Receptionist')->assertSee('Back to Users');
         $this->post('/staff', ['name' => 'No Job', 'phone' => '0300', 'monthly_salary' => ''])->assertSessionHasErrors(['designation', 'monthly_salary']);
 

@@ -2,7 +2,7 @@
 @section('title', 'Student Dashboard')
 @section('content')
 <div class="page-heading"><div><div class="eyebrow">YOUR WORKSPACE</div><h1>Student Dashboard</h1><p class="page-subtitle">Stay connected with your classes and learning progress.</p></div><span class="status-pill">{{ now()->format('d M Y') }}</span></div>
-<p class="panel" style="padding:20px;margin-bottom:24px">Attendance: {{ $attendance['attendance_rate'] === null ? 'No marked classes' : $attendance['attendance_rate'].'%' }}. Unmarked sessions through today: {{ $unmarked }}.</p>
+<p class="panel panel-note">Attendance: {{ $attendance['attendance_rate'] === null ? 'No marked classes' : $attendance['attendance_rate'].'%' }}. Unmarked sessions through today: {{ $unmarked }}.</p>
 <section class="panel tw:mb-6"><div class="panel-heading"><h2>Enrollment History</h2></div><ul class="list-group list-group-flush">
     @forelse($enrollments as $enrollment)<li class="list-group-item">{{ $enrollment->batch->course->name }} — {{ $enrollment->batch->name }} ({{ $enrollment->status }}); outstanding {{ currency_format($enrollment->remaining_fee) }}
         @if($enrollment->status === 'active' && $enrollment->batch->meeting_link)<a href="{{ $enrollment->batch->meeting_link }}" rel="noopener noreferrer">Batch meeting</a>@endif

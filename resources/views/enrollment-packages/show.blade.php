@@ -18,7 +18,7 @@
         :rows="['Received from' => $details['student_name'], 'Student reference' => $details['student_reference'], 'Normal fees' => isset($details['gross_total']) ? $currency.' '.number_format($details['gross_total'], 2) : null, 'Package discount' => isset($details['discount_total']) ? $currency.' '.number_format($details['discount_total'], 2) : null, 'Payment' => $full ? 'Full advance payment' : ($details['installments'].' monthly installments per level'), 'Method' => $full ? ucfirst($package->method) : null, 'Reference' => $package->reference]">
         <div class="p-4 table-responsive">
             <h2 class="h6">Module allocation</h2>
-            <table class="table" style="min-width:720px">
+            <table class="table min-w-720">
                 <thead><tr><th scope="col">Module / batch</th><th scope="col">Dates</th><th scope="col" class="num">Normal fee</th><th scope="col" class="num">Discount</th><th scope="col" class="num">{{ $full ? 'Paid allocation' : 'Package share' }}</th></tr></thead>
                 <tbody>
                 @foreach($details['modules'] as $module)

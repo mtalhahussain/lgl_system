@@ -8,7 +8,7 @@
     @endif
 </div>
 
-<section class="panel" style="padding:14px 18px">
+<section class="panel pad-compact">
     <div>{{ $exam->batch->name }} &middot; Level {{ $exam->batch->course->level }} &middot; {{ $exam->exam_date->format('d M Y') }} &middot; {{ ucfirst($exam->type) }}</div>
 </section>
 
@@ -32,7 +32,7 @@
                     @php $m = $marks?->get($section->id); @endphp
                     <td><input class="form-control form-control-sm" type="number" step="0.01" min="0" max="{{ $section->max_marks }}"
                                form="res-{{ $student->id }}" name="marks[{{ $section->id }}]" value="{{ $m?->marks_obtained }}"
-                               aria-label="{{ $student->name }} – {{ $section->name }} marks" style="width:5.5rem"
+                               aria-label="{{ $student->name }} – {{ $section->name }} marks" class="w-5-5rem"
                                @class(['is-invalid' => $m && ! $m->passed])></td>
                 @endforeach
                 <td>

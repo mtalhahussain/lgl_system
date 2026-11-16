@@ -253,7 +253,7 @@
                             <span>{{ $present }} ({{ round(($present / $total) * 100, 1) }}%)</span>
                         </div>
                         <div class="progress mb-2">
-                            <div class="progress-bar bg-success" style="width: {{ ($present / $total) * 100 }}%"></div>
+                            <div class="progress-bar bg-success {{ pct_class(($present / $total) * 100) }}"></div>
                         </div>
                     </div>
 
@@ -263,7 +263,7 @@
                             <span>{{ $late }} ({{ round(($late / $total) * 100, 1) }}%)</span>
                         </div>
                         <div class="progress mb-2">
-                            <div class="progress-bar bg-warning" style="width: {{ ($late / $total) * 100 }}%"></div>
+                            <div class="progress-bar bg-warning {{ pct_class(($late / $total) * 100) }}"></div>
                         </div>
                     </div>
 
@@ -273,7 +273,7 @@
                             <span>{{ $absent }} ({{ round(($absent / $total) * 100, 1) }}%)</span>
                         </div>
                         <div class="progress mb-2">
-                            <div class="progress-bar bg-danger" style="width: {{ ($absent / $total) * 100 }}%"></div>
+                            <div class="progress-bar bg-danger {{ pct_class(($absent / $total) * 100) }}"></div>
                         </div>
                     </div>
 
@@ -284,7 +284,7 @@
                                 <span>{{ $excused }} ({{ round(($excused / $total) * 100, 1) }}%)</span>
                             </div>
                             <div class="progress mb-2">
-                                <div class="progress-bar bg-info" style="width: {{ ($excused / $total) * 100 }}%"></div>
+                                <div class="progress-bar bg-info {{ pct_class(($excused / $total) * 100) }}"></div>
                             </div>
                         </div>
                     @endif
@@ -315,9 +315,8 @@
                                     {{ $rate }}%
                                 </span>
                             </div>
-                            <div class="progress mb-1" style="height: 8px;">
-                                <div class="progress-bar bg-{{ $rate >= 80 ? 'success' : ($rate >= 60 ? 'warning' : 'danger') }}" 
-                                     style="width: {{ $rate }}%"></div>
+                            <div class="progress mb-1 progress-h-8">
+                                <div class="progress-bar bg-{{ $rate >= 80 ? 'success' : ($rate >= 60 ? 'warning' : 'danger') }} {{ pct_class($rate) }}"></div>
                             </div>
                             <small class="text-muted">{{ $month->present + $month->late }}/{{ $month->total }} classes</small>
                         </div>

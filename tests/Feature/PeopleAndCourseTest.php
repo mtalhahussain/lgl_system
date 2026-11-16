@@ -114,7 +114,7 @@ class PeopleAndCourseTest extends TestCase
         $this->post('/teachers', $data + ['per_student_amount' => '1000.25'])->assertRedirect('/teachers');
         $teacher = User::where('email', $data['email'])->sole();
         $this->assertSame('1000.25', $teacher->per_student_amount);
-        $this->get('/teachers/'.$teacher->id.'/edit')->assertOk()->assertSee('Amount per student per month');
+        $this->get('/teachers/'.$teacher->id.'/edit')->assertOk()->assertSee('Amount per student per batch');
         $this->putJson('/teachers/'.$teacher->id, $data)->assertUnprocessable()->assertJsonValidationErrors('per_student_amount');
         $this->put('/teachers/'.$teacher->id, $data + ['per_student_amount' => '1200.50'])->assertRedirect();
         $this->assertSame('1200.50', $teacher->fresh()->per_student_amount);

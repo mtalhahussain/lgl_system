@@ -45,3 +45,24 @@ if (!function_exists('currency_symbol')) {
         return setting('currency_symbol', 'Rs.');
     }
 }
+if (!function_exists('pct_class')) {
+    /**
+     * Compiled width class (w-pct-0 … w-pct-100) replacing inline style="width:N%", which hosting may block.
+     */
+    function pct_class($value): string
+    {
+        $value = is_numeric($value) ? (float) $value : 0.0;
+
+        return 'w-pct-'.(int) max(0, min(100, round($value)));
+    }
+}
+
+if (!function_exists('module_visible')) {
+    /**
+     * Whether the signed-in user's role may see a portal module (Users > Role permissions). Admin sees everything.
+     */
+    function module_visible(string $module): bool
+    {
+        return \App\Models\RolePermission::allows(auth()->user(), $module);
+    }
+}

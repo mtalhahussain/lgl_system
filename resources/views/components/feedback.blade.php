@@ -8,7 +8,7 @@
         @php($shown[] = session($key))
         <div class="alert alert-{{ $variant }} alert-dismissible fade show d-flex align-items-baseline {{ $spacing }}" role="alert">
             <i class="fas {{ $icon }} me-2 flex-shrink-0" aria-hidden="true"></i>
-            <div class="flex-grow-1" style="min-width:0;overflow-wrap:anywhere">{{ session($key) }}</div>
+            <div class="flex-grow-1 min-w-0-wrap">{{ session($key) }}</div>
             <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
         </div>
     @endif
@@ -16,7 +16,7 @@
 @if($messages)
     <div class="alert alert-danger alert-dismissible fade show d-flex align-items-baseline {{ $spacing }}" role="alert">
         <i class="fas fa-exclamation-triangle me-2 flex-shrink-0" aria-hidden="true"></i>
-        <ul class="list-unstyled mb-0 flex-grow-1" style="min-width:0;overflow-wrap:anywhere">
+        <ul class="list-unstyled mb-0 flex-grow-1 min-w-0-wrap">
             @foreach($messages as $message)
                 <li>{{ $message }}</li>
             @endforeach

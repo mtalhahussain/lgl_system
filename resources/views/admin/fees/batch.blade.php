@@ -25,12 +25,12 @@
         <div class="row">
             <div class="col-md-4">
                 <p><strong>Batch Name:</strong> {{ $batch->name }}</p>
-                <p><strong>Course:</strong> {{ $batch->course->name }}</p>
+                <p><strong>Level:</strong> {{ $batch->course->name }}</p>
                 <p><strong>Level:</strong> {{ $batch->course->level }}</p>
             </div>
             <div class="col-md-4">
                 <p><strong>Duration:</strong> {{ $batch->course->duration_months }} months</p>
-                <p><strong>Course Fees:</strong> {{ currency_format($batch->course->fees) }}</p>
+                <p><strong>Level Fees:</strong> {{ currency_format($batch->course->fees) }}</p>
                 <p><strong>Total Students:</strong> {{ $batch->enrollments->count() }}</p>
             </div>
             <div class="col-md-4">

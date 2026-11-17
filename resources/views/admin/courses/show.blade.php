@@ -1,6 +1,6 @@
 @extends('layouts.admin')
 
-@section('title', 'Course Details - ' . $course->name)
+@section('title', 'Level Details - ' . $course->name)
 
 @section('content')
 <div class="container-fluid">
@@ -8,14 +8,14 @@
     <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
             <h2><i class="fas fa-book me-2"></i>{{ $course->name }}</h2>
-            <p class="text-muted mb-0">Course Details and Management</p>
+            <p class="text-muted mb-0">Level Details and Management</p>
         </div>
         <div>
             <a href="{{ route('courses.index') }}" class="btn btn-outline-secondary me-2">
-                <i class="fas fa-arrow-left me-1"></i>Back to Courses
+                <i class="fas fa-arrow-left me-1"></i>Back to Levels
             </a>
             <a href="{{ route('courses.edit', $course) }}" class="btn btn-primary">
-                <i class="fas fa-edit me-1"></i>Edit Course
+                <i class="fas fa-edit me-1"></i>Edit Level
             </a>
         </div>
     </div>
@@ -75,7 +75,7 @@
                 <div class="card-body">
                     <div class="row no-gutters align-items-center">
                         <div class="col mr-2">
-                            <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">Course Fee</div>
+                            <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">Level Fee</div>
                             <div class="h5 mb-0 font-weight-bold text-gray-800">{{ currency_format($course->total_fee) }}</div>
                         </div>
                         <div class="col-auto">
@@ -89,23 +89,23 @@
 
     <!-- Main Content -->
     <div class="row">
-        <!-- Course Information -->
+        <!-- Level Information -->
         <div class="col-lg-8">
             <div class="card dashboard-card mb-4">
                 <div class="card-header">
                     <h5 class="mb-0">
-                        <i class="fas fa-info-circle me-2"></i>Course Information
+                        <i class="fas fa-info-circle me-2"></i>Level Information
                     </h5>
                 </div>
                 <div class="card-body">
                     <div class="row">
                         <div class="col-md-6">
                             <div class="info-item">
-                                <strong>Course Name:</strong>
+                                <strong>Level Name:</strong>
                                 <span class="text-muted">{{ $course->name }}</span>
                             </div>
                             <div class="info-item">
-                                <strong>Level:</strong>
+                                <strong>Level code:</strong>
                                 <span class="badge bg-primary">{{ $course->level }}</span>
                             </div>
                             <div class="info-item">
@@ -150,11 +150,11 @@
                 </div>
             </div>
 
-            <!-- Course Batches -->
+            <!-- Level Batches -->
             <div class="card dashboard-card">
                 <div class="card-header">
                     <h5 class="mb-0">
-                        <i class="fas fa-calendar-alt me-2"></i>Course Batches ({{ $course->batches->count() }})
+                        <i class="fas fa-calendar-alt me-2"></i>Level Batches ({{ $course->batches->count() }})
                     </h5>
                 </div>
                 <div class="card-body">
@@ -215,7 +215,7 @@
                         <div class="text-center py-4">
                             <i class="fas fa-calendar-plus fa-3x text-muted mb-3"></i>
                             <h5>No Batches Created</h5>
-                            <p class="text-muted">This course doesn't have any batches yet.</p>
+                            <p class="text-muted">This level doesn't have any batches yet.</p>
                             <a href="{{ route('batches.create') }}?course_id={{ $course->id }}" class="btn btn-primary">
                                 <i class="fas fa-plus me-1"></i>Create First Batch
                             </a>
@@ -240,21 +240,21 @@
                             <i class="fas fa-calendar-plus me-1"></i>Create New Batch
                         </a>
                         <a href="{{ route('courses.edit', $course) }}" class="btn btn-warning">
-                            <i class="fas fa-edit me-1"></i>Edit Course
+                            <i class="fas fa-edit me-1"></i>Edit Level
                         </a>
                         @if($course->is_active)
                             <form method="POST" action="{{ route('courses.toggle-status', $course) }}" class="d-inline">
                                 @csrf
                                 <button type="submit" class="btn btn-outline-secondary w-100" 
-                                        onclick="return confirm('Are you sure you want to deactivate this course?')">
-                                    <i class="fas fa-pause me-1"></i>Deactivate Course
+                                        onclick="return confirm('Are you sure you want to deactivate this level?')">
+                                    <i class="fas fa-pause me-1"></i>Deactivate Level
                                 </button>
                             </form>
                         @else
                             <form method="POST" action="{{ route('courses.toggle-status', $course) }}" class="d-inline">
                                 @csrf
                                 <button type="submit" class="btn btn-outline-success w-100">
-                                    <i class="fas fa-play me-1"></i>Activate Course
+                                    <i class="fas fa-play me-1"></i>Activate Level
                                 </button>
                             </form>
                         @endif
@@ -262,11 +262,11 @@
                 </div>
             </div>
 
-            <!-- Course Summary -->
+            <!-- Level Summary -->
             <div class="card dashboard-card">
                 <div class="card-header">
                     <h5 class="mb-0">
-                        <i class="fas fa-chart-bar me-2"></i>Course Summary
+                        <i class="fas fa-chart-bar me-2"></i>Level Summary
                     </h5>
                 </div>
                 <div class="card-body">

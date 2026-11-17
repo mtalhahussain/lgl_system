@@ -1,7 +1,7 @@
 @extends('layouts.admin')
 @section('title', 'Enrollment Report')
 @section('content')
-<x-list.header title="Enrollment Report" eyebrow="Reports" subtitle="Student, course and batch roster by admission date">
+<x-list.header title="Enrollment Report" eyebrow="Reports" subtitle="Student, level and batch roster by admission date">
     <button type="button" class="btn btn-outline-primary" onclick="window.print()"><i class="fas fa-print me-1" aria-hidden="true"></i>Print</button>
 </x-list.header>
 <x-list.kpis :items="$kpis" />
@@ -10,7 +10,7 @@
     <div class="table-responsive">
         <table class="table list-table">
             <thead><tr>
-                <x-list.th sort="student" default="-date">Student</x-list.th><th scope="col">Course</th><th scope="col">Batch</th>
+                <x-list.th sort="student" default="-date">Student</x-list.th><th scope="col">Level</th><th scope="col">Batch</th>
                 <x-list.th sort="date" default="-date">Date</x-list.th><th scope="col">Status</th>
             </tr></thead>
             <tbody>

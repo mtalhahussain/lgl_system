@@ -71,7 +71,7 @@
                         <thead>
                             <tr>
                                 <th>Student</th>
-                                <th>Course</th>
+                                <th>Level</th>
                                 <th>Amount</th>
                                 <th>Date</th>
                                 <th>Status</th>
@@ -166,21 +166,21 @@
                     <div class="list-group-item d-flex justify-content-between align-items-center px-0">
                         <div>
                             <strong>Klaus Fischer</strong>
-                            <br><small class="text-muted">C1 Course - 15 days overdue</small>
+                            <br><small class="text-muted">C1 Level - 15 days overdue</small>
                         </div>
                         <span class="badge bg-danger">{{ currency_format(400) }}</span>
                     </div>
                     <div class="list-group-item d-flex justify-content-between align-items-center px-0">
                         <div>
                             <strong>Lisa Weber</strong>
-                            <br><small class="text-muted">B2 Course - 8 days overdue</small>
+                            <br><small class="text-muted">B2 Level - 8 days overdue</small>
                         </div>
                         <span class="badge bg-danger">{{ currency_format(375) }}</span>
                     </div>
                     <div class="list-group-item d-flex justify-content-between align-items-center px-0">
                         <div>
                             <strong>Michael Berg</strong>
-                            <br><small class="text-muted">A1 Course - 5 days overdue</small>
+                            <br><small class="text-muted">A1 Level - 5 days overdue</small>
                         </div>
                         <span class="badge bg-danger">{{ currency_format(300) }}</span>
                     </div>

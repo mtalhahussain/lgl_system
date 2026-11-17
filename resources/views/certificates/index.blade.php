@@ -84,7 +84,7 @@
         <div class="certificate-preview-sheet">
             <i class="fas fa-award" aria-hidden="true"></i>
             <div class="eyebrow">{{ institute_name() }}</div>
-            <h3>Course completion</h3>
+            <h3>Level completion</h3>
             <p class="text-muted small mb-0">This certificate is for</p>
             <p class="certificate-preview-name" id="preview-name">{{ old('student_name', $preselect['name'] ?? '') ?: 'Student name' }}</p>
             <p class="small text-muted" id="preview-father">{{ old('father_name') ? 'S/O '.old('father_name') : '' }}</p>

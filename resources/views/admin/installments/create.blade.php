@@ -45,13 +45,13 @@
                                 @endforeach
                             @endforeach
                         </select>
-                        <div class="form-text">Search by student name or course name</div>
+                        <div class="form-text">Search by student name or level name</div>
                     </div>
 
                     <div id="enrollmentDetails" class="alert alert-info is-hidden">
                         <h6><i class="fas fa-info-circle me-2"></i>Enrollment Details</h6>
                         <p><strong>Student:</strong> <span id="studentName"></span></p>
-                        <p><strong>Course:</strong> <span id="courseName"></span></p>
+                        <p><strong>Level:</strong> <span id="courseName"></span></p>
                         <p class="mb-0"><strong>Total Fees:</strong> <span id="totalFees"></span></p>
                     </div>
                 </div>

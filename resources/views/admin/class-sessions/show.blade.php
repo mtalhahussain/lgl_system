@@ -98,7 +98,7 @@
         <section class="panel" aria-labelledby="details-heading">
             <div class="panel-heading"><h2 id="details-heading">Details</h2></div>
             <div class="pad-panel-body">
-                <div class="finance-row"><span>Course</span><strong>{{ $classSession->batch->course?->name }}</strong></div>
+                <div class="finance-row"><span>Level</span><strong>{{ $classSession->batch->course?->name }}</strong></div>
                 <div class="finance-row"><span>Batch</span><strong>{{ $classSession->batch->name }}</strong></div>
                 @if($classSession->description)<p class="mt-3 mb-0 text-pre-line-sm">{{ $classSession->description }}</p>@endif
             </div>

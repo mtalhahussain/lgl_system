@@ -44,11 +44,11 @@
                         <div class="col-md-6">
                             <div class="mb-3">
                                 <label for="course_id" class="form-label">
-                                    <i class="fas fa-book me-1"></i>Course
+                                    <i class="fas fa-book me-1"></i>Level
                                 </label>
                                 <select class="form-select @error('course_id') is-invalid @enderror" 
                                         id="course_id" name="course_id">
-                                    <option value="">Select Course</option>
+                                    <option value="">Select Level</option>
                                     @if(isset($courses))
                                         @foreach($courses as $course)
                                             <option value="{{ $course->id }}" {{ old('course_id') == $course->id ? 'selected' : '' }}>
@@ -250,7 +250,7 @@
                         <li>Choose a descriptive name that includes level and time</li>
                         <li>Ensure the teacher is available for selected days/times</li>
                         <li>Set realistic maximum student limits</li>
-                        <li>Consider the course duration when setting dates</li>
+                        <li>Consider the level duration when setting dates</li>
                     </ul>
                 </div>
                 

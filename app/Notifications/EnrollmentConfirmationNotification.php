@@ -32,13 +32,13 @@ class EnrollmentConfirmationNotification extends Notification
                     ->subject('Welcome to ' . $courseName)
                     ->greeting('Dear ' . $notifiable->name . ',')
                     ->line('Congratulations! You have been successfully enrolled in our German language course.')
-                    ->line('Course: ' . $courseName)
+                    ->line('Level: ' . $courseName)
                     ->line('Batch: ' . $batchName)
                     ->line('Start Date: ' . $startDate)
                     ->line('Teacher: ' . $this->enrollment->batch->teacher->name)
                     ->line('Total Fee: ' . currency_format($this->enrollment->total_fee))
                     ->line('Your learning journey begins soon. We are excited to help you master the German language!')
-                    ->action('View Course Details', url('/dashboard'))
+                    ->action('View Level Details', url('/dashboard'))
                     ->line('For any questions, please contact us.')
                     ->salutation('Willkommen! German Language Institute');
     }

@@ -52,7 +52,7 @@
                 <dt class="col-sm-4">CNIC</dt><dd class="col-sm-8">{{ $lead->cnic ?: '—' }}</dd>
                 <dt class="col-sm-4">Phone</dt><dd class="col-sm-8">{{ $lead->phone }}</dd>
                 <dt class="col-sm-4">Email</dt><dd class="col-sm-8">{{ $lead->email ?: '—' }}</dd>
-                <dt class="col-sm-4">Course interest</dt><dd class="col-sm-8">{{ $lead->program_interest ?: '—' }}</dd>
+                <dt class="col-sm-4">Level interest</dt><dd class="col-sm-8">{{ $lead->program_interest ?: '—' }}</dd>
                 <dt class="col-sm-4">Message</dt><dd class="col-sm-8">{{ $lead->message ?: '—' }}</dd>
                 <dt class="col-sm-4">Received</dt><dd class="col-sm-8">{{ $lead->created_at->format('d-m-Y h:i A') }}</dd>
                 @if ($lead->verifiedBy)

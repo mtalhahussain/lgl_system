@@ -30,7 +30,7 @@ class EnrollmentService
             $batch = Batch::with('course')->lockForUpdate()->findOrFail($batchId);
             $student = User::students()->where('is_active', true)->findOrFail($studentId);
             if (! in_array($batch->status, ['upcoming', 'ongoing'], true) || ! $batch->course->is_active) {
-                throw new \InvalidArgumentException('Batch or course is not open for enrollment.');
+                throw new \InvalidArgumentException('Batch or level is not open for enrollment.');
             }
             if (! $batch->hasCapacity()) {
                 throw new \InvalidArgumentException('Batch is full. No available spots.');
@@ -112,7 +112,7 @@ class EnrollmentService
                 $gross = array_map(fn ($batch) => \App\Support\Money::minor($batch->course->total_fee), $batches);
                 $grossTotal = array_sum($gross);
                 if (min($gross) <= 0) {
-                    throw \Illuminate\Validation\ValidationException::withMessages(['batch_ids' => 'Every level needs a positive normal course fee.']);
+                    throw \Illuminate\Validation\ValidationException::withMessages(['batch_ids' => 'Every level needs a positive normal level fee.']);
                 }
                 if ($total > $grossTotal) {
                     throw \Illuminate\Validation\ValidationException::withMessages(['price' => 'Package price cannot be more than the normal fees total ('.\App\Support\Money::decimal($grossTotal).').']);
@@ -190,7 +190,7 @@ class EnrollmentService
             if (! $target || $source->batch_id === $target->id || $source->status !== 'active'
                 || $source->batch->course_id !== $target->course_id || ! in_array($target->status, ['upcoming', 'ongoing'], true)
                 || ! $target->hasCapacity() || Enrollment::where('batch_id', $target->id)->where('student_id', $source->student_id)->exists()) {
-                throw new \InvalidArgumentException('Transfer requires an active enrollment, available same-course batch and no prior target enrollment.');
+                throw new \InvalidArgumentException('Transfer requires an active enrollment, available same-level batch and no prior target enrollment.');
             }
             if (\App\Support\Money::minor($source->paid_amount) !== 0 || $source->payments()->exists()
                 || $source->feeInstallments()->whereIn('status', ['paid', 'cancelled'])->exists()) {

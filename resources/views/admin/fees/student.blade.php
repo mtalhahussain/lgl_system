@@ -89,7 +89,7 @@
             <div class="card-body">
                 <div class="row mb-3">
                     <div class="col-md-3">
-                        <strong>Course:</strong> {{ $enrollment->batch->course->name }}
+                        <strong>Level:</strong> {{ $enrollment->batch->course->name }}
                     </div>
                     <div class="col-md-3">
                         <strong>Level:</strong> {{ $enrollment->batch->course->level }}
@@ -98,7 +98,7 @@
                         <strong>Duration:</strong> {{ $enrollment->batch->course->duration_months }} months
                     </div>
                     <div class="col-md-3">
-                        <strong>Course Fees:</strong> {{ currency_format($enrollment->batch->course->fees) }}
+                        <strong>Level Fees:</strong> {{ currency_format($enrollment->batch->course->fees) }}
                     </div>
                 </div>
 
@@ -196,7 +196,7 @@
         <div class="card-body text-center py-5">
             <i class="fas fa-user-graduate fa-3x text-muted mb-3"></i>
             <h5>No Enrollments Found</h5>
-            <p class="text-muted">This student has no course enrollments yet.</p>
+            <p class="text-muted">This student has no level enrollments yet.</p>
             <a href="{{ route('enrollments.create') }}" class="btn btn-primary">
                 <i class="fas fa-plus me-1"></i>Create Enrollment
             </a>

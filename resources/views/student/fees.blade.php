@@ -74,7 +74,7 @@
         </div>
     @endif
 
-    <!-- Course-wise Fee Details -->
+    <!-- Level-wise Fee Details -->
     @if($student->enrollments->count() > 0)
         @foreach($student->enrollments as $enrollment)
             <div class="card mb-4 shadow-sm">
@@ -89,7 +89,7 @@
                 <div class="card-body">
                     <div class="row mb-4">
                         <div class="col-md-3">
-                            <h6 class="text-muted">Course Level</h6>
+                            <h6 class="text-muted">Level code</h6>
                             <p class="mb-0">{{ $enrollment->batch->course->level }}</p>
                         </div>
                         <div class="col-md-3">
@@ -97,7 +97,7 @@
                             <p class="mb-0">{{ $enrollment->batch->course->duration_weeks }} weeks</p>
                         </div>
                         <div class="col-md-3">
-                            <h6 class="text-muted">Total Course Fees</h6>
+                            <h6 class="text-muted">Total Level Fees</h6>
                             <p class="mb-0 fw-bold text-primary">{{ currency_format($enrollment->batch->course->total_fee) }}</p>
                         </div>
                         <div class="col-md-3">
@@ -216,7 +216,7 @@
                     @else
                         <div class="alert alert-info" role="alert">
                             <i class="fas fa-info-circle me-2"></i>
-                            No payment schedule found for this course.
+                            No payment schedule found for this level.
                         </div>
                     @endif
                 </div>
@@ -226,8 +226,8 @@
         <div class="alert alert-warning" role="alert">
             <div class="text-center py-4">
                 <i class="fas fa-book fa-3x text-muted mb-3"></i>
-                <h5>No Course Enrollments</h5>
-                <p class="text-muted">You are not enrolled in any courses yet.</p>
+                <h5>No Level Enrollments</h5>
+                <p class="text-muted">You are not enrolled in any levels yet.</p>
             </div>
         </div>
     @endif

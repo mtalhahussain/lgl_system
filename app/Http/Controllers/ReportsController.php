@@ -18,7 +18,7 @@ class ReportsController extends Controller
     public function index()
     {
         $reportTypes = [];
-        foreach (['enrollments' => ['Enrollments', 'Student, course and batch roster'],
+        foreach (['enrollments' => ['Enrollments', 'Student, level and batch roster'],
             'collections' => ['Fee Collections', 'Payments with dated reversals and refunds'],
             'dues' => ['Outstanding Dues', 'Remaining scheduled balances'],
             'attendance' => ['Attendance', 'Manual class attendance records']] as $key => [$title, $description]) {

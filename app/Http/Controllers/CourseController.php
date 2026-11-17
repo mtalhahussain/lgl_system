@@ -32,17 +32,17 @@ class CourseController extends Controller
             ->filter('status', fn ($query, $status) => $query->where('is_active', $status === 'active'), ['active', 'inactive'])
             ->sorts(['name' => 'name', 'level' => 'level', 'fee' => 'total_fee', 'duration' => 'duration_weeks'], 'level');
         if ($list->wantsCsv()) {
-            return $list->csv('courses', ['Name' => fn ($course) => $course->name, 'Level' => fn ($course) => $course->level,
+            return $list->csv('levels', ['Name' => fn ($course) => $course->name, 'Code' => fn ($course) => $course->level,
                 'Weeks' => fn ($course) => $course->duration_weeks, 'Fee' => fn ($course) => $course->total_fee,
                 'Batches' => fn ($course) => $course->batches_count, 'Ongoing batches' => fn ($course) => $course->active_batches_count,
                 'Status' => fn ($course) => $course->is_active ? 'Active' : 'Inactive']);
         }
         $counts = $list->counts(['active' => 'courses.is_active = 1']);
-        $kpis = [['label' => 'Courses', 'value' => $counts['total'], 'icon' => 'fa-book'],
-            ['label' => 'Active courses', 'value' => $counts['active'], 'icon' => 'fa-check'],
+        $kpis = [['label' => 'Levels', 'value' => $counts['total'], 'icon' => 'fa-book'],
+            ['label' => 'Active levels', 'value' => $counts['active'], 'icon' => 'fa-check'],
             ['label' => 'Ongoing batches', 'value' => Batch::where('status', 'ongoing')->whereIn('course_id', $list->totalsQuery()->select('courses.id'))->count(), 'icon' => 'fa-play'],
             ['label' => 'Active students', 'value' => \App\Models\Enrollment::active()->whereHas('batch', fn ($batch) => $batch->whereIn('course_id', $list->totalsQuery()->select('courses.id')))->distinct()->count('student_id'), 'icon' => 'fa-users']];
-        $filters = [['name' => 'level', 'label' => 'Level', 'options' => array_combine($levels, $levels)],
+        $filters = [['name' => 'level', 'label' => 'Code', 'options' => array_combine($levels, $levels)],
             ['name' => 'status', 'label' => 'Status', 'options' => ['active' => 'Active', 'inactive' => 'Inactive']]];
 
         return view('admin.courses.index', ['courses' => $list->paginate(), 'kpis' => $kpis, 'filters' => $filters]);
@@ -70,7 +70,7 @@ class CourseController extends Controller
             'sessions_per_week', 'session_duration_minutes']), ['teacher_per_student_amount' => $request->input('teacher_per_student_amount') ?? 0]));
 
         return redirect()->route('courses.index')
-            ->with('success', 'Course created successfully!');
+            ->with('success', 'Level created successfully!');
     }
 
     public function show(Course $course)
@@ -86,8 +86,9 @@ class CourseController extends Controller
         $batches = $course->batches()->with('teacher:id,name')->withCount('activeEnrollments')
             ->orderByRaw("CASE status WHEN 'ongoing' THEN 0 WHEN 'upcoming' THEN 1 WHEN 'completed' THEN 2 ELSE 3 END")
             ->orderByDesc('start_date')->get();
+        $materials = $course->materials()->latest()->get();
 
-        return view('admin.courses.details', compact('course', 'batches'));
+        return view('admin.courses.details', compact('course', 'batches', 'materials'));
     }
 
     public function edit(Course $course)
@@ -112,14 +113,14 @@ class CourseController extends Controller
             'sessions_per_week', 'session_duration_minutes']));
 
         return redirect()->route('courses.show', $course)
-            ->with('success', 'Course updated successfully!');
+            ->with('success', 'Level updated successfully!');
     }
 
     public function destroy(Course $course)
     {
         $course->update(['is_active' => false]);
         return redirect()->route('courses.index')
-            ->with('success', 'Course deactivated. Existing batches and history preserved.');
+            ->with('success', 'Level deactivated. Existing batches and history preserved.');
     }
 
     public function toggleStatus(Course $course)
@@ -130,7 +131,7 @@ class CourseController extends Controller
 
         $status = $course->is_active ? 'activated' : 'deactivated';
         return redirect()->route('courses.show', $course)
-            ->with('success', "Course {$status} successfully!");
+            ->with('success', "Level {$status} successfully!");
     }
 
     // API methods for backward compatibility

@@ -1,7 +1,7 @@
 @extends('layouts.admin')
 @section('title', $batch ? 'Edit Batch' : 'Add Batch')
 @section('content')
-<x-list.header :title="$batch ? 'Edit Batch' : 'Add Batch'" eyebrow="Academics" :subtitle="$batch ? $batch->name : 'Course, teacher, dates and class delivery'" />
+<x-list.header :title="$batch ? 'Edit Batch' : 'Add Batch'" eyebrow="Academics" :subtitle="$batch ? $batch->name : 'Level, teacher, dates and class delivery'" />
 <form method="post" class="panel form-panel" action="{{ $batch ? route('batches.update', $batch) : route('batches.store') }}">
     @csrf
     @if($batch) @method('PUT') @endif
@@ -20,7 +20,7 @@
                 </select>
                 <div class="form-text" id="status-help">Upcoming, ongoing and completed follow the start and end dates.@if($batch && $batch->status !== 'cancelled') Current: {{ ucfirst($batch->status) }}.@endif</div>
             </div>
-            @foreach(['course_id' => ['Course', $courses], 'teacher_id' => ['Teacher', $teachers]] as $field => [$label, $options])
+            @foreach(['course_id' => ['Level', $courses], 'teacher_id' => ['Teacher', $teachers]] as $field => [$label, $options])
                 <div class="col-md-6">
                     <label class="form-label required" for="{{ $field }}">{{ $label }}</label>
                     <select class="form-select" id="{{ $field }}" name="{{ $field }}" required>

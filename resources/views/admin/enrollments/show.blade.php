@@ -150,7 +150,7 @@
                         <label class="form-label" for="correction_reason">Correction reason</label>
                         <input id="correction_reason" name="reason" class="form-control mb-2" minlength="5" maxlength="500" value="{{ old('reason') }}" required>
                         <button class="btn btn-primary w-100">Correct batch</button>
-                        <p class="form-text">Same course only, before payments or academic records. Fee agreement and admission date stay unchanged; original enrollment stays in history.</p>
+                        <p class="form-text">Same level only, before payments or academic records. Fee agreement and admission date stay unchanged; original enrollment stays in history.</p>
                     </form>
                     <hr>
                 @endif
@@ -160,7 +160,7 @@
                         <label class="form-label" for="new_batch_id">Transfer to batch</label>
                         <select id="new_batch_id" name="new_batch_id" class="form-select mb-2">@foreach($transferBatches as $batch)<option value="{{ $batch->id }}">{{ $batch->name }}</option>@endforeach</select>
                         <button class="btn btn-outline-primary w-100">Transfer</button>
-                        <p class="form-text">Same course, unpaid enrollments only.</p>
+                        <p class="form-text">Same level, unpaid enrollments only.</p>
                     </form>
                     <hr>
                 @endif

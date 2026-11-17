@@ -172,11 +172,11 @@
     </div>
 </div>
 
-<!-- Course-wise Collection -->
+<!-- Level-wise Collection -->
 <div class="card mb-4">
     <div class="card-header">
         <h5 class="mb-0">
-            <i class="fas fa-graduation-cap me-2"></i>Course-wise Collections
+            <i class="fas fa-graduation-cap me-2"></i>Level-wise Collections
         </h5>
     </div>
     <div class="card-body">
@@ -185,7 +185,7 @@
                 <table class="table table-hover">
                     <thead>
                         <tr>
-                            <th>Course</th>
+                            <th>Level</th>
                             <th>Level</th>
                             <th>Amount Collected</th>
                             <th>Percentage</th>
@@ -218,8 +218,8 @@
         @else
             <div class="text-center py-4">
                 <i class="fas fa-graduation-cap fa-3x text-muted mb-3"></i>
-                <h6>No Course Collections</h6>
-                <p class="text-muted">No collections found for any courses in the selected period.</p>
+                <h6>No Level Collections</h6>
+                <p class="text-muted">No collections found for any levels in the selected period.</p>
             </div>
         @endif
     </div>

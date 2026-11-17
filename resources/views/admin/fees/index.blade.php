@@ -105,9 +105,9 @@
                         </select>
                     </div>
                     <div class="col-md-3">
-                        <label class="form-label">Course</label>
+                        <label class="form-label">Level</label>
                         <select name="course_id" class="form-select">
-                            <option value="">All Courses</option>
+                            <option value="">All Levels</option>
                             @foreach($courses as $course)
                                 <option value="{{ $course->id }}" {{ request('course_id') == $course->id ? 'selected' : '' }}>
                                     {{ $course->name }}
@@ -135,7 +135,7 @@
                     <thead>
                         <tr>
                             <th>Student</th>
-                            <th>Course & Batch</th>
+                            <th>Level & Batch</th>
                             <th>Installment</th>
                             <th>Amount</th>
                             <th>Due Date</th>

@@ -91,7 +91,7 @@
                     <thead>
                         <tr>
                             <th>Date</th>
-                            <th>Course</th>
+                            <th>Level</th>
                             <th>Batch</th>
                             <th>Session Time</th>
                             <th>Status</th>
@@ -185,12 +185,12 @@
     </div>
 @endif
 
-<!-- Course-wise Attendance Summary -->
+<!-- Level-wise Attendance Summary -->
 @if($student->enrollments->count() > 0)
     <div class="card mt-4">
         <div class="card-header">
             <h5 class="card-title mb-0">
-                <i class="fas fa-chart-pie me-2"></i>Course-wise Attendance Summary
+                <i class="fas fa-chart-pie me-2"></i>Level-wise Attendance Summary
             </h5>
         </div>
         <div class="card-body">

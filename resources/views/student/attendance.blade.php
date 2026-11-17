@@ -85,9 +85,9 @@
             <div class="card-body">
                 <form method="GET" class="row g-3">
                     <div class="col-md-4">
-                        <label class="form-label">Course</label>
+                        <label class="form-label">Level</label>
                         <select name="course_id" class="form-select">
-                            <option value="">All Courses</option>
+                            <option value="">All Levels</option>
                             @foreach($courses as $course)
                                 <option value="{{ $course->id }}" {{ request('course_id') == $course->id ? 'selected' : '' }}>
                                     {{ $course->name }}
@@ -141,7 +141,7 @@
                             <thead>
                                 <tr>
                                     <th>Date</th>
-                                    <th>Course</th>
+                                    <th>Level</th>
                                     <th>Batch</th>
                                     <th>Topic</th>
                                     <th>Status</th>

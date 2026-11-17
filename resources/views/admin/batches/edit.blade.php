@@ -48,11 +48,11 @@
                         <div class="col-md-6">
                             <div class="mb-3">
                                 <label for="course_id" class="form-label">
-                                    <i class="fas fa-book me-1"></i>Course
+                                    <i class="fas fa-book me-1"></i>Level
                                 </label>
                                 <select class="form-select @error('course_id') is-invalid @enderror" 
                                         id="course_id" name="course_id">
-                                    <option value="">Select Course</option>
+                                    <option value="">Select Level</option>
                                     @foreach($courses as $course)
                                         <option value="{{ $course->id }}" 
                                                 {{ old('course_id', $batch->course_id) == $course->id ? 'selected' : '' }}>

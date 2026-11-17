@@ -154,7 +154,7 @@ class EnrollmentController extends Controller
         $enrollment->loadMissing('batch.course', 'batch.teacher', 'student');
         $batch = $enrollment->batch;
         $course = $batch?->course;
-        $courseName = $course ? trim($course->name.' '.($course->level ?? '')) : 'a course';
+        $courseName = $course ? trim($course->name.' '.($course->level ?? '')) : 'a level';
         $batchName = $batch->name ?? '';
 
         $notifier->toUser($enrollment->student_id, [

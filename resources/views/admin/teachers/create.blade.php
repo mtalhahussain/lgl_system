@@ -315,7 +315,7 @@
                     
                     <div class="mb-3">
                         <strong><i class="fas fa-users me-1"></i> Per Batch:</strong>
-                        <p class="small mb-2">Fixed amount per batch completion (suitable for short courses)</p>
+                        <p class="small mb-2">Fixed amount per batch completion ((suitable for short levels))</p>
                     </div>
                     
                     <div class="mb-0">

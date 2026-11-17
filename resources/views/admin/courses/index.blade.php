@@ -1,17 +1,17 @@
 @extends('layouts.admin')
-@section('title', 'Courses')
+@section('title', 'Levels')
 @section('content')
-<x-list.header title="Courses" eyebrow="Academics" subtitle="Course catalogue, default fees and batch activity">
+<x-list.header title="Levels" eyebrow="Academics" subtitle="Level catalogue, default fees and batch activity">
     <a class="btn btn-primary" href="{{ route('courses.create') }}"><i class="fas fa-plus me-1" aria-hidden="true"></i>Add course</a>
 </x-list.header>
 <x-list.kpis :items="$kpis" />
 <div class="panel list-panel">
-    <x-list.toolbar :filters="$filters" search="Search course name or description…" :csv="true" />
+    <x-list.toolbar :filters="$filters" search="Search level name or description…" :csv="true" />
     <div class="table-responsive">
         <table class="table list-table">
             <thead><tr>
-                <x-list.th sort="name" default="level">Course</x-list.th>
-                <x-list.th sort="level" default="level">Level</x-list.th>
+                <x-list.th sort="name" default="level">Level</x-list.th>
+                <x-list.th sort="level" default="level">Code</x-list.th>
                 <x-list.th sort="duration" default="level">Duration</x-list.th>
                 <x-list.th sort="fee" default="level" class="num">Fee</x-list.th>
                 <th scope="col">Batches</th>

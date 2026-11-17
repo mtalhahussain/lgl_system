@@ -9,6 +9,7 @@ use App\Http\Controllers\BiometricController;
 use App\Http\Controllers\CertificateController;
 use App\Http\Controllers\ClassSessionController;
 use App\Http\Controllers\CourseController;
+use App\Http\Controllers\LevelMaterialController;
 use App\Http\Controllers\EnrollmentController;
 use App\Http\Controllers\EnrollmentPackageController;
 use App\Http\Controllers\ExamController;
@@ -134,6 +135,18 @@ Route::middleware(['auth', EnsureActiveAccount::class, EnsureModuleAccess::class
         ->name('courses.show')->middleware('role:admin,teacher');
     Route::post('/courses/{course}/toggle-status', [CourseController::class, 'toggleStatus'])
         ->name('courses.toggle-status')->middleware('role:admin');
+
+    // Level materials (books/PDFs): Admin manages; access checked per material for Teacher/Student.
+    Route::post('/courses/{course}/materials', [LevelMaterialController::class, 'store'])
+        ->name('materials.store')->middleware('role:admin');
+    Route::delete('/materials/{material}', [LevelMaterialController::class, 'destroy'])
+        ->name('materials.destroy')->middleware('role:admin');
+    Route::get('/materials', [LevelMaterialController::class, 'index'])
+        ->name('materials.index')->middleware('role:admin,teacher,student');
+    Route::get('/materials/{material}/view', [LevelMaterialController::class, 'view'])
+        ->name('materials.view')->middleware('role:admin,teacher,student');
+    Route::get('/materials/{material}/download', [LevelMaterialController::class, 'download'])
+        ->name('materials.download')->middleware('role:admin,teacher,student');
 
     // Batch Management Routes
     Route::resource('batches', BatchController::class)

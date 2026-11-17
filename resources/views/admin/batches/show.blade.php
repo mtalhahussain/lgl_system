@@ -101,7 +101,7 @@
                     <div class="row">
                         <div class="col-md-6">
                             <div class="info-item">
-                                <strong>Course:</strong>
+                                <strong>Level:</strong>
                                 <span class="badge bg-primary">{{ $batch->course->name ?? 'N/A' }}</span>
                             </div>
                             <div class="info-item">

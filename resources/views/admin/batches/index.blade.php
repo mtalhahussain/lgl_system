@@ -6,7 +6,7 @@
 </x-list.header>
 <x-list.kpis :items="$kpis" />
 <div class="panel list-panel">
-    <x-list.toolbar :filters="$filters" search="Search batch or course…" :csv="true" />
+    <x-list.toolbar :filters="$filters" search="Search batch or level…" :csv="true" />
     <div class="table-responsive">
         <table class="table list-table">
             <thead><tr>

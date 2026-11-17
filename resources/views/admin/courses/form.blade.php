@@ -1,19 +1,19 @@
 @extends('layouts.admin')
-@section('title', $course ? 'Edit Course' : 'Add Course')
+@section('title', $course ? 'Edit Level' : 'Add Level')
 @section('content')
-<x-list.header :title="$course ? 'Edit Course' : 'Add Course'" eyebrow="Academics" :subtitle="$course ? $course->name.' · '.$course->level : 'Catalogue entry and default fee'" />
+<x-list.header :title="$course ? 'Edit Level' : 'Add Level'" eyebrow="Academics" :subtitle="$course ? $course->name.' · '.$course->level : 'Catalogue entry and default fee'" />
 <form class="panel form-panel" method="post" action="{{ $course ? route('courses.update', $course) : route('courses.store') }}">
     @csrf
     @if($course) @method('PUT') @endif
     <div class="form-section">
-        <h2 class="form-section-title">Course</h2>
+        <h2 class="form-section-title">Level</h2>
         <div class="row g-3">
             <div class="col-md-6">
-                <label for="name" class="form-label required">Name</label>
+                <label for="name" class="form-label required">Level name</label>
                 <input class="form-control" id="name" name="name" value="{{ old('name', $course?->name) }}" required>
             </div>
             <div class="col-md-6">
-                <label for="level" class="form-label required">Level</label>
+                <label for="level" class="form-label required">Level code</label>
                 <select class="form-select" id="level" name="level">
                     @foreach(['A1', 'A2', 'B1', 'B2', 'C1', 'C2'] as $level)
                         <option @selected(old('level', $course?->level) === $level)>{{ $level }}</option>

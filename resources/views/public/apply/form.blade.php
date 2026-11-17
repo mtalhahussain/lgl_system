@@ -54,7 +54,7 @@
             </div>
 
             <div class="mb-3">
-                <label class="form-label" for="program_interest">Course of interest</label>
+                <label class="form-label" for="program_interest">Level of interest</label>
                 <input type="text" class="form-control" id="program_interest" name="program_interest" value="{{ old('program_interest') }}" placeholder="e.g. German A1" maxlength="255">
             </div>
 

@@ -71,7 +71,7 @@
                         <table class="table table-hover">
                             <thead>
                                 <tr>
-                                    <th>Course & Batch</th>
+                                    <th>Level & Batch</th>
                                     <th>Date & Time</th>
                                     <th>Students</th>
                                     <th>Actions</th>

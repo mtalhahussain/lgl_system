@@ -157,7 +157,7 @@ class BatchController extends Controller
             'schedule.*.weekday' => 'nullable|in:mon,tue,wed,thu,fri,sat,sun',
             'schedule.*.start' => 'nullable|date_format:H:i',
             'schedule.*.end' => 'nullable|date_format:H:i',
-        ]);
+        ], [], ['course_id' => 'level']);
         $data['status'] = ($data['status'] ?? null) === 'cancelled'
             ? 'cancelled' : Batch::statusForDates($data['start_date'], $data['end_date'] ?? null);
 

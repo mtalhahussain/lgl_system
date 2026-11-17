@@ -46,7 +46,7 @@
                 <li>In Meta Business Manager create a WhatsApp Business account and add the institute number (WhatsApp Manager → Phone numbers).</li>
                 <li>Create a <strong>Utility</strong> message template named <code>{{ $settings['template'] }}</code> with five body variables, for example:
                     @verbatim<pre class="mt-2 p-2 bg-light border rounded ws-pre-wrap">Assalam o Alaikum {{1}}, this is a reminder from {{5}}: your fee installment of {{2}} for {{4}} is due on {{3}}. Please ignore this message if you have already paid.</pre>@endverbatim
-                    1 student name · 2 amount · 3 due date · 4 course · batch · 5 institute name. Wait until Meta approves it.</li>
+                    1 student name · 2 amount · 3 due date · 4 level · batch · 5 institute name. Wait until Meta approves it.</li>
                 <li>Create a System User with a permanent access token (whatsapp_business_messaging permission) and note the Phone number ID.</li>
                 <li>On the server set <code>WHATSAPP_TOKEN</code> and <code>WHATSAPP_PHONE_NUMBER_ID</code> in <code>.env</code>, then run <code>php artisan config:cache</code>. The token is never stored in the database.</li>
                 <li>Send a test message below, then switch automatic reminders on. The server cron <code>php artisan schedule:run</code> must be running.</li>

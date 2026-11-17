@@ -1,11 +1,11 @@
 @extends('layouts.admin')
-@section('title', 'Assigned Courses')
+@section('title', 'Assigned Levels')
 @section('content')
-<x-list.header title="Assigned Courses" eyebrow="My classes" subtitle="Courses that include one of your batches" />
+<x-list.header title="Assigned Levels" eyebrow="My classes" subtitle="Levels that include one of your batches" />
 <div class="panel list-panel">
     <div class="table-responsive">
         <table class="table list-table">
-            <thead><tr><th scope="col">Course</th><th scope="col">Level</th><th scope="col">Duration</th></tr></thead>
+            <thead><tr><th scope="col">Level</th><th scope="col">Code</th><th scope="col">Duration</th></tr></thead>
             <tbody>
             @forelse($courses as $course)
                 <tr>

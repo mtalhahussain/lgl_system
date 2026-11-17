@@ -1,14 +1,14 @@
 @extends('layouts.admin')
 @section('title', $course->name)
 @section('content')
-<x-show.hero icon="fa-book" :eyebrow="'Course · Level '.$course->level" :title="$course->name" :status="$course->is_active ? 'active' : 'inactive'">
+<x-show.hero icon="fa-book" :eyebrow="'Level · Code '.$course->level" :title="$course->name" :status="$course->is_active ? 'active' : 'inactive'">
     <x-slot:meta>
         <span><i class="fas fa-hourglass-half" aria-hidden="true"></i>{{ $course->duration_weeks }} weeks</span>
         @if($course->sessions_per_week)<span><i class="fas fa-calendar-week" aria-hidden="true"></i>{{ $course->sessions_per_week }} sessions/week{{ $course->session_duration_minutes ? ' · '.$course->session_duration_minutes.' min' : '' }}</span>@endif
     </x-slot:meta>
     <a class="btn btn-primary" href="{{ route('batches.create', ['course_id' => $course->id]) }}"><i class="fas fa-plus me-1" aria-hidden="true"></i>New batch</a>
     <a class="btn btn-outline-primary" href="{{ route('courses.edit', $course) }}"><i class="fas fa-pen me-1" aria-hidden="true"></i>Edit</a>
-    <form class="d-inline" method="post" action="{{ route('courses.toggle-status', $course) }}" data-confirm="{{ $course->is_active ? 'Deactivate this course? Existing batches stay unchanged.' : 'Activate this course?' }}">
+    <form class="d-inline" method="post" action="{{ route('courses.toggle-status', $course) }}" data-confirm="{{ $course->is_active ? 'Deactivate this level? Existing batches stay unchanged.' : 'Activate this level?' }}">
         @csrf <button class="btn btn-outline-secondary">{{ $course->is_active ? 'Deactivate' : 'Activate' }}</button>
     </form>
 </x-show.hero>
@@ -24,7 +24,7 @@
         <section class="panel" aria-labelledby="fees-heading">
             <div class="panel-heading"><h2 id="fees-heading">Fees</h2></div>
             <div class="pad-panel-body">
-                <div class="finance-row"><span>Default course fee</span><strong>{{ currency_format($course->total_fee) }}</strong></div>
+                <div class="finance-row"><span>Default level fee</span><strong>{{ currency_format($course->total_fee) }}</strong></div>
                 <div class="finance-row"><span>Teacher amount per student</span><strong>{{ currency_format($course->teacher_per_student_amount) }}</strong></div>
                 <p class="form-text mb-0 mt-2">Fee changes apply to new admissions only.</p>
             </div>
@@ -50,10 +50,40 @@
                     <td><x-list.status :value="$batch->status" /></td>
                 </tr>
             @empty
-                <tr><td colspan="5" class="empty-state">No batches yet. Create the first batch for this course.</td></tr>
+                <tr><td colspan="5" class="empty-state">No batches yet. Create the first batch for this level.</td></tr>
             @endforelse
             </tbody>
         </table></div>
     </section>
 </div>
+
+<section class="panel mt-4" aria-labelledby="materials-heading">
+    <div class="panel-heading"><h2 id="materials-heading">Books &amp; Materials</h2><span class="page-subtitle">{{ $materials->count() }} {{ Str::plural('file', $materials->count()) }} · visible to assigned teachers and active/completed students</span></div>
+    <form class="pad-panel-body" method="post" action="{{ route('materials.store', $course) }}" enctype="multipart/form-data">
+        @csrf
+        <div class="row g-3 align-items-end">
+            <div class="col-md-4">
+                <label for="material_title" class="form-label required">Title</label>
+                <input class="form-control @error('title') is-invalid @enderror" id="material_title" name="title" value="{{ old('title') }}" maxlength="255" required>
+                @error('title')<div class="invalid-feedback">{{ $message }}</div>@enderror
+            </div>
+            <div class="col-md-4">
+                <label for="material_file" class="form-label required">File</label>
+                <input type="file" class="form-control @error('file') is-invalid @enderror" id="material_file" name="file" required
+                    accept=".{{ implode(',.', \App\Models\LevelMaterial::EXTENSIONS) }}">
+                @error('file')<div class="invalid-feedback">{{ $message }}</div>@enderror
+            </div>
+            <div class="col-md-4">
+                <label for="material_description" class="form-label">Description</label>
+                <input class="form-control @error('description') is-invalid @enderror" id="material_description" name="description" value="{{ old('description') }}" maxlength="2000">
+                @error('description')<div class="invalid-feedback">{{ $message }}</div>@enderror
+            </div>
+        </div>
+        <div class="d-flex align-items-center gap-3 mt-3">
+            <button class="btn btn-primary"><i class="fas fa-upload me-1" aria-hidden="true"></i>Upload</button>
+            <span class="form-text">PDF, Word, PowerPoint, JPG or PNG · max 20 MB</span>
+        </div>
+    </form>
+    @include('materials.table', ['materials' => $materials, 'manage' => true])
+</section>
 @endsection

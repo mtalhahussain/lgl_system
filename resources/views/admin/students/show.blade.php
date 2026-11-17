@@ -85,7 +85,7 @@
                     <div class="col-6 mb-3">
                         <div class="stat-box">
                             <h4 class="text-primary">{{ $stats['courses_completed'] }}</h4>
-                            <small class="text-muted">Completed Courses</small>
+                            <small class="text-muted">Completed Levels</small>
                         </div>
                     </div>
                     <div class="col-6 mb-3">
@@ -120,7 +120,7 @@
         <div class="card mb-4">
             <div class="card-header d-flex justify-content-between align-items-center">
                 <h5 class="card-title mb-0">
-                    <i class="fas fa-graduation-cap me-2"></i>Course Enrollments
+                    <i class="fas fa-graduation-cap me-2"></i>Level Enrollments
                 </h5>
                 <span class="badge bg-primary">{{ $student->enrollments->count() }} Total</span>
             </div>
@@ -130,7 +130,7 @@
                         <table class="table">
                             <thead>
                                 <tr>
-                                    <th>Course</th>
+                                    <th>Level</th>
                                     <th>Batch</th>
                                     <th>Status</th>
                                     <th>Progress</th>
@@ -170,8 +170,8 @@
                 @else
                     <div class="text-center py-4">
                         <i class="fas fa-graduation-cap fa-3x text-muted mb-3"></i>
-                        <h6>No Course Enrollments</h6>
-                        <p class="text-muted">This student is not enrolled in any courses yet.</p>
+                        <h6>No Level Enrollments</h6>
+                        <p class="text-muted">This student is not enrolled in any levels yet.</p>
                     </div>
                 @endif
             </div>
@@ -248,7 +248,7 @@
                             <thead>
                                 <tr>
                                     <th>Date</th>
-                                    <th>Course</th>
+                                    <th>Level</th>
                                     <th>Session</th>
                                     <th>Status</th>
                                     <th>Check-in Time</th>

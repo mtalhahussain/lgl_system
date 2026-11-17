@@ -34,7 +34,7 @@
                 @error('email')<div class="invalid-feedback">{{ $message }}</div>@enderror
             </div>
             <div class="col-md-6">
-                <label class="form-label" for="program_interest">Course interest</label>
+                <label class="form-label" for="program_interest">Level interest</label>
                 <input class="form-control @error('program_interest') is-invalid @enderror" id="program_interest" name="program_interest" maxlength="255" placeholder="A1 German" value="{{ old('program_interest', $lead?->program_interest) }}">
                 @error('program_interest')<div class="invalid-feedback">{{ $message }}</div>@enderror
             </div>

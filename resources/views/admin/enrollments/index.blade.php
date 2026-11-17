@@ -12,7 +12,7 @@
         <table class="table list-table">
             <thead><tr>
                 <x-list.th sort="student" default="-admitted">Student</x-list.th>
-                <th scope="col">Course / batch</th>
+                <th scope="col">Level / batch</th>
                 <x-list.th sort="admitted" default="-admitted">Admitted</x-list.th>
                 <th scope="col">Status</th>
                 <th scope="col" class="num">Discount</th>

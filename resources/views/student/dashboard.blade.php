@@ -34,7 +34,7 @@
             <div class="card-body text-center">
                 <i class="fas fa-book-open fa-2x mb-3"></i>
                 <h3>{{ $stats['active_enrollments'] ?? 0 }}</h3>
-                <p class="card-text">Active Courses</p>
+                <p class="card-text">Active Levels</p>
             </div>
         </div>
     </div>
@@ -176,7 +176,7 @@
         <div class="card mb-4">
             <div class="card-header">
                 <h5 class="card-title mb-0">
-                    <i class="fas fa-graduation-cap me-2"></i>My Courses
+                    <i class="fas fa-graduation-cap me-2"></i>My Levels
                 </h5>
             </div>
             <div class="card-body">
@@ -185,7 +185,7 @@
                         <table class="table table-hover">
                             <thead>
                                 <tr>
-                                    <th>Course</th>
+                                    <th>Level</th>
                                     <th>Batch</th>
                                     <th>Progress</th>
                                     <th>Status</th>
@@ -246,7 +246,7 @@
                     <div class="text-center py-4">
                         <i class="fas fa-book-open fa-3x text-muted mb-3"></i>
                         <h6>No Active Enrollments</h6>
-                        <p class="text-muted">You are not enrolled in any courses yet.</p>
+                        <p class="text-muted">You are not enrolled in any levels yet.</p>
                     </div>
                 @endif
             </div>
@@ -257,7 +257,7 @@
             <div class="card mb-4">
                 <div class="card-header">
                     <h5 class="card-title mb-0">
-                        <i class="fas fa-chart-bar me-2"></i>Attendance Summary by Course
+                        <i class="fas fa-chart-bar me-2"></i>Attendance Summary by Level
                     </h5>
                 </div>
                 <div class="card-body">

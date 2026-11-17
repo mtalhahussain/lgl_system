@@ -79,14 +79,14 @@
                     <div class="alert alert-success d-flex align-items-center mb-3" role="alert">
                         <i class="fas fa-check-circle me-3"></i>
                         <div class="flex-grow-1">
-                            <strong>Welcome to your Admin Dashboard!</strong> All systems are running smoothly. You can manage students, teachers, courses, and financial records from here.
+                            <strong>Welcome to your Admin Dashboard!</strong> All systems are running smoothly. You can manage students, teachers, levels, and financial records from here.
                         </div>
                     </div>
 
                     <div class="d-flex align-items-center mb-3">
                         <i class="fas fa-user-plus text-success me-3"></i>
                         <div>
-                            <strong>New student enrollment:</strong> Maria Schmidt (A1 Course)
+                            <strong>New student enrollment:</strong> Maria Schmidt (A1 Level)
                             <div class="small text-muted">2 hours ago</div>
                         </div>
                     </div>
@@ -121,7 +121,7 @@
             <div class="card-body">
                 <div class="mb-3">
                     <div class="d-flex justify-content-between">
-                        <span>Course Completion Rate</span>
+                        <span>Level Completion Rate</span>
                         <span class="fw-bold">85%</span>
                     </div>
                     <div class="progress mt-1">
@@ -176,7 +176,7 @@
                         <i class="fas fa-chalkboard-teacher me-2"></i>Manage Teachers
                     </a>
                     <a href="{{ url('/courses') }}" class="btn btn-outline-info">
-                        <i class="fas fa-book me-2"></i>View Courses
+                        <i class="fas fa-book me-2"></i>View Levels
                     </a>
                     <a href="{{ url('/reports') }}" class="btn btn-outline-warning">
                         <i class="fas fa-chart-bar me-2"></i>Generate Reports

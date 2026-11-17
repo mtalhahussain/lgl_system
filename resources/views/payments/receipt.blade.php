@@ -23,7 +23,7 @@
     @endif
     <x-show.document kind="Fee Payment Receipt" :number="$payment->receipt_number" :institute="$details['institute_name'] ?? null"
         :amount="$payment->amount" :currency="$currency" :date="$payment->paid_at?->format('d M Y, h:i A') ?? 'Historical date unavailable'" :reversal="$payment->reversal"
-        :rows="['Received from' => $student, 'Course' => $details['course_name'] ?? null, 'Batch' => $details['batch_name'] ?? 'Historical details unavailable',
+        :rows="['Received from' => $student, 'Level' => $details['course_name'] ?? null, 'Batch' => $details['batch_name'] ?? 'Historical details unavailable',
             'Method' => ucfirst($payment->method), 'Reference' => $payment->reference]">
         @if($payment->allocations->isNotEmpty())
             <div class="pad-receipt">

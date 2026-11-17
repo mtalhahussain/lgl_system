@@ -50,7 +50,7 @@
             <div class="card-body text-center">
                 <i class="fas fa-graduation-cap fa-2x mb-3"></i>
                 <h3>{{ $stats['completed_courses'] }}</h3>
-                <p class="card-text">Completed Courses</p>
+                <p class="card-text">Completed Levels</p>
             </div>
         </div>
     </div>
@@ -66,9 +66,9 @@
                        value="{{ request('search') }}" placeholder="Name, Email, Phone, Student ID">
             </div>
             <div class="col-md-3">
-                <label for="course_id" class="form-label">Filter by Course</label>
+                <label for="course_id" class="form-label">Filter by Level</label>
                 <select class="form-select" id="course_id" name="course_id">
-                    <option value="">All Courses</option>
+                    <option value="">All Levels</option>
                     @foreach($courses as $course)
                         <option value="{{ $course->id }}" 
                                 {{ request('course_id') == $course->id ? 'selected' : '' }}>

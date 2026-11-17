@@ -44,6 +44,11 @@ class Course extends Model
         return $this->hasMany(Certificate::class);
     }
 
+    public function materials()
+    {
+        return $this->hasMany(LevelMaterial::class);
+    }
+
     // Scopes
     public function scopeActive($query)
     {

@@ -107,6 +107,9 @@
                             @if(module_visible('results'))
                             <li class="nav-item"><a class="nav-link {{ request()->is('student/results*') ? 'active' : '' }}" href="{{ route('student.results') }}"><i class="fas fa-clipboard-check me-2" aria-hidden="true"></i>My Result</a></li>
                             @endif
+                            @if(module_visible('materials'))
+                            <li class="nav-item"><a class="nav-link {{ request()->is('materials*') ? 'active' : '' }}" href="{{ route('materials.index') }}"><i class="fas fa-file-pdf me-2" aria-hidden="true"></i>Books &amp; Materials</a></li>
+                            @endif
                             @if(module_visible('profile'))
                             <li class="nav-item">
                                 <a class="nav-link {{ request()->is('students/' . auth()->id()) ? 'active' : '' }}" 
@@ -161,14 +164,17 @@
                         @if(module_visible('class_sessions'))
                         <li class="nav-item"><a class="nav-link {{ request()->is('class-sessions*') ? 'active' : '' }}" href="{{ route('class-sessions.index') }}"><i class="fas fa-calendar-alt me-2" aria-hidden="true"></i>Class Sessions</a></li>
                         @endif
-                        <!-- Course Management -->
+                        <!-- Level Management -->
                         @if(module_visible('courses'))
                         <li class="nav-item">
                             <a class="nav-link {{ request()->is('courses*') ? 'active' : '' }}" 
                                href="{{ url('/courses') }}">
-                                <i class="fas fa-book me-2"></i>{{ auth()->user()->isTeacher() ? 'View Courses' : 'Courses' }}
+                                <i class="fas fa-book me-2"></i>{{ auth()->user()->isTeacher() ? 'View Levels' : 'Levels' }}
                             </a>
                         </li>
+                        @endif
+                        @if(module_visible('materials'))
+                        <li class="nav-item"><a class="nav-link {{ request()->is('materials*') ? 'active' : '' }}" href="{{ route('materials.index') }}"><i class="fas fa-file-pdf me-2" aria-hidden="true"></i>Books &amp; Materials</a></li>
                         @endif
                         
                         <!-- Batch Management -->

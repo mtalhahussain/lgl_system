@@ -24,6 +24,7 @@ Homestead.yaml
 Thumbs.db
 /.claude
 /docs
-/.CLAUDE_CODE_PROMPT.md
-/.CLAUDE.md
-/.AGENTS.md
+/CLAUDE_CODE_PROMPT.md
+/CLAUDE.md
+/AGENTS.md
+/EXAMPLE_QUERIES.md

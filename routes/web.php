@@ -227,6 +227,8 @@ Route::middleware(['auth', EnsureActiveAccount::class, EnsureModuleAccess::class
         ->name('payroll.pay')->middleware('role:admin');
     Route::get('/payroll/payouts/{payout}', [PayrollController::class, 'slip'])
         ->name('payroll.slip')->middleware('role:admin,teacher');
+    Route::get('/payroll/payouts/{payout}/pdf', [PayrollController::class, 'slipPdf'])
+        ->name('payroll.slip.pdf')->middleware('role:admin,teacher');
     Route::post('/payroll/payouts/{payout}/reverse', [PayrollController::class, 'reverse'])
         ->name('payroll.reverse')->middleware('role:admin');
 
@@ -296,6 +298,8 @@ Route::middleware(['auth', EnsureActiveAccount::class, EnsureModuleAccess::class
         ->name('certificates.store')->middleware('role:admin');
     Route::get('/certificates/{certificate}/print', [CertificateController::class, 'print'])
         ->name('certificates.print')->middleware('role:admin,student');
+    Route::get('/certificates/{certificate}/pdf', [CertificateController::class, 'pdf'])
+        ->name('certificates.pdf')->middleware('role:admin,student');
     Route::post('/certificates/{certificate}/revoke', [CertificateController::class, 'revoke'])
         ->name('certificates.revoke')->middleware('role:admin');
 

@@ -76,7 +76,7 @@
                 <td>{{ \App\Services\PayrollService::METHODS[$payout->method] ?? $payout->method }}</td>
                 <td class="num">{{ currency_format($payout->amount) }}</td>
                 <td><x-list.status :value="$payout->reversal ? 'reversed' : 'paid'" /></td>
-                <td class="text-end"><a class="btn btn-icon" href="{{ route('payroll.slip', $payout) }}" aria-label="Slip {{ $payout->voucher_number }}"><i class="fas fa-receipt" aria-hidden="true"></i></a></td>
+                <td class="text-end"><a class="btn btn-icon" href="{{ route('payroll.slip', $payout) }}" aria-label="Slip {{ $payout->voucher_number }}"><i class="fas fa-receipt" aria-hidden="true"></i></a><a class="btn btn-icon" href="{{ route('payroll.slip.pdf', [$payout, 'download' => 1]) }}" aria-label="Download PDF {{ $payout->voucher_number }}"><i class="fas fa-file-pdf" aria-hidden="true"></i></a></td>
             </tr>
         @empty
             <tr><td colspan="6" class="empty-state">No payouts yet.</td></tr>

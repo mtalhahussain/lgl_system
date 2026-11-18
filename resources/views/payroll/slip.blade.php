@@ -8,7 +8,8 @@
 <div class="doc-wrap">
     <div class="doc-actions d-print-none">
         <a class="btn btn-outline-secondary" href="{{ route('payroll.show', $payout->due) }}"><i class="fas fa-arrow-left me-1" aria-hidden="true"></i>Back to due</a>
-        <button class="btn btn-primary ms-auto" type="button" onclick="window.print()"><i class="fas fa-print me-1" aria-hidden="true"></i>Print slip</button>
+        <a class="btn btn-outline-primary ms-auto" href="{{ route('payroll.slip.pdf', [$payout, 'download' => 1]) }}"><i class="fas fa-file-pdf me-1" aria-hidden="true"></i>Download PDF</a>
+        <a class="btn btn-primary" href="{{ route('payroll.slip.pdf', $payout) }}" target="_blank" rel="noopener"><i class="fas fa-print me-1" aria-hidden="true"></i>Print PDF</a>
     </div>
     <x-show.document kind="Salary Payment Slip" :number="$payout->voucher_number" :institute="$details['institute_name'] ?? null"
         :amount="$payout->amount" :currency="$details['currency_code'] ?? 'PKR'" :date="$payout->paid_at->format('d M Y, h:i A')" :reversal="$payout->reversal"

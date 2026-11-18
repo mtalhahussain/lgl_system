@@ -6,6 +6,7 @@ use App\Models\AuditLog;
 use App\Models\StudentCertificate;
 use App\Models\StudentExamResult;
 use App\Models\User;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -17,7 +18,7 @@ class CertificateController extends Controller
     public function __construct()
     {
         $this->middleware('auth');
-        $this->middleware('role:admin')->except(['print']);
+        $this->middleware('role:admin')->except(['print', 'pdf']);
     }
 
     public function create(Request $request)
@@ -153,6 +154,17 @@ class CertificateController extends Controller
         abort_if($user->isStudent() && (int) $certificate->student_id !== (int) $user->id, 403);
 
         return view('certificates.print', ['cert' => $certificate]);
+    }
+
+    public function pdf(Request $request, StudentCertificate $certificate)
+    {
+        $user = auth()->user();
+        abort_if($user->isStudent() && (int) $certificate->student_id !== (int) $user->id, 403);
+
+        $pdf = Pdf::loadView('certificates.pdf', ['cert' => $certificate])->setPaper('a4', 'landscape');
+        $name = 'certificate-'.$certificate->certificate_number.'.pdf';
+
+        return $request->boolean('download') ? $pdf->download($name) : $pdf->stream($name);
     }
 
     public function revoke(Request $request, StudentCertificate $certificate)

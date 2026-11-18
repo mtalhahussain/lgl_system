@@ -10,6 +10,7 @@ use App\Services\NotificationService;
 use App\Services\PayrollService;
 use App\Support\ListQuery;
 use App\Support\Money;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 
@@ -22,8 +23,8 @@ class PayrollController extends Controller
     public function __construct()
     {
         $this->middleware('auth');
-        $this->middleware('role:admin')->except(['index', 'show', 'slip']);
-        $this->middleware('role:admin,teacher')->only(['index', 'show', 'slip']);
+        $this->middleware('role:admin')->except(['index', 'show', 'slip', 'slipPdf']);
+        $this->middleware('role:admin,teacher')->only(['index', 'show', 'slip', 'slipPdf']);
     }
 
     public function index(Request $request)
@@ -156,6 +157,17 @@ class PayrollController extends Controller
         $this->authorizeDue($request->user(), $payout->due);
 
         return view('payroll.slip', compact('payout'));
+    }
+
+    public function slipPdf(Request $request, TeacherPayout $payout)
+    {
+        $payout->load(['due', 'reversal']);
+        $this->authorizeDue($request->user(), $payout->due);
+
+        $pdf = Pdf::loadView('payroll.slip-pdf', compact('payout'))->setPaper('a5', 'portrait');
+        $name = 'payslip-'.$payout->voucher_number.'.pdf';
+
+        return $request->boolean('download') ? $pdf->download($name) : $pdf->stream($name);
     }
 
     public function reverse(Request $request, TeacherPayout $payout, PayrollService $service)

@@ -52,7 +52,8 @@
 </head>
 <body>
     <div class="toolbar">
-        <button type="button" onclick="window.print()">Print / Save as PDF</button>
+        <a href="{{ route('certificates.pdf', [$cert, 'download' => 1]) }}" style="font:inherit; padding:8px 18px; margin:0 4px; border:1px solid #888; color:#1a1a1a; text-decoration:none;">Download PDF</a>
+        <a href="{{ route('certificates.pdf', $cert) }}" target="_blank" rel="noopener" style="font:inherit; padding:8px 18px; margin:0 4px; border:1px solid #888; color:#1a1a1a; text-decoration:none;">Print PDF</a>
     </div>
     <div class="sheet">
         <div class="cert-body">

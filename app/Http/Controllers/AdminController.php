@@ -24,7 +24,8 @@ class AdminController extends Controller
         $finance = \Illuminate\Support\Facades\Schema::hasTable('payments') ? app(\App\Services\OverviewService::class)->financialTotals() : null;
         $recent = Enrollment::with(['student:id,name', 'batch:id,name'])->orderByDesc('id')->limit(10)->get();
         $reminders = app(\App\Services\OverviewService::class)->batchReminders();
+        $teacherNextClasses = app(\App\Services\TeacherScheduleService::class)->upcomingForTeachers();
 
-        return view('dashboards.admin', compact('stats', 'finance', 'recent', 'reminders'));
+        return view('dashboards.admin', compact('stats', 'finance', 'recent', 'reminders', 'teacherNextClasses'));
     }
 }

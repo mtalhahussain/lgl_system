@@ -30,6 +30,7 @@
     </div>
 </section>
 @endif
+@include('dashboards.partials.teacher-next-classes')
 <div class="tw:grid tw:grid-cols-1 tw:gap-5 tw:xl:grid-cols-3 tw:mb-6">
     <section class="panel tw:xl:col-span-2">
         <div class="panel-heading"><h2>Recent admissions</h2><a href="{{ route('enrollments.index') }}" class="link-mini">View all <i class="fas fa-arrow-right ms-1" aria-hidden="true"></i></a></div>

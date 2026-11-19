@@ -2,6 +2,8 @@
 
 ## Authorization and scope
 
+On 19 November 2026 the owner clarified that all currently used project data is demo-only and disposable, and authorized `migrate:fresh --seed` after substantial development changes when useful. This supersedes earlier preservation/no-reset requirements for the confirmed current local development database only. Before a deliberate refresh, verify the target is the intended local development database; never reset production/shared targets or delete/overwrite backups. Routine database-writing tests still use isolated test databases. No refresh is required merely to resume work.
+
 The owner authorized incremental local implementation on 31 October 2026: "yes krte rahoo step by step auto". Exactly Admin, Teacher and Student; Admin handles accounting. The owner confirmed original records were demo-only. Earlier work preserved the original database and used a separate demo. On 5 November 2026 the owner clarified that the currently configured local `lgl_system` is the working database and authorized using it for incremental implementation, including additive migrations. This does not authorize resets, seeding, deletion or overwriting backups. Do not request routine task-to-task approval again.
 
 The owner separately authorized redundant project Markdown deletion and consolidation into README.md, AGENTS.md, CLAUDE.md, docs/PROJECT.md and docs/TASKS.md. This does not authorize deleting application modules, historical records, databases or private backups. Deployment is owner-managed; do not request server access or pursue hosting work without a new request.

@@ -20,6 +20,7 @@ class CourseController extends Controller
     {
         if (auth()->user()->isTeacher()) {
             $courses = Course::select('id', 'name', 'level', 'duration_weeks')
+                ->withCount('materials')
                 ->whereHas('batches', fn ($query) => $query->where('teacher_id', auth()->id()))
                 ->orderBy('level')->get();
 

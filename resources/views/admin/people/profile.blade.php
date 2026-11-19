@@ -170,7 +170,7 @@
                         <tr>
                             <td>@if($isAdmin)<a class="cell-main" href="{{ route('enrollments.show', $row) }}">{{ $row->batch?->name }}</a>@else<span class="cell-main">{{ $row->batch?->name }}</span>@endif<span class="cell-sub">{{ $row->batch?->course?->name }}@if($row->batch?->course?->level) ({{ $row->batch?->course?->level }})@endif</span></td>
                             <td>{{ $row->enrollment_date?->format('d M Y') }}</td>
-                            <td class="num"><strong>{{ $row->discount_percentage }}%</strong>@if(\App\Support\Money::minor($row->discount_amount) > 0)<span class="cell-sub">{{ currency_format($row->discount_amount) }}</span>@endif</td>
+                            <td class="num"><strong>{{ currency_format($row->discount_amount) }}</strong></td>
                             <td class="num">{{ currency_format(\App\Support\Money::decimal(max(0, \App\Support\Money::minor($row->total_fee) - \App\Support\Money::minor($row->discount_amount)))) }}<span class="cell-sub">of {{ currency_format($row->total_fee) }}</span></td>
                             <td class="num">{{ currency_format($row->remaining_fee) }}</td>
                             <td><x-list.status :value="$row->status" :label="$row->status === 'dropped' ? 'withdrawn' : null" /></td>

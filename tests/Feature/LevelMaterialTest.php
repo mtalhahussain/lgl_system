@@ -129,7 +129,7 @@ class LevelMaterialTest extends TestCase
         }
     }
 
-    public function test_non_previewable_files_download_from_view_route_and_nav_link_shows(): void
+    public function test_non_previewable_files_download_and_level_rows_replace_sidebar_link(): void
     {
         $this->actingAs($this->admin)->post(route('materials.store', $this->level), ['title' => 'Notes',
             'file' => UploadedFile::fake()->create('notes.docx', 10, 'application/vnd.openxmlformats-officedocument.wordprocessingml.document')]);
@@ -137,7 +137,12 @@ class LevelMaterialTest extends TestCase
         $student = $this->student($this->batch, 'active');
 
         $this->actingAs($student)->get(route('materials.view', $material))->assertOk()->assertDownload('notes.docx');
-        $this->get(route('student.dashboard'))->assertOk()->assertSee(route('materials.index'), false);
-        $this->actingAs($this->teacher)->get(route('teacher.dashboard'))->assertOk()->assertSee(route('materials.index'), false);
+        $this->get(route('student.dashboard'))->assertOk()->assertSee('1 attachment')
+            ->assertSee(route('materials.index', ['course_id' => $this->level->id]), false)
+            ->assertDontSee('Books &amp; Materials', false);
+        $this->actingAs($this->teacher)->get(route('teacher.dashboard'))->assertOk()->assertDontSee(route('materials.index'), false);
+        $this->get(route('courses.index'))->assertOk()->assertSee('1 attachment')
+            ->assertSee(route('materials.index', ['course_id' => $this->level->id]), false);
+        $this->get(route('materials.index', ['course_id' => $this->otherLevel->id]))->assertOk()->assertDontSee('Notes');
     }
 }

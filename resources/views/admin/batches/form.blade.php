@@ -9,8 +9,14 @@
         <h2 class="form-section-title">Batch</h2>
         <div class="row g-3">
             <div class="col-md-6">
-                <label class="form-label required" for="name">Name</label>
-                <input class="form-control" id="name" name="name" value="{{ old('name', $batch?->name) }}" required>
+                @php
+                    $nextBatchNumber = $batch ? $batch->id : (int) \App\Models\Batch::max('id') + 1;
+                    $previewStart = old('start_date', today()->toDateString());
+                    $previewStart = \Illuminate\Support\Facades\Validator::make(['date' => $previewStart], ['date' => 'required|date_format:Y-m-d'])->passes() ? $previewStart : today()->toDateString();
+                @endphp
+                <label class="form-label" for="name">Batch name (automatic)</label>
+                <input class="form-control" id="name" name="name" value="{{ $batch ? $batch->name : \App\Models\Batch::automaticName($nextBatchNumber, $previewStart) }}" readonly aria-describedby="batch-name-help" @if(!$batch) data-auto-batch-number="{{ $nextBatchNumber }}" @endif>
+                <div class="form-text" id="batch-name-help">{{ $batch ? 'Saved batch name is retained.' : 'Assigned on save using the batch number and start month.' }}</div>
             </div>
             <div class="col-md-6">
                 <label class="form-label" for="status">Status</label>

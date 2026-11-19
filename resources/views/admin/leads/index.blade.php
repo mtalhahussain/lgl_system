@@ -9,10 +9,32 @@
 @endphp
 
 <div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2">
-    <h1 class="h4 mb-0">Leads &amp; applications</h1>
+    <h1 class="h4 mb-0">Leads &amp; inquiries</h1>
     <a href="{{ route('leads.create') }}" class="btn btn-primary"><i class="fas fa-plus me-1" aria-hidden="true"></i>Add lead</a>
 </div>
 
+<section class="panel form-section mb-3">
+    <form method="get" action="{{ route('leads.index') }}" class="mb-3">
+        @foreach(request()->only(['search', 'status', 'source']) as $name => $value)<input type="hidden" name="{{ $name }}" value="{{ $value }}">@endforeach
+        <label class="form-label" for="link_expiry">Link validity</label>
+        <div class="admission-student-picker-row">
+            <select class="form-select" id="link_expiry" name="link_expiry">
+                @foreach(['permanent' => 'No expiry — recommended for ads', '24h' => 'Expires in 24 hours', '7d' => 'Expires in 7 days'] as $value => $label)
+                    <option value="{{ $value }}" @selected($linkExpiry === $value)>{{ $label }}</option>
+                @endforeach
+            </select>
+            <button class="btn btn-outline-primary">Generate link</button>
+        </div>
+    </form>
+    <label class="form-label" for="inquiry_link">Public inquiry link — share with interested students</label>
+    <div class="lead-inquiry-link-controls">
+        <input class="form-control" id="inquiry_link" value="{{ $inquiryUrl }}" readonly>
+        <button class="btn btn-primary" type="button" data-copy-target="inquiry_link">Copy link</button>
+        <a class="btn btn-outline-primary" href="{{ $inquiryUrl }}" target="_blank" rel="noopener">Open inquiry form</a>
+    </div>
+    <p class="form-text mb-0" data-copy-status role="status" aria-live="polite"></p>
+    <p class="form-text mb-0">Submissions arrive as New leads. Contact, qualify and convert them, or reject with a reason.</p>
+</section>
 <form method="GET" action="{{ route('leads.index') }}" class="card card-body mb-3">
     <div class="row g-2 align-items-end">
         <div class="col-sm-4">
@@ -23,7 +45,7 @@
             <label class="form-label small mb-1" for="status">Status</label>
             <select class="form-select" id="status" name="status" data-native>
                 <option value="">All</option>
-                @foreach (['new','contacted','qualified','submitted','converted','rejected'] as $s)
+                @foreach (['new','contacted','qualified','converted','rejected'] as $s)
                     <option value="{{ $s }}" @selected(request('status')===$s)>{{ ucfirst($s) }}</option>
                 @endforeach
             </select>
@@ -32,8 +54,8 @@
             <label class="form-label small mb-1" for="source">Source</label>
             <select class="form-select" id="source" name="source" data-native>
                 <option value="">All</option>
-                @foreach (['public','meta','manual'] as $src)
-                    <option value="{{ $src }}" @selected(request('source')===$src)>{{ ucfirst($src) }}</option>
+                @foreach (\App\Models\Lead::FILTER_SOURCES as $src => $label)
+                    <option value="{{ $src }}" @selected(request('source')===$src)>{{ $label }}</option>
                 @endforeach
             </select>
         </div>

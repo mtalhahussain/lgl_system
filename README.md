@@ -4,11 +4,12 @@ Laravel 12 / PHP 8.2+ institute management using Eloquent, Blade, Tailwind 4 wit
 
 ## Local use
 
-The owner confirmed on 5 November 2026 that the currently configured local `lgl_system` is the working database. Use additive migrations; do not reset it or overwrite preserved databases/backups to resume work.
+The owner confirmed the local working database on 5 November 2026 and clarified on 19 November that current development data is disposable demo data. A deliberate `migrate:fresh --seed` is authorized after substantial changes when useful, after verifying the intended local development target. Never reset production/shared targets or overwrite backups; routine database-writing tests still use isolated databases.
 
 ```powershell
 npm ci
 npm run build
+node scripts/verify-built-styles.mjs
 php artisan serve --host=127.0.0.1 --port=8791
 php artisan test
 ```
@@ -26,6 +27,20 @@ The three role portals and login use a German flag theme: black navigation, red 
 Demo seeders refuse production. Never use these accounts for production provisioning.
 
 ## Documentation
+
+New batch names are automatic, e.g. `BTC-001-Nov-26`: the numeric part comes from the saved batch ID and the month/year from its start date. The form shows a read-only preview; the server assigns the final number on save. Existing names stay unchanged when editing.
+
+Leads has Copy link plus permanent (recommended for ads), 24-hour and 7-day inquiry-link choices. Expiring links are signed and reject both opening/submission after expiry. All public inquiry submissions share limits of 5 attempts per 10 minutes and 20 per hour per IP, plus the existing honeypot; the same phone creates at most one public inquiry per rolling 24 hours, with duplicates receiving the same thank-you response. The permanent public endpoint remains available, so link expiry complements these checks and does not prevent all spam by itself.
+
+Public inquiry Level of interest uses an required A1–C2 code dropdown. Its header shows only the uploaded Login logo, sized responsively with blank upload margins fitted; without a logo the LGL badge and institute name remain.
+
+On Student admission, selecting an existing student automatically loads their saved name, contact details, address, birth date, father name and CNIC into the form. Filled fields stay read-only; empty basic fields are editable and can be completed with the admission. The Choose button remains a no-JavaScript fallback; previously saved values cannot be overwritten.
+
+Active portal module styles and Select2 theme/custom CSS are bundled by Vite. Public application and browser certificate print styles have separate versioned CSS entries. The Student admission selector uses compiled responsive classes, with padding and a stacked mobile action. Upload updated Blade files and the complete `public/build` directory (including manifest and all assets) together; a partial build upload can break styling. `verify-built-styles.mjs` checks compiled entries/selectors and active browser views for inline styles; standalone PDF embedded styles and retained dormant templates are explicit exceptions.
+
+Materials are accessed from attachment counts in Student My Levels and Teacher Assigned Levels tables, rather than a separate sidebar link. Each link opens that level's protected file list; Admin manages files on the Level detail page.
+
+Login uses a wider, naturally wrapping headline and description below the logo, followed by a compact Guten Tag learning card on desktop. Compact spacing fits normal desktop and mobile screens; scrolling remains available when zoom, keyboard or validation content needs extra room.
 
 Student tables include an attendance-machine status and sync icon. Without an active configured machine, new people receive no machine number. Configured machines receive the app's reserved Employee No. through the institute bridge; the same ID appears as confirmed only after a successful bridge result. Pending/failed syncs remain visible, and existing numbers are preserved. Sync queues work for the bridge's next run; it does not directly contact the device.
 
@@ -52,7 +67,7 @@ Teacher and Student password fields are optional on create/edit. Leave them blan
 
 These five Markdown files are the current documentation. Deferred modules remain outside the active product. Historical API examples were removed because API routing is unregistered and Sanctum is not installed.
 
-The login page fills the desktop viewport edge to edge and displays the institute logo uploaded in Settings, with an LGL fallback before upload. Its default branding is Land of German Language; Settings can override the institute name.
+The login page fills the desktop viewport edge to edge. An uploaded Settings login logo replaces the visible institute wordmark with a responsive image up to 400px wide on desktop (320px on mobile), with blank white/transparent upload margins fitted out of the login display; without a logo, the LGL badge and institute name remain. Admin can open `/settings?show=true` to upload three independent logos: Login, Sidebar, and a shared Certificate/Payslip logo. The expanded sidebar/mobile header uses the Login logo; expanded desktop branding fits the artwork into the available width without increasing header height; the collapsed desktop sidebar uses the Sidebar logo. Missing logos use the original name/icon branding (icon only when collapsed). These upload controls and the Integrations section are hidden on normal Settings and visible only with ?show=true; saved logos always render at their respective destinations. Blank uploads preserve saved files. Existing login uploads remain the login/public application logo; document branding uses its own upload. Login and public application logo URLs use the current application address (including port/base path), respecting any configured asset URL. Its default branding is Land of German Language; Settings can override the institute name.
 
 Admin can sell a multi-level package (2–4 consecutive levels, e.g. A1 + A2, A1 to B1, A1 to B2) from Enrollments > Multi-level package. Admin enters the agreed price per sale (package or student-specific discount), chooses full payment now or monthly installments per level, and the system reserves every seat and splits the price exactly across level ledgers. Normal module-wise admission remains available. Per-student teachers are paid monthly per batch (rate × students that month) from Teacher Payroll > Generate month.
 
@@ -72,7 +87,7 @@ Across portal modules, Teacher, Course, Student, Batch and Enrollment selectors 
 
 For an unpaid mistaken admission, open Enrollments > View > Correct batch. Admin can choose another available batch of the same course and provide a reason before academic records exist. The original stays linked in history; fees, installments and admission date are preserved. Package admissions and any payment history require a separate reviewed process.
 
-Admin sidebar includes Enrollments below Students for admissions, batch correction, transfers and withdrawals.
+Admin uses one Students screen and one Student admission form for new/existing students. The Students table includes each enrollment's level/batch, fixed discount and outstanding fee, with detail links; Multi-level package is available in its header. There is no separate admissions tab. Existing admission URLs remain compatible and records are preserved. The shared form defines batch/fee fields once, fixed currency discount and equal/custom installments. Leads has a shareable public inquiry link (/apply): submissions become New leads only; Admin contacts them, qualifies and converts to a student, or rejects with a reason. No second applicant-completion step is required. Meta is removed from visible source filters; historical rows remain.
 
 For per-student teacher pay, select Per student per month on teacher create/edit and enter Amount per student per month. This teacher's rate applies to students in every assigned batch each month, independent of the course amount. Existing teachers without a positive rate need it configured before new batch dues can be generated; previously generated dues and payouts keep their saved amounts.
 

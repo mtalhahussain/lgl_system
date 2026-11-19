@@ -75,6 +75,30 @@ class BatchAndSessionTest extends TestCase
             ->assertRedirect('/batches/'.$batch->id);
     }
 
+    public function test_batch_name_is_generated_from_saved_id_and_start_month_and_retained_on_edit(): void
+    {
+        $data = array_replace($this->batchData(), ['start_date' => '2026-11-01', 'end_date' => '2026-11-30', 'name' => 'Forged name']);
+        $this->get('/batches/create')->assertOk()->assertSee('Batch name (automatic)')->assertSee('data-auto-batch-number', false);
+        $this->post('/batches', $data)->assertRedirect('/batches')->assertSessionHasNoErrors();
+        $batch = Batch::sole();
+        $this->assertSame('BTC-'.str_pad((string) $batch->id, 3, '0', STR_PAD_LEFT).'-Nov-26', $batch->name);
+        $savedName = $batch->name;
+        $this->put('/batches/'.$batch->id, array_replace($data, ['name' => 'Changed', 'start_date' => '2026-12-01', 'end_date' => '2026-12-31']))
+            ->assertRedirect('/batches/'.$batch->id)->assertSessionHasNoErrors();
+        $this->assertSame($savedName, $batch->fresh()->name);
+        unset($data['name']);
+        $this->post('/batches', $data)->assertRedirect('/batches')->assertSessionHasNoErrors();
+        $this->assertSame(2, Batch::distinct()->count('name'));
+        $this->assertSame('BTC-1000-Jan-27', Batch::automaticName(1000, '2027-01-01'));
+    }
+
+    public function test_invalid_start_date_can_redisplay_automatic_name_preview(): void
+    {
+        $this->followingRedirects()->from('/batches/create')->post('/batches', array_replace($this->batchData(), ['start_date' => 'invalid']))
+            ->assertOk()->assertSee('Batch name (automatic)');
+        $this->assertDatabaseCount('batches', 0);
+    }
+
     public function test_batch_rejects_non_teacher_and_inactive_teacher(): void
     {
         $student = User::factory()->create(['role' => 'student']);

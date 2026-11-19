@@ -80,7 +80,9 @@ class BatchController extends Controller
     {
         [$data, $schedule] = $this->validatedBatch($request);
         $created = DB::transaction(function () use ($data, $schedule) {
+            $data['name'] = 'BTC-'.\Illuminate\Support\Str::ulid();
             $batch = Batch::create($data);
+            $batch->update(['name' => Batch::automaticName($batch->id, $data['start_date'])]);
             $this->saveSchedule($batch, $schedule);
 
             return app(BatchSessionScheduler::class)->generate($batch, auth()->id());
@@ -141,7 +143,7 @@ class BatchController extends Controller
     private function validatedBatch(Request $request): array
     {
         $data = $request->validate([
-            'name' => 'required|string|max:255',
+            'name' => 'exclude',
             'course_id' => ['required', Rule::exists('courses', 'id')->where('is_active', true)],
             'teacher_id' => ['required', Rule::exists('users', 'id')->where('role', 'teacher')->where('is_active', true)],
             'start_date' => 'required|date',

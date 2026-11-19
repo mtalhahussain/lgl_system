@@ -40,8 +40,11 @@ Route::middleware('guest')->group(function () {
 // Public lead capture (no auth; web group gives session + CSRF). Throttled + honeypot.
 Route::middleware('throttle:30,1')->group(function () {
     Route::get('/apply', [LeadController::class, 'showApplyForm'])->name('apply.form');
-    Route::post('/apply', [LeadController::class, 'storeApply'])->name('apply.store');
+    Route::post('/apply', [LeadController::class, 'storeApply'])->name('apply.store')->middleware('throttle:inquiry-submit');
     Route::get('/apply/thanks', [LeadController::class, 'thanks'])->name('apply.thanks');
+
+    Route::get('/inquiry', [LeadController::class, 'showApplyForm'])->name('inquiry.form')->middleware('signed');
+    Route::post('/inquiry', [LeadController::class, 'storeApply'])->name('inquiry.store')->middleware(['signed', 'throttle:inquiry-submit']);
 
     // Prefilled completion of a qualified lead. Signed, time-limited, status-gated.
     Route::middleware('signed')->group(function () {
@@ -82,6 +85,7 @@ Route::middleware(['auth', EnsureActiveAccount::class, EnsureModuleAccess::class
         Route::put('/leads/{lead}', [LeadController::class, 'update'])->name('leads.update');
         Route::delete('/leads/{lead}', [LeadController::class, 'destroy'])->name('leads.destroy');
         Route::post('/leads/{lead}/qualify', [LeadController::class, 'qualify'])->name('leads.qualify');
+        Route::post('/leads/{lead}/contact', [LeadController::class, 'contact'])->name('leads.contact');
         Route::post('/leads/{lead}/reject', [LeadController::class, 'reject'])->name('leads.reject');
         Route::get('/leads/{lead}/convert', [LeadController::class, 'convert'])->name('leads.convert');
         Route::post('/leads/{lead}/convert', [LeadController::class, 'storeConvert'])->name('leads.convert.store');

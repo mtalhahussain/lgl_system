@@ -43,6 +43,11 @@ class Batch extends Model
         ];
     }
 
+    public static function automaticName(int $number, string $startDate): string
+    {
+        return 'BTC-'.str_pad((string) $number, 3, '0', STR_PAD_LEFT).'-'.\Carbon\Carbon::parse($startDate)->format('M-y');
+    }
+
     // Relationships
     public function course()
     {

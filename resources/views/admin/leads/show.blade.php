@@ -70,45 +70,32 @@
 
     <div class="col-lg-5">
         <div class="card card-body">
-            <h2 class="h6 text-uppercase text-muted">Pipeline</h2>
-
-            @if (in_array($lead->status, ['new','contacted']))
-                <form method="POST" action="{{ route('leads.qualify', $lead) }}" class="mb-3">
-                    @csrf
-                    <button type="submit" class="btn btn-lgl btn-lgl-red w-100">
-                        <i class="fas fa-check"></i> Qualify &amp; generate application link
-                    </button>
+            <h2 class="h6 text-uppercase text-muted">Inquiry follow-up</h2>
+            @if(in_array($lead->status, ['new', 'contacted']))
+                @if($lead->status === 'new')
+                    <form method="post" action="{{ route('leads.contact', $lead) }}" class="mb-3">@csrf
+                        <button class="btn btn-outline-primary w-100">Mark as contacted</button>
+                    </form>
+                @endif
+                <p class="small text-muted">Contact the person, confirm their interest and qualify them when ready.</p>
+                <form method="post" action="{{ route('leads.qualify', $lead) }}" class="mb-3">@csrf
+                    <button class="btn btn-primary w-100">Qualify lead</button>
                 </form>
-
-                <form method="POST" action="{{ route('leads.reject', $lead) }}">
-                    @csrf
-                    <label class="form-label small" for="reason">Reject reason</label>
-                    <textarea class="form-control mb-2" id="reason" name="reason" rows="2" minlength="5" maxlength="500" placeholder="Why this lead is rejected (min 5 chars)"></textarea>
-                    <button type="submit" class="btn btn-outline-dark w-100">Reject lead</button>
-                </form>
-
-            @elseif ($lead->status === 'qualified')
-                <p class="small text-muted">Share this one-time link with the applicant (valid 48 hours). They confirm their details; CNIC stays locked.</p>
-                <div class="input-group mb-2">
-                    <input type="text" class="form-control" id="prefill" value="{{ $prefillUrl }}" readonly>
-                    <button class="btn btn-dark" type="button" onclick="navigator.clipboard && navigator.clipboard.writeText(document.getElementById('prefill').value)">Copy</button>
-                </div>
-                <p class="small text-muted mb-0">Waiting for the applicant to complete their registration.</p>
-
-            @elseif ($lead->status === 'submitted')
-                <div class="alert alert-success small">Applicant completed their registration on {{ optional($lead->submitted_at)->format('d-m-Y h:i A') }}.</div>
-                <a href="{{ route('leads.convert', $lead) }}" class="btn btn-lgl btn-lgl-red w-100">
-                    <i class="fas fa-user-plus"></i> Review &amp; create student
-                </a>
-
-            @elseif ($lead->status === 'converted')
-                <div class="alert alert-success mb-0">Converted to a student account.
-                    @if ($lead->student)<a href="{{ route('students.show', $lead->student) }}">Open student</a>.@endif
-                </div>
-
-            @elseif ($lead->status === 'rejected')
-                <div class="alert alert-dark mb-0">This lead was rejected.</div>
+            @elseif(in_array($lead->status, ['qualified', 'submitted']))
+                <p class="small text-muted">This lead is ready for review and student registration.</p>
+                <a href="{{ route('leads.convert', $lead) }}" class="btn btn-primary w-100 mb-3">Convert to student</a>
+            @elseif($lead->status === 'converted')
+                <div class="alert alert-success">Converted to a student. @if($lead->student)<a href="{{ route('students.show', $lead->student) }}">Open student</a>.@endif</div>
+            @elseif($lead->status === 'rejected')
+                <div class="alert alert-dark">Lead rejected: {{ $lead->rejected_reason }}</div>
             @endif
+            @unless(in_array($lead->status, ['converted', 'rejected']))
+                <form method="post" action="{{ route('leads.reject', $lead) }}">@csrf
+                    <label class="form-label small" for="reason">Reject reason</label>
+                    <textarea class="form-control mb-2" id="reason" name="reason" rows="2" minlength="5" maxlength="500" required></textarea>
+                    <button class="btn btn-outline-danger w-100">Reject lead</button>
+                </form>
+            @endunless
         </div>
     </div>
 </div>

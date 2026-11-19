@@ -27,6 +27,8 @@ class Lead extends Model
 
     public const SOURCE_MANUAL = 'manual';
 
+    public const FILTER_SOURCES = [self::SOURCE_PUBLIC => 'Public inquiry', self::SOURCE_MANUAL => 'Manual'];
+
     protected $fillable = [
         'source',
         'status',

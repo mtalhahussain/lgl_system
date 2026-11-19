@@ -31,7 +31,7 @@
                     $detailId = 'ledger_detail_'.$enrollment->id;
                 @endphp
                 <tr>
-                    <td><span class="cell-main">{{ $enrollment->student->name }}</span><span class="cell-sub">{{ $enrollment->batch->name }}@if($enrollment->batch->course?->level) ({{ $enrollment->batch->course?->level }})@endif · {{ $enrollment->status }}@if(\App\Support\Money::minor($enrollment->discount_amount) > 0) · {{ $enrollment->discount_percentage }}% off @endif</span></td>
+                    <td><span class="cell-main">{{ $enrollment->student->name }}</span><span class="cell-sub">{{ $enrollment->batch->name }}@if($enrollment->batch->course?->level) ({{ $enrollment->batch->course?->level }})@endif · {{ $enrollment->status }}@if(\App\Support\Money::minor($enrollment->discount_amount) > 0) · {{ currency_format($enrollment->discount_amount) }} off @endif</span></td>
                     <td class="num">{{ currency_format($net) }}</td>
                     <td class="num">{{ currency_format($enrollment->net_paid) }}@if(\App\Support\Money::minor($enrollment->refunded_amount ?? '0') > 0)<span class="cell-sub">after {{ currency_format($enrollment->refunded_amount) }} refund</span>@endif</td>
                     <td class="num"><strong>{{ currency_format($enrollment->remaining_fee) }}</strong></td>
@@ -64,7 +64,7 @@
                                     @endforelse
                                     </tbody>
                                 </table>
-                                <p class="cell-sub mt-2">Agreed {{ currency_format($enrollment->total_fee) }}; discount {{ $enrollment->discount_percentage }}% ({{ currency_format($enrollment->discount_amount) }}).@if(auth()->user()->isAdmin() && $enrollment->status !== 'transferred' && ! $enrollment->enrollment_package_id) <a href="{{ route('enrollments.show', $enrollment) }}#fee-heading">Edit discount</a>@endif
+                                <p class="cell-sub mt-2">Agreed {{ currency_format($enrollment->total_fee) }}; discount {{ currency_format($enrollment->discount_amount) }}.@if(auth()->user()->isAdmin() && $enrollment->status !== 'transferred' && ! $enrollment->enrollment_package_id) <a href="{{ route('enrollments.show', $enrollment) }}#fee-heading">Edit discount</a>@endif
                                 @if($enrollment->enrollment_package_id)<a href="{{ route('enrollment-packages.show', $enrollment->enrollment_package_id) }}">Package agreement</a>@endif</p>
                             </div>
                             @if($isAdmin && $enrollment->status !== 'transferred')

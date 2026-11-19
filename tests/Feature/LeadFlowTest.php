@@ -35,7 +35,71 @@ class LeadFlowTest extends TestCase
 
     public function test_public_can_view_apply_form(): void
     {
-        $this->get(route('apply.form'))->assertOk()->assertSee('Apply for admission');
+        $this->get(route('apply.form'))->assertOk()->assertSee('Send inquiry')->assertDontSee('name="cnic"', false);
+    }
+
+    public function test_public_interest_is_a_validated_level_code_dropdown(): void
+    {
+        $page = $this->get(route('apply.form'))->assertOk()->assertSee('<select class="form-select" id="program_interest"', false)
+            ->assertSee('name="program_interest" required', false)->assertDontSee('novalidate');
+        foreach (['A1', 'A2', 'B1', 'B2', 'C1', 'C2'] as $code) {
+            $page->assertSee('value="'.$code.'"', false);
+        }
+        foreach ([null, ''] as $missing) {
+            $this->postJson(route('apply.store'), ['name' => 'Interested', 'phone' => '03001234567', 'program_interest' => $missing])
+                ->assertUnprocessable()->assertJsonValidationErrors('program_interest');
+        }
+        $this->postJson(route('apply.store'), ['name' => 'Interested', 'phone' => '03001234567', 'program_interest' => 'Invalid'])
+            ->assertUnprocessable()->assertJsonValidationErrors('program_interest');
+        $this->post(route('apply.store'), ['name' => 'Interested', 'phone' => '03001234567', 'program_interest' => 'B1'])
+            ->assertRedirect(route('apply.thanks'));
+        $this->assertSame('B1', Lead::sole()->program_interest);
+    }
+
+    public function test_recent_duplicate_phone_is_ignored_without_replacing_original_inquiry(): void
+    {
+        $data = ['name' => 'Original inquiry', 'phone' => '03001234567', 'program_interest' => 'A1'];
+        $this->post(route('apply.store'), $data)->assertRedirect(route('apply.thanks'));
+        $this->post(route('apply.store'), array_replace($data, ['name' => 'Repeated']))->assertRedirect(route('apply.thanks'));
+        $this->assertSame(1, Lead::count());
+        $this->assertSame('Original inquiry', Lead::sole()->name);
+        $this->travel(25)->hours();
+        $this->post(route('apply.store'), $data)->assertRedirect(route('apply.thanks'));
+        $this->assertSame(2, Lead::count());
+    }
+
+    public function test_inquiry_post_is_rate_limited_and_does_not_block_other_ips(): void
+    {
+        for ($i = 0; $i < 5; $i++) {
+            $this->post(route('apply.store'), ['name' => 'Interested '.$i, 'phone' => '0300123400'.$i, 'program_interest' => 'A1'])->assertRedirect();
+        }
+        $limited = $this->post(route('apply.store'), ['name' => 'Too many', 'phone' => '03001234999'])->assertStatus(429);
+        $this->assertGreaterThan(0, (int) $limited->headers->get('Retry-After'));
+        $this->assertSame(5, Lead::count());
+        $this->withServerVariables(['REMOTE_ADDR' => '192.0.2.25'])
+            ->post(route('apply.store'), ['name' => 'Another visitor', 'phone' => '03001234888', 'program_interest' => 'A1'])->assertRedirect();
+        $this->assertSame(6, Lead::count());
+    }
+
+    public function test_temporary_inquiry_signature_and_expiry_cover_get_and_post(): void
+    {
+        $url = URL::temporarySignedRoute('inquiry.form', now()->addDay());
+        $this->get($url)->assertOk()->assertSee(e($url), false);
+        $this->post($url, ['name' => 'Timed inquiry', 'phone' => '03001234567', 'program_interest' => 'A1'])->assertRedirect(route('apply.thanks'));
+        $this->get(route('inquiry.form'))->assertForbidden();
+        $this->post(route('inquiry.store'), ['name' => 'Unsigned', 'phone' => '03001234568'])->assertForbidden();
+        $this->travel(25)->hours();
+        $this->get($url)->assertForbidden();
+        $this->post($url, ['name' => 'Expired', 'phone' => '03001234569'])->assertForbidden();
+        $this->assertSame(1, Lead::count());
+    }
+
+    public function test_admin_can_generate_and_copy_temporary_or_permanent_inquiry_links(): void
+    {
+        $this->actingAs($this->admin)->get(route('leads.index'))->assertOk()->assertSee('Copy link')
+            ->assertSee('data-copy-target="inquiry_link"', false)->assertSee(route('apply.form'), false);
+        $this->get(route('leads.index', ['link_expiry' => '24h']))->assertOk()
+            ->assertSee('/inquiry?expires=', false)->assertSee('signature=', false);
     }
 
     public function test_public_submission_creates_a_new_lead(): void
@@ -45,6 +109,7 @@ class LeadFlowTest extends TestCase
             'father_name' => 'Khan Sb',
             'cnic' => '3520112345678',
             'phone' => '03001234567',
+            'program_interest' => 'A1',
         ])->assertRedirect(route('apply.thanks'));
 
         $lead = Lead::first();
@@ -69,7 +134,7 @@ class LeadFlowTest extends TestCase
     public function test_intake_validates_required_fields(): void
     {
         $this->post(route('apply.store'), ['name' => ''])
-            ->assertSessionHasErrors(['name', 'phone']);
+            ->assertSessionHasErrors(['name', 'phone', 'program_interest']);
     }
 
     // ---- Admin pipeline access control ---------------------------------------
@@ -99,6 +164,29 @@ class LeadFlowTest extends TestCase
         $this->assertSame(Lead::STATUS_QUALIFIED, $lead->status);
         $this->assertSame($this->admin->id, $lead->verified_by);
         $this->assertNotNull($lead->verified_at);
+    }
+
+    public function test_inquiry_link_and_follow_up_create_no_student_until_qualified_conversion(): void
+    {
+        $studentCount = User::where('role', 'student')->count();
+        $this->post(route('apply.store'), ['name' => 'Interested person', 'phone' => '03001234567', 'program_interest' => 'A1'])
+            ->assertRedirect(route('apply.thanks'));
+        $lead = Lead::sole();
+        $this->assertSame('new', $lead->status);
+        $this->assertSame($studentCount, User::where('role', 'student')->count());
+        $this->assertNull($lead->student_id);
+        $this->actingAs($this->admin)->get(route('leads.index'))->assertOk()->assertSee(route('apply.form'), false)
+            ->assertDontSee('value="meta"', false);
+        $this->get(route('leads.convert', $lead))->assertStatus(422);
+        $this->get(route('leads.show', $lead))->assertOk()->assertSee('Mark as contacted')->assertDontSee('generate application link');
+        $this->post(route('leads.contact', $lead))->assertRedirect();
+        $this->assertSame('contacted', $lead->fresh()->status);
+        $this->post(route('leads.qualify', $lead))->assertRedirect();
+        $this->get(route('leads.show', $lead))->assertOk()->assertSee('Convert to student')->assertDontSee('id="prefill"', false);
+        $this->post(route('leads.reject', $lead), ['reason' => 'Not ready for the level'])->assertRedirect();
+        $this->get(route('leads.convert', $lead))->assertStatus(422);
+        $this->assertSame($studentCount, User::where('role', 'student')->count());
+        $this->actingAs($this->teacher)->post(route('leads.contact', $lead))->assertForbidden();
     }
 
     public function test_prefill_link_requires_a_valid_signature(): void
@@ -211,10 +299,10 @@ class LeadFlowTest extends TestCase
         $this->assertNotNull($lead->converted_at);
     }
 
-    public function test_cannot_convert_a_lead_that_has_not_been_submitted(): void
+    public function test_admin_can_register_a_qualified_lead_directly(): void
     {
         $lead = Lead::create(['name' => 'Ali', 'phone' => '03001234567', 'status' => Lead::STATUS_QUALIFIED]);
-        $this->actingAs($this->admin)->get(route('leads.convert', $lead))->assertStatus(422);
+        $this->actingAs($this->admin)->get(route('leads.convert', $lead))->assertOk()->assertSee('Student admission');
     }
 
     public function test_show_flags_a_duplicate_existing_student(): void

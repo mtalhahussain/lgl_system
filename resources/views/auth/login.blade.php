@@ -21,19 +21,19 @@
         <section class="login-story" aria-label="Welcome">
             <div>
                 <div class="login-wordmark">
-                    <span class="login-logo">
-                        @if($instituteLogo)
-                            <img src="{{ \Illuminate\Support\Facades\Storage::disk('public')->url($instituteLogo) }}" alt="{{ $instituteName }} logo">
-                        @else
+                    @if($instituteLogo)
+                        <img class="login-uploaded-logo" src="{{ asset('storage/'.$instituteLogo) }}" alt="{{ $instituteName }} logo">
+                    @else
+                        <span class="login-logo">
                             <span aria-hidden="true">LGL</span>
-                        @endif
-                    </span>
-                    <span>{{ $instituteName }}<small>INSTITUTE PORTAL</small></span>
+                        </span>
+                        <span>{{ $instituteName }}<small>INSTITUTE PORTAL</small></span>
+                    @endif
                 </div>
                 <div class="login-story-content">
                     <span class="login-kicker"><span class="login-flag" aria-hidden="true"></span> YOUR NEXT CHAPTER STARTS HERE</span>
-                    <h1>A new language.<br>A world of<br><em>possibilities.</em></h1>
-                    <p>Stay connected to your German learning journey. Your classes, attendance and progress, all in one place.</p>
+                    <h1>Learn German. <em>Stay connected.</em></h1>
+                    <p>From your next class to your latest results, keep your schedule, attendance and learning progress together in one place.</p>
                     <div class="login-learning-card">
                         <span class="login-greeting" lang="de">Guten Tag.</span>
                         <span>A little German. A little closer to your goals.</span>

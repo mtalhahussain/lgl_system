@@ -39,6 +39,20 @@ class RefundTest extends TestCase
         $this->actingAs($this->admin);
     }
 
+    public function test_fixed_discount_refund_uses_exact_money_and_replay_key(): void
+    {
+        $payment = $this->pay('5000');
+        $data = ['discount_amount' => '6000.13', 'reason' => 'Fixed scholarship refund',
+            'refund_method' => 'cash', 'submission_key' => (string) Str::uuid()];
+        $url = '/enrollments/'.$this->enrollment->id.'/discount';
+        $this->patch($url, $data)->assertRedirect()->assertSessionHasNoErrors();
+        $this->assertSame('6000.13', $this->enrollment->fresh()->discount_amount);
+        $this->assertSame('2000.13', $this->enrollment->fresh()->refunded_amount);
+        $this->assertSame('5000.00', $payment->fresh()->amount);
+        $this->patch($url, $data)->assertRedirect()->assertSessionHasNoErrors();
+        $this->assertSame(1, FeeRefund::count());
+    }
+
     private function pay(string $amount): Payment
     {
         return app(PaymentService::class)->pay($this->enrollment->id, $amount, 'cash', (string) Str::uuid(), $this->admin);

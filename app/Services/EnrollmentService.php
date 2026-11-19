@@ -39,6 +39,9 @@ class EnrollmentService
                 throw new \InvalidArgumentException('Student already has an enrollment in batch "'.$batch->name.'".');
             }
             $structure = $this->feeCalculator->calculateFeeStructure($batch->course_id, $discountPercentage, $schedule === null ? $installments : count($schedule));
+            if ($discountMinor !== null && ($discountMinor < 0 || $discountMinor > \App\Support\Money::minor($structure['original_fee']))) {
+                throw new \InvalidArgumentException('Discount amount cannot exceed the level fee.');
+            }
             $enrollment = Enrollment::create([
                 'batch_id' => $batch->id, 'student_id' => $student->id, 'enrollment_date' => now(),
                 'status' => 'active', 'total_fee' => $structure['original_fee'],
@@ -410,5 +413,39 @@ class EnrollmentService
         }
 
         return $report;
+    }
+
+    /** Notify the student, the batch teacher and Admins of a new enrollment. */
+    public function notifyEnrollment(Enrollment $enrollment): void
+    {
+        $notifier = app(\App\Services\NotificationService::class);
+        $enrollment->loadMissing('batch.course', 'batch.teacher', 'student');
+        $batch = $enrollment->batch;
+        $course = $batch?->course;
+        $courseName = $course ? trim($course->name.' '.($course->level ?? '')) : 'a level';
+        $batchName = $batch->name ?? '';
+
+        $notifier->toUser($enrollment->student_id, [
+            'type' => 'enrollment', 'icon' => 'fa-user-graduate', 'level' => 'success',
+            'title' => 'Enrollment confirmed',
+            'body' => "You are enrolled in {$courseName} ({$batchName}).",
+            'url' => route('enrollments.show', $enrollment),
+        ]);
+
+        if ($batch?->teacher_id) {
+            $notifier->toUser($batch->teacher_id, [
+                'type' => 'enrollment', 'icon' => 'fa-user-plus', 'level' => 'info',
+                'title' => 'New student in your batch',
+                'body' => ($enrollment->student->name ?? 'A student')." joined {$batchName}.",
+                'url' => route('enrollments.show', $enrollment),
+            ]);
+        }
+
+        $notifier->toAdmins([
+            'type' => 'enrollment', 'icon' => 'fa-user-graduate', 'level' => 'info',
+            'title' => 'New enrollment',
+            'body' => ($enrollment->student->name ?? 'A student')." enrolled in {$courseName} ({$batchName}).",
+            'url' => route('enrollments.show', $enrollment),
+        ], auth()->id());
     }
 }

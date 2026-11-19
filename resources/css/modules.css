@@ -1,0 +1,51 @@
+/* Active portal module styles, bundled by Vite. */
+.lead-inquiry-link-controls { display:grid; grid-template-columns:minmax(0,1fr) auto auto; gap:10px; align-items:start; }
+.lead-inquiry-link-controls > .form-control { min-width:0; }
+.lead-inquiry-link-controls > .btn { white-space:nowrap; }
+@media(max-width:575.98px) { .lead-inquiry-link-controls { grid-template-columns:repeat(2,minmax(0,1fr)); } .lead-inquiry-link-controls > .form-control { grid-column:1 / -1; } }
+
+
+    .exam-form-grid { display:grid; grid-template-columns:minmax(0, 1fr) minmax(0, 1.35fr); }
+    .exam-form-grid > .form-section { border-bottom:0; }
+    .exam-form-grid > .form-section + .form-section { border-left:1px solid var(--line); }
+    .exam-section-table { width:100%; min-width:360px; margin:18px 0 0; }
+    .exam-section-table th { font-size:12px; color:var(--muted); font-weight:600; }
+    .exam-section-table td { vertical-align:middle; padding-top:16px; padding-bottom:16px; }
+    .exam-section-table th:first-child { width:36%; }
+    .exam-section-name { font-weight:600; color:var(--navy); }
+    .exam-section-skill { display:block; font-size:12px; color:var(--muted); margin-top:3px; }
+    .exam-pass-note { background:var(--accent-soft); border-radius:10px; padding:14px 16px; margin-top:16px; font-size:13px; color:var(--navy); }
+    @media(max-width:991.98px) {
+        .exam-form-grid { grid-template-columns:minmax(0, 1fr); }
+        .exam-form-grid > .form-section + .form-section { border-left:0; border-top:1px solid var(--line); }
+    }
+
+
+    .certificate-workspace { display:grid; grid-template-columns:minmax(0, 1.25fr) minmax(0, 1fr); gap:24px; align-items:start; }
+    .certificate-preview { padding:28px; background:var(--accent-soft); }
+    .certificate-preview-sheet { background:white; border:1px solid var(--line); outline:1px solid #efdfa6; outline-offset:-9px; padding:36px 24px; text-align:center; border-radius:4px; overflow-wrap:anywhere; }
+    .certificate-preview-sheet .fa-award { color:var(--gold-ink); font-size:32px; margin-bottom:18px; }
+    .certificate-preview-sheet h3 { font-family:Georgia,serif; font-size:24px; margin:8px 0 24px; }
+    .certificate-preview-name { color:var(--navy); font-size:22px; font-weight:700; margin:12px 0; }
+    .certificate-preview-level { display:inline-block; padding:6px 18px; border-radius:20px; color:var(--gold-ink); background:var(--accent-soft); font-weight:700; margin:12px 0; }
+    .certificate-revoke-form { display:flex; flex-wrap:wrap; gap:10px; align-items:end; padding:12px; background:#fff7f7; border-radius:8px; }
+    .certificate-revoke-field { flex:1 1 240px; }
+    @media(max-width:991.98px) { .certificate-workspace { grid-template-columns:minmax(0, 1fr); } }
+    @media(max-width:575.98px) { .certificate-preview { padding:18px; } }
+
+
+.conn-grid{display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));margin-bottom:14px}
+.conn-card{border:1px solid var(--line);border-radius:10px;padding:12px 14px;background:#fff}
+.conn-step{font-size:10px;font-weight:650;letter-spacing:.05em;text-transform:uppercase;color:var(--muted)}
+.conn-card h3{font-size:12.5px;font-weight:600;margin:5px 0 0;display:flex;align-items:center}
+.conn-dot{width:9px;height:9px;border-radius:50%;display:inline-block;margin-right:7px;flex:none}
+.dot-ok{background:#127a46}.dot-warn{background:#d98a00}.dot-bad{background:#dc2626}.dot-muted{background:#9aa3b2}
+.conn-label{font-size:13px;font-weight:600;margin:6px 0 0;color:var(--ink)}
+.conn-fix{font-size:11.5px;line-height:1.45;color:var(--muted);margin:4px 0 0}
+.conn-alert{border:1px solid #f9cfcb;background:#fdecec;color:#7a271a;border-radius:9px;padding:10px 13px;font-size:12.5px;margin-bottom:14px}
+.conn-alert code{display:block;margin-top:5px;white-space:normal;color:#991b1b;background:none;padding:0}
+.conn-log{width:100%;font-size:12px;border-collapse:collapse;margin-top:8px}
+.conn-log th,.conn-log td{text-align:left;padding:6px 8px;border-bottom:1px solid var(--line);vertical-align:top}
+.conn-log th{font-size:10px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);font-weight:650}
+.conn-log time{font-variant-numeric:tabular-nums;color:var(--muted)}
+.conn-actions{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px}

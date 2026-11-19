@@ -3,7 +3,8 @@
 @section('content')
 @php $students = $kind === 'students'; @endphp
 <x-list.header :title="ucfirst($kind)" eyebrow="People" :subtitle="$students ? 'Admitted learners and their batches' : 'Teaching staff and assignments'">
-    <a class="btn btn-primary" href="{{ route($kind.'.create') }}"><i class="fas fa-plus me-1" aria-hidden="true"></i>Add {{ $students ? 'student' : 'teacher' }}</a>
+    <a class="btn btn-primary" href="{{ route($kind.'.create') }}"><i class="fas fa-plus me-1" aria-hidden="true"></i>{{ $students ? 'Student admission' : 'Add teacher' }}</a>
+    @if($students)<a class="btn btn-outline-primary" href="{{ route('enrollment-packages.create') }}">Multi-level package</a>@endif
 </x-list.header>
 <x-list.kpis :items="$kpis" />
 <div class="panel list-panel">
@@ -14,7 +15,10 @@
                 <x-list.th sort="name" default="-joined">Name</x-list.th>
                 <th scope="col">Phone</th>
                 @if($students)<th scope="col">Attendance machine</th>@endif
-                <th scope="col">{{ $students ? 'Batches' : 'Batches taught' }}</th>
+                <th scope="col">{{ $students ? 'Level / batch' : 'Batches taught' }}</th>
+                @if($students)
+                    <th scope="col" class="num">Discount</th><th scope="col" class="num">Outstanding</th>
+                @endif
                 <th scope="col">Status</th>
                 <x-list.th sort="joined" default="-joined">Joined</x-list.th>
                 <th scope="col"><span class="visually-hidden">Actions</span></th>
@@ -35,7 +39,14 @@
                             <span class="cell-sub">{{ $machineRows->contains('status', 'failed') ? 'Sync failed' : ($machineRows->contains('status', 'pending') ? 'Waiting for machine' : ($machineNumber ? 'Synced' : 'Not confirmed')) }}</span>
                         </td>
                     @endif
-                    <td>{{ $students ? ($person->enrollments->pluck('batch.name')->filter()->unique()->implode(', ') ?: '—') : $person->taught_batches_count }}</td>
+                    @if($students)
+                        <td>@forelse($person->enrollments as $admission)
+                            <a class="cell-main" href="{{ route('enrollments.show', $admission) }}">{{ $admission->batch?->course?->name }} ({{ $admission->batch?->course?->level }})</a>
+                            <span class="cell-sub">{{ $admission->batch?->name }}</span>
+                        @empty<span class="text-muted">Admission pending</span>@endforelse</td>
+                        <td class="num">@forelse($person->enrollments as $admission)<span class="cell-main">{{ currency_format($admission->discount_amount) }}</span><span class="cell-sub">{{ $admission->batch?->name }}</span>@empty—@endforelse</td>
+                        <td class="num">@forelse($person->enrollments as $admission)<a class="cell-main" href="{{ route('enrollments.show', $admission) }}">{{ currency_format($admission->remaining_fee) }}</a><span class="cell-sub">{{ $admission->batch?->name }}</span>@empty—@endforelse</td>
+                    @else<td>{{ $person->taught_batches_count }}</td>@endif
                     <td><x-list.status :value="$person->is_active ? 'active' : 'inactive'" /></td>
                     <td>{{ $person->created_at?->format('d M Y') }}</td>
                     <td class="text-end">
@@ -49,6 +60,7 @@
                             <li><a class="dropdown-item" href="{{ route($kind.'.show', $person) }}"><i class="fas fa-eye me-2" aria-hidden="true"></i>View</a></li>
                             <li><a class="dropdown-item" href="{{ route($kind.'.edit', $person) }}"><i class="fas fa-pen me-2" aria-hidden="true"></i>Edit</a></li>
                             @if($students)<li><a class="dropdown-item" href="{{ route('fees.student', $person) }}"><i class="fas fa-money-bill me-2" aria-hidden="true"></i>Fees</a></li>@endif
+                            @if($students && $person->is_active)<li><a class="dropdown-item" href="{{ route('students.create', ['student_id' => $person->id]) }}">Add admission</a></li>@endif
                             @if($person->is_active)
                                 <li><hr class="dropdown-divider"></li>
                                 <li><form method="post" action="{{ route($kind.'.destroy', $person) }}" data-confirm="Deactivate {{ $person->name }}? History will be preserved.">@csrf @method('DELETE')
@@ -58,7 +70,7 @@
                     </td>
                 </tr>
             @empty
-                <x-list.empty :colspan="$students ? 7 : 6" />
+                <x-list.empty :colspan="$students ? 9 : 6" />
             @endforelse
             </tbody>
         </table>

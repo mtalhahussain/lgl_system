@@ -56,15 +56,15 @@ class DiscountEditTest extends TestCase
         $this->assertSame('Scholarship approved', $audit->reason);
         $this->assertSame('0.00', $audit->changes['before']['discount_amount']);
 
-        $this->get('/enrollments/'.$this->enrollment->id)->assertOk()->assertSee('10% · ')->assertSee('Edit discount')
+        $this->get('/enrollments/'.$this->enrollment->id)->assertOk()->assertSee(currency_format('900.00'))->assertSee('Edit discount')
             ->assertSee('data-discount-preview', false)->assertSee('data-gross="900000"', false)->assertSee('data-discount="90000"', false)
             ->assertSee('data-kept="0"', false)->assertSee('new <strong>total</strong> discount', false);
-        $this->get('/enrollments')->assertOk()->assertSee('10%');
-        $this->get('/fees')->assertOk()->assertSee('10% off');
+        $this->get('/enrollments')->assertOk()->assertSee(currency_format('900.00'));
+        $this->get('/fees')->assertOk()->assertSee(currency_format('900.00').' off');
         $student = $this->enrollment->student;
-        $this->get('/students/'.$student->id)->assertOk()->assertSee('<strong>10%</strong>', false)->assertSee('8,100', false)
+        $this->get('/students/'.$student->id)->assertOk()->assertSee('<strong>'.currency_format('900.00').'</strong>', false)->assertSee('8,100', false)
             ->assertSee(route('enrollments.show', $this->enrollment), false);
-        $this->actingAs($student)->get('/students/'.$student->id)->assertOk()->assertSee('<strong>10%</strong>', false)
+        $this->actingAs($student)->get('/students/'.$student->id)->assertOk()->assertSee('<strong>'.currency_format('900.00').'</strong>', false)
             ->assertDontSee(route('enrollments.show', $this->enrollment), false);
     }
 
@@ -102,5 +102,16 @@ class DiscountEditTest extends TestCase
 
         $this->actingAs(User::factory()->create(['role' => 'teacher', 'is_active' => true]));
         $this->change('5')->assertForbidden();
+    }
+
+    public function test_fixed_discount_updates_exact_amount_and_rejects_excess(): void
+    {
+        $this->patch('/enrollments/'.$this->enrollment->id.'/discount', ['discount_amount' => '1234.57', 'reason' => 'Fixed scholarship'])
+            ->assertRedirect()->assertSessionHasNoErrors();
+        $this->assertSame('1234.57', $this->enrollment->fresh()->discount_amount);
+        $this->assertSame('7765.43', $this->enrollment->fresh()->remaining_fee);
+        $this->patch('/enrollments/'.$this->enrollment->id.'/discount', ['discount_amount' => '9000.01', 'reason' => 'Too much discount'])
+            ->assertSessionHasErrors('discount_amount');
+        $this->assertSame('1234.57', $this->enrollment->fresh()->discount_amount);
     }
 }

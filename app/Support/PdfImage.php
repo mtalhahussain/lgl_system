@@ -17,10 +17,10 @@ class PdfImage
         return $mime ? 'data:'.$mime.';base64,'.base64_encode(file_get_contents($absolutePath)) : null;
     }
 
-    /** Institute logo from Settings (public disk), or null. */
+    /** Shared certificate/payslip logo from Settings (public disk), or null. */
     public static function instituteLogo(): ?string
     {
-        $path = setting('institute_logo');
+        $path = setting('document_logo');
 
         return $path ? self::dataUri(\Illuminate\Support\Facades\Storage::disk('public')->path($path)) : null;
     }

@@ -9,7 +9,7 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     @vite(['resources/css/app.css', 'resources/js/app.js'])
-    @include('partials.search-selects')
+    @include('partials.search-selects', ['compiledSelectStyles' => true])
     @stack('styles')
 </head>
 <body class="app-body">
@@ -21,8 +21,7 @@
                 <i class="fas fa-bars" aria-hidden="true"></i>
             </button>
             <a class="navbar-brand d-md-none" href="{{ route('dashboard') }}" title="{{ institute_name() }}">
-                <span class="brand-mark"><i class="fas fa-graduation-cap" aria-hidden="true"></i></span>
-                {{ institute_name() }}
+                @include('partials.portal-brand')
             </a>
             <button class="navbar-toggler d-md-none" type="button" data-bs-toggle="collapse" data-bs-target="#appSidebar" aria-controls="appSidebar" aria-expanded="false" aria-label="Toggle navigation menu">
                 <i class="fas fa-bars" aria-hidden="true"></i>
@@ -61,8 +60,7 @@
             <!-- Sidebar -->
             <nav id="appSidebar" class="col-md-3 col-lg-2 d-md-block sidebar collapse content-wrapper" aria-label="Main navigation">
                 <a class="sidebar-brand d-none d-md-flex" href="{{ route('dashboard') }}" title="{{ institute_name() }}">
-                    <span class="brand-mark"><i class="fas fa-graduation-cap" aria-hidden="true"></i></span>
-                    <span>{{ institute_name() }}</span>
+                    @include('partials.portal-brand')
                 </a>
                 <div class="position-sticky pt-3"><div class="sidebar-heading">WORKSPACE</div>
                     <ul class="nav flex-column">
@@ -107,9 +105,6 @@
                             @if(module_visible('results'))
                             <li class="nav-item"><a class="nav-link {{ request()->is('student/results*') ? 'active' : '' }}" href="{{ route('student.results') }}"><i class="fas fa-clipboard-check me-2" aria-hidden="true"></i>My Result</a></li>
                             @endif
-                            @if(module_visible('materials'))
-                            <li class="nav-item"><a class="nav-link {{ request()->is('materials*') ? 'active' : '' }}" href="{{ route('materials.index') }}"><i class="fas fa-file-pdf me-2" aria-hidden="true"></i>Books &amp; Materials</a></li>
-                            @endif
                             @if(module_visible('profile'))
                             <li class="nav-item">
                                 <a class="nav-link {{ request()->is('students/' . auth()->id()) ? 'active' : '' }}" 
@@ -131,7 +126,7 @@
                         @if((auth()->user()->isAdmin() || auth()->user()->isTeacher()) && module_visible('students'))
                         <!-- Student Management -->
                         <li class="nav-item">
-                            <a class="nav-link {{ request()->is('students*') ? 'active' : '' }}" 
+                            <a class="nav-link {{ request()->is('students*', 'enrollments*', 'enrollment-packages*') ? 'active' : '' }}"
                                href="{{ url('/students') }}">
                                 <i class="fas fa-users me-2"></i>Students
                             </a>
@@ -140,12 +135,6 @@
                         
                         @if(auth()->user()->isAdmin())
                         <!-- Teacher Management -->
-                        <li class="nav-item">
-                            <a class="nav-link {{ request()->is('enrollments*', 'enrollment-packages*') ? 'active' : '' }}"
-                               href="{{ route('enrollments.index') }}">
-                                <i class="fas fa-user-plus me-2" aria-hidden="true"></i>Enrollments
-                            </a>
-                        </li>
                         <li class="nav-item">
                             <a class="nav-link {{ request()->is('leads*') ? 'active' : '' }}"
                                href="{{ route('leads.index') }}">
@@ -172,9 +161,6 @@
                                 <i class="fas fa-book me-2"></i>{{ auth()->user()->isTeacher() ? 'View Levels' : 'Levels' }}
                             </a>
                         </li>
-                        @endif
-                        @if(module_visible('materials'))
-                        <li class="nav-item"><a class="nav-link {{ request()->is('materials*') ? 'active' : '' }}" href="{{ route('materials.index') }}"><i class="fas fa-file-pdf me-2" aria-hidden="true"></i>Books &amp; Materials</a></li>
                         @endif
                         
                         <!-- Batch Management -->

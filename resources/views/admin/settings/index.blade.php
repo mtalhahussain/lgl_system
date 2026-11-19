@@ -2,6 +2,7 @@
 @section('title', 'Institute Settings')
 @section('content')
 <h1>Institute Settings</h1>
+@if(request()->query('show') === 'true')
 <section class="mb-4" aria-labelledby="integrations-heading">
     <h2 class="h4" id="integrations-heading">Integrations</h2>
     <div class="row g-3">
@@ -21,12 +22,14 @@
         </div>
     </div>
 </section>
-<form method="post" enctype="multipart/form-data" action="{{ route('settings.update') }}">
+@endif
+<form method="post" enctype="multipart/form-data" action="{{ route('settings.update', request()->query('show') === 'true' ? ['show' => 'true'] : []) }}">
     @csrf @method('PUT')
     @foreach($settingGroups as $group => $settings)
         <section class="card card-body mb-3">
             <h2 class="h4">{{ ucfirst($group) }}</h2>
             @foreach($settings as $setting)
+                @continue(array_key_exists($setting->key, \App\Http\Controllers\SettingController::LOGOS))
                 <label class="form-label" for="{{ $setting->key }}">{{ $setting->label }}</label>
                 @if($setting->type === 'select')
                     <select class="form-select mb-3" id="{{ $setting->key }}" name="{{ $setting->key }}">
@@ -42,6 +45,20 @@
             @endforeach
         </section>
     @endforeach
+    @if(request()->query('show') === 'true')
+        <section class="card card-body mb-3">
+            <h2 class="h4">Logos</h2>
+            @foreach(\App\Http\Controllers\SettingController::LOGOS as $key => $label)
+                <label class="form-label" for="{{ $key }}">{{ $label }}</label>
+                @if($path = setting($key))
+                    <img class="settings-logo-preview mb-2" src="{{ asset('storage/'.$path) }}" alt="Current {{ $label }}">
+                @endif
+                <input class="form-control mb-2" type="file" id="{{ $key }}" name="{{ $key }}" accept="image/png,image/jpeg,image/webp">
+                @error($key)<p class="text-danger">{{ $message }}</p>@enderror
+            @endforeach
+            <p class="form-text">PNG, JPG or WebP, up to 2 MB each. Leave blank to keep the saved logo.</p>
+        </section>
+    @endif
     <button class="btn btn-primary">Save settings</button>
 </form>
 @endsection

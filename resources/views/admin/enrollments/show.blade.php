@@ -31,7 +31,7 @@
         <div class="panel-heading"><h2 id="fee-heading">Fee agreement</h2><span class="status-pill">{{ $progress }}% paid</span></div>
         <div class="pad-panel-body-lg">
             <div class="finance-row"><span>Agreed fee</span><strong>{{ currency_format($enrollment->total_fee) }}</strong></div>
-            <div class="finance-row"><span>Discount</span><strong>{{ $enrollment->discount_percentage }}% · {{ currency_format($enrollment->discount_amount) }}</strong></div>
+            <div class="finance-row"><span>Discount</span><strong>{{ currency_format($enrollment->discount_amount) }}</strong></div>
             <div class="finance-row"><span>Net payable</span><strong>{{ currency_format($net) }}</strong></div>
             @if(\App\Support\Money::minor($enrollment->refunded_amount ?? '0') > 0)
                 <div class="finance-row"><span>Paid</span><strong>{{ currency_format($enrollment->paid_amount) }}</strong></div>
@@ -41,18 +41,18 @@
                 <div class="finance-row"><span>Paid</span><strong>{{ currency_format($enrollment->paid_amount) }}</strong></div>
             @endif
             <div class="finance-row"><span>Outstanding</span><strong>{{ currency_format($enrollment->remaining_fee) }}</strong></div>
-            <div class="balance-bar mt-3" role="progressbar" aria-label="Fee paid" aria-valuenow="{{ $progress }}" aria-valuemin="0" aria-valuemax="100"><span class="{{ pct_class($progress) }}"></span></div>
+            <div class="balance-bar mt-3" role="progressbar" aria-label="Fee paid" aria-valuenow="{{ $progress }}" aria-valuemin="0" aria-valuemax="99999999.99"><span class="{{ pct_class($progress) }}"></span></div>
             @if($enrollment->status !== 'transferred' && ! $enrollment->enrollment_package_id)
-                <details class="mt-3 d-print-none" @if($errors->hasAny(['discount_percentage', 'reason', 'refund_method', 'submission_key'])) open @endif>
-                    <summary class="fw-semibold summary-sm"><i class="fas fa-percent me-1" aria-hidden="true"></i>Edit discount</summary>
+                <details class="mt-3 d-print-none" @if($errors->hasAny(['discount_amount', 'reason', 'refund_method', 'submission_key'])) open @endif>
+                    <summary class="fw-semibold summary-sm"><i class="fas fa-tag me-1" aria-hidden="true"></i>Edit discount</summary>
                     <form class="mt-3" method="post" action="{{ route('enrollments.discount', $enrollment) }}" data-confirm="Change the discount? The difference is applied to unpaid installments."
                         data-discount-preview data-gross="{{ \App\Support\Money::minor($enrollment->total_fee) }}" data-discount="{{ \App\Support\Money::minor($enrollment->discount_amount) }}"
-                        data-kept="{{ \App\Support\Money::minor($enrollment->net_paid) }}" data-current-percent="{{ $enrollment->discount_percentage }}"
+                        data-kept="{{ \App\Support\Money::minor($enrollment->net_paid) }}"
                         data-currency-symbol="{{ setting('currency_symbol', 'Rs.') }}" data-currency-position="{{ setting('currency_position', 'before') }}" data-currency-decimals="{{ setting('currency_decimals', 2) }}">
                         @csrf @method('PATCH')
-                        <label class="form-label" for="discount_percentage">Discount %</label>
-                        <input class="form-control mb-2 @error('discount_percentage') is-invalid @enderror" id="discount_percentage" name="discount_percentage" type="number" min="0" max="100" step="0.01" value="{{ old('discount_percentage', $enrollment->discount_percentage) }}" required>
-                        @error('discount_percentage')<div class="invalid-feedback d-block mb-2">{{ $message }}</div>@enderror
+                        <label class="form-label" for="discount_amount">Discount amount</label>
+                        <input class="form-control mb-2 @error('discount_amount') is-invalid @enderror" id="discount_amount" name="discount_amount" type="number" min="0" max="99999999.99" step="0.01" value="{{ old('discount_amount', $enrollment->discount_amount) }}" required>
+                        @error('discount_amount')<div class="invalid-feedback d-block mb-2">{{ $message }}</div>@enderror
                         <p class="form-text mt-0 mb-2">This is the new <strong>total</strong> discount, not an extra one.</p>
                         <div class="discount-preview mb-3" data-preview role="status" aria-live="polite" hidden></div>
                         <label class="form-label" for="discount_reason">Reason</label>

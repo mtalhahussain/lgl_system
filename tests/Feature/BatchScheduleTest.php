@@ -260,6 +260,8 @@ class BatchScheduleTest extends TestCase
         $slot = ['weekday' => 'mon', 'start' => '18:00', 'end' => '20:00'];
         $this->post(route('batches.store'), $this->batchPayload(['name' => 'Duplicate', 'schedule' => [$slot, $slot]]))
             ->assertSessionHasErrors('schedule');
+        $this->post(route('batches.store'), $this->batchPayload(['name' => 'Same day', 'schedule' => [$slot, ['weekday' => 'mon', 'start' => '09:00', 'end' => '10:00']]]))
+            ->assertSessionHasErrors('schedule');
         $this->assertDatabaseCount('batches', 2);
     }
 
@@ -270,12 +272,14 @@ class BatchScheduleTest extends TestCase
             'end_date' => today()->addWeek()->toDateString(),
             'schedule' => [
                 ['weekday' => 'mon', 'start' => '09:00', 'end' => '10:00'],
-                ['weekday' => 'mon', 'start' => '18:00', 'end' => '20:00'],
+                ['weekday' => 'tue', 'start' => '18:00', 'end' => '20:00'],
             ],
         ]);
         $this->actingAs($this->admin)->post(route('batches.store'), $payload)->assertSessionHasNoErrors();
         $batch = Batch::firstOrFail();
-        $this->assertSame(4, $batch->classSessions()->count());
+        $expected = collect(\Carbon\CarbonPeriod::create(today(), today()->addWeek()))
+            ->filter(fn ($date) => $date->isMonday() || $date->isTuesday())->count();
+        $this->assertSame($expected, $batch->classSessions()->count());
         $this->assertSame(0, $batch->classSessions()->whereDate('session_date', '<', today())->count());
         $before = $batch->classSessions()->orderBy('id')->get()->toArray();
         $payload['schedule'][0]['start'] = '08:00';

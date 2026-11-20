@@ -2,7 +2,7 @@
 @section('title', 'Create Fee Schedule')
 @section('content')
 <x-list.header title="Create Fee Schedule" eyebrow="Finance" subtitle="New admissions already create a schedule. This form is only for an enrollment that has none." />
-<form class="panel form-panel" method="post" action="{{ route('installments.store') }}">
+@if(can_route('installments.store'))<form class="panel form-panel" method="post" action="{{ route('installments.store') }}">
     @csrf
     <div class="form-section">
         <div class="row g-3">
@@ -28,5 +28,5 @@
         <a class="btn btn-outline-secondary" href="{{ route('fees.index') }}">Cancel</a>
         <button class="btn btn-primary">Create schedule</button>
     </div>
-</form>
+</form>@endif
 @endsection

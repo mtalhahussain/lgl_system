@@ -4,7 +4,7 @@
 @php
     $details = $payment->receipt_details ?? [];
     $currency = $details['currency_code'] ?? 'PKR';
-    $isAdmin = auth()->user()->isAdmin();
+    $isAdmin = auth()->user()->actsAsAdmin();
     $student = ($details['student_name'] ?? 'Historical details unavailable').(! empty($details['student_reference']) ? ' ('.$details['student_reference'].')' : '');
     $package = $payment->enrollment->packagePurchase;
     $packagePart = $package && in_array($payment->id, array_column($package->receipt_details['modules'], 'payment_id'), true);
@@ -39,16 +39,16 @@
             </div>
         @endif
     </x-show.document>
-    @if($isAdmin && ! $payment->reversal && ! $payment->legacy_source)
+    @if(can_route('payments.reverse') && ! $payment->reversal && ! $payment->legacy_source)
         <details class="panel mt-4 d-print-none pad-panel-sm">
             <summary class="fw-semibold cursor-pointer">{{ $packagePart ? 'Reverse entire package payment' : 'Reverse this payment' }}</summary>
-            <form class="mt-3" method="post" action="{{ route('payments.reverse', $payment) }}" data-confirm="{{ $packagePart ? 'Reverse both package module payments and restore both outstanding balances?' : 'Reverse this payment and restore its outstanding balance?' }}">
+            @if(can_route('payments.reverse'))<form class="mt-3" method="post" action="{{ route('payments.reverse', $payment) }}" data-confirm="{{ $packagePart ? 'Reverse both package module payments and restore both outstanding balances?' : 'Reverse this payment and restore its outstanding balance?' }}">
                 @csrf
                 <label class="form-label" for="reason">Reversal reason</label>
                 <input class="form-control mb-2" id="reason" name="reason" minlength="5" maxlength="1000" required>
                 <p class="form-text">The receipt stays on record and the installments become outstanding again.</p>
                 <button class="btn btn-outline-danger">{{ $packagePart ? 'Reverse entire package payment' : 'Reverse payment' }}</button>
-            </form>
+            </form>@endif
         </details>
     @endif
 </div>

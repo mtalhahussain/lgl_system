@@ -10,7 +10,7 @@
 
 <div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2">
     <h1 class="h4 mb-0">Leads &amp; inquiries</h1>
-    <a href="{{ route('leads.create') }}" class="btn btn-primary"><i class="fas fa-plus me-1" aria-hidden="true"></i>Add lead</a>
+    @if(can_route('leads.create'))<a href="{{ route('leads.create') }}" class="btn btn-primary"><i class="fas fa-plus me-1" aria-hidden="true"></i>Add lead</a>@endif
 </div>
 
 <section class="panel form-section mb-3">
@@ -85,13 +85,13 @@
                         <td class="text-end text-nowrap">
                             <a href="{{ route('leads.show', $lead) }}" class="btn btn-sm btn-outline-dark">View</a>
                             @unless(in_array($lead->status, ['submitted', 'converted'], true))
-                                <a href="{{ route('leads.edit', $lead) }}" class="btn btn-sm btn-outline-secondary" aria-label="Edit {{ $lead->name }}"><i class="fas fa-pen" aria-hidden="true"></i></a>
+                                @if(can_route('leads.edit'))<a href="{{ route('leads.edit', $lead) }}" class="btn btn-sm btn-outline-secondary" aria-label="Edit {{ $lead->name }}"><i class="fas fa-pen" aria-hidden="true"></i></a>@endif
                             @endunless
                             @unless($lead->status === 'converted')
-                                <form method="POST" action="{{ route('leads.destroy', $lead) }}" class="d-inline" onsubmit="return confirm('Delete this lead permanently?')">
+                                @if(can_route('leads.destroy'))<form method="POST" action="{{ route('leads.destroy', $lead) }}" class="d-inline" onsubmit="return confirm('Delete this lead permanently?')">
                                     @csrf @method('DELETE')
                                     <button type="submit" class="btn btn-sm btn-outline-danger" aria-label="Delete {{ $lead->name }}"><i class="fas fa-trash" aria-hidden="true"></i></button>
-                                </form>
+                                </form>@endif
                             @endunless
                         </td>
                     </tr>

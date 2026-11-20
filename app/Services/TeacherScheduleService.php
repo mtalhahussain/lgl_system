@@ -2,6 +2,8 @@
 
 namespace App\Services;
 
+use App\Models\Batch;
+use App\Models\BatchSchedule;
 use App\Models\ClassSession;
 use App\Models\TeacherLeave;
 use App\Models\User;
@@ -14,6 +16,35 @@ use Illuminate\Support\Collection;
  */
 class TeacherScheduleService
 {
+    /**
+     * Batches whose end date falls within the next $days days (status not required to be completed),
+     * with the teacher's weekly slots that free up and the teacher's next assigned batch, if any.
+     *
+     * @return Collection<int, array{batch: Batch, teacher: ?User, daysLeft: int, slots: array, nextBatch: ?Batch}>
+     */
+    public function batchesEndingSoon(int $days = 7): Collection
+    {
+        $today = Carbon::today();
+        $batches = Batch::whereIn('status', ['upcoming', 'ongoing'])
+            ->whereBetween('end_date', [$today->toDateString(), $today->copy()->addDays($days)->toDateString()])
+            ->with(['teacher:id,name', 'course:id,name,level', 'schedules'])
+            ->orderBy('end_date')->orderBy('name')->get();
+        $later = Batch::whereIn('teacher_id', $batches->pluck('teacher_id')->filter()->unique())
+            ->whereIn('status', ['upcoming', 'ongoing'])->whereDate('start_date', '>=', $today->toDateString())->orderBy('start_date')
+            ->get(['id', 'name', 'teacher_id', 'start_date', 'end_date'])->groupBy('teacher_id');
+
+        return $batches->map(fn (Batch $batch) => [
+            'batch' => $batch,
+            'teacher' => $batch->teacher,
+            'daysLeft' => (int) $today->diffInDays($batch->end_date, false),
+            'slots' => $batch->schedules->sortBy(fn ($s) => array_search($s->weekday, array_keys(BatchSchedule::WEEKDAYS)))
+                ->map(fn ($s) => substr($s->weekdayLabel(), 0, 3).' '.Carbon::parse($s->getRawOriginal('start_time'))->format('g:i A')
+                    .'–'.Carbon::parse($s->getRawOriginal('end_time'))->format('g:i A'))->values()->all(),
+            // Next batch: another batch of the same teacher starting today or later (batches already running alongside don't count).
+            'nextBatch' => $later->get($batch->teacher_id, collect())->first(fn ($other) => $other->id !== $batch->id),
+        ])->values();
+    }
+
     /**
      * @return Collection<int, array{teacher: User, next: ?array, laterToday: array, onLeaveUntil: ?Carbon}>
      */

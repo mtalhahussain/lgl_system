@@ -14,7 +14,7 @@ class AdminController extends Controller
     public function __construct()
     {
         $this->middleware('auth');
-        $this->middleware('role:admin');
+        $this->middleware('role:admin')->except('staffDashboard');
     }
 
     public function dashboard()
@@ -25,7 +25,20 @@ class AdminController extends Controller
         $recent = Enrollment::with(['student:id,name', 'batch:id,name'])->orderByDesc('id')->limit(10)->get();
         $reminders = app(\App\Services\OverviewService::class)->batchReminders();
         $teacherNextClasses = app(\App\Services\TeacherScheduleService::class)->upcomingForTeachers();
+        $endingSoon = app(\App\Services\TeacherScheduleService::class)->batchesEndingSoon();
 
-        return view('dashboards.admin', compact('stats', 'finance', 'recent', 'reminders', 'teacherNextClasses'));
+        return view('dashboards.admin', compact('stats', 'finance', 'recent', 'reminders', 'teacherNextClasses', 'endingSoon'));
+    }
+
+    /** Staff home: shortcuts to the modules Admin granted to Staff (no finance totals). */
+    public function staffDashboard(Request $request)
+    {
+        $user = $request->user();
+        $modules = collect(\App\Models\RolePermission::modulesFor('staff'))
+            ->map(fn ($meta, $module) => $meta + ['granted' => collect(array_keys(\App\Models\RolePermission::actionsFor('staff', $module)))
+                ->filter(fn ($action) => \App\Models\RolePermission::allows($user, $module, $action))->values()->all()])
+            ->filter(fn ($meta) => $meta['granted'] !== []);
+
+        return view('dashboards.staff', compact('modules'));
     }
 }

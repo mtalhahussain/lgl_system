@@ -18,7 +18,7 @@
     @endif
     @unless($cancelled)
         <a class="btn btn-primary" href="{{ route('class-sessions.attendance', $classSession) }}"><i class="fas fa-clipboard-check me-1" aria-hidden="true"></i>Mark attendance</a>
-        @if(!$classSession->teaching_status && !$classSession->makeup_for_id)<a class="btn btn-outline-primary" href="{{ route('class-sessions.edit', $classSession) }}"><i class="fas fa-pen me-1" aria-hidden="true"></i>Edit</a>@endif
+        @if(!$classSession->teaching_status && !$classSession->makeup_for_id) @if(can_route('class-sessions.edit'))<a class="btn btn-outline-primary" href="{{ route('class-sessions.edit', $classSession) }}"><i class="fas fa-pen me-1" aria-hidden="true"></i>Edit</a>@endif @endif
     @endunless
     <a class="btn btn-outline-secondary" href="{{ route('batches.show', $classSession->batch) }}"><i class="fas fa-layer-group me-1" aria-hidden="true"></i>Batch</a>
 </x-show.hero>
@@ -48,23 +48,23 @@
         @if(!$classSession->teaching_status && !$cancelled && $classSession->batch->status !== 'cancelled' && $classSession->session_date->lte(today()))
             <div class="d-flex flex-wrap gap-2">
                 @unless($classSession->teaching_started_at)
-                    <form method="post" action="{{ route('class-sessions.start', $classSession) }}">@csrf<button class="btn btn-outline-primary">Start class</button></form>
+                    @if(can_route('class-sessions.start'))<form method="post" action="{{ route('class-sessions.start', $classSession) }}">@csrf<button class="btn btn-outline-primary">Start class</button></form>@endif
                 @endunless
-                <form method="post" action="{{ route('class-sessions.end', $classSession) }}" data-confirm="Confirm you took this class? Your name and confirmation time will be recorded.">@csrf<button class="btn btn-primary">Class taken</button></form>
+                @if(can_route('class-sessions.end'))<form method="post" action="{{ route('class-sessions.end', $classSession) }}" data-confirm="Confirm you took this class? Your name and confirmation time will be recorded.">@csrf<button class="btn btn-primary">Class taken</button></form>@endif
             </div>
             @unless($records->isNotEmpty())
                 <details class="mt-3"><summary class="fw-semibold">Class missed / teacher on leave</summary>
-                    <form method="post" class="mt-3" action="{{ route('class-sessions.missed', $classSession) }}">
+                    @if(can_route('class-sessions.missed'))<form method="post" class="mt-3" action="{{ route('class-sessions.missed', $classSession) }}">
                         @csrf
                         <label class="form-label" for="missed-reason">Reason</label>
                         <textarea class="form-control mb-2" id="missed-reason" name="reason" minlength="5" maxlength="1000" required placeholder="e.g. Teacher on leave">{{ old('reason') }}</textarea>
                         <button class="btn btn-outline-danger">Record missed class</button>
-                    </form>
+                    </form>@endif
                 </details>
             @endunless
         @endif
         @if($classSession->teaching_status === 'missed' && !$classSession->makeup_for_id && !$classSession->makeupClasses->contains(fn ($class) => $class->status !== 'cancelled' || $class->teaching_status === 'taken'))
-            <a class="btn btn-primary" href="{{ route('class-sessions.create', ['makeup_for_id' => $classSession->id]) }}">Schedule linked makeup</a>
+            @if(can_route('class-sessions.create'))<a class="btn btn-primary" href="{{ route('class-sessions.create', ['makeup_for_id' => $classSession->id]) }}">Schedule linked makeup</a>@endif
         @endif
     </div>
 </section>
@@ -106,11 +106,11 @@
         @if(!$cancelled && !$classSession->teaching_status)
             <details class="panel d-print-none pad-panel-sm">
                 <summary class="fw-semibold cursor-pointer">Cancel this session</summary>
-                <form class="mt-3" method="post" action="{{ route('class-sessions.destroy', $classSession) }}" data-confirm="Cancel this session? Attendance history will be preserved.">
+                @if(can_route('class-sessions.destroy'))<form class="mt-3" method="post" action="{{ route('class-sessions.destroy', $classSession) }}" data-confirm="Cancel this session? Attendance history will be preserved.">
                     @csrf @method('DELETE')
                     <p class="form-text">Attendance already marked stays on record.</p>
                     <button class="btn btn-outline-danger">Cancel session</button>
-                </form>
+                </form>@endif
             </details>
         @endif
     </div>

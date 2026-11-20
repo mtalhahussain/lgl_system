@@ -44,7 +44,7 @@ class EnrollmentPackageController extends Controller
 
     public function show(Request $request, EnrollmentPackage $enrollmentPackage)
     {
-        abort_unless($request->user()->isAdmin() || ($request->user()->isStudent()
+        abort_unless($request->user()->actsAsAdmin() || ($request->user()->isStudent()
             && (int) $enrollmentPackage->student_id === (int) $request->user()->id), 403);
         $payments = $enrollmentPackage->payments()->with('reversal')->orderBy('id')->get();
 

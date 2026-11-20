@@ -10,7 +10,7 @@
 
 <div class="card">
     <div class="card-body">
-        <form method="POST" action="{{ route('notifications.announce.send') }}">
+        @if(can_route('notifications.announce.send'))<form method="POST" action="{{ route('notifications.announce.send') }}">
             @csrf
             <div class="mb-3">
                 <label class="form-label">Title</label>
@@ -35,7 +35,7 @@
                 @error('audience')<div class="text-danger small">{{ $message }}</div>@enderror
             </div>
             <button type="submit" class="btn btn-primary"><i class="fas fa-paper-plane me-1"></i>Send Announcement</button>
-        </form>
+        </form>@endif
     </div>
 </div>
 @endsection

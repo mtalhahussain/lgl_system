@@ -8,7 +8,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 
-/** Admin: non-teaching staff (receptionist, cleaner, security guard, …). Paid monthly, listed in Users, no sign-in. */
+/** Admin: non-teaching staff (receptionist, cleaner, security guard, …). Paid monthly, listed in Users; signs in only when given an email. */
 class StaffController extends Controller
 {
     public const DESIGNATIONS = ['Receptionist', 'Cleaner', 'Security guard', 'Office assistant', 'Driver', 'Cook'];
@@ -22,13 +22,19 @@ class StaffController extends Controller
     {
         $data = $this->validated($request, null);
         DB::transaction(function () use ($data) {
-            // Email and password are required columns; staff never signs in, so both are unusable placeholders.
-            $staff = User::create($data + ['role' => 'staff', 'salary_type' => 'monthly',
-                'email' => 'staff-'.Str::uuid().'@staff.invalid', 'password' => Hash::make(Str::random(64))]);
+            // Email and password are required columns; staff without sign-in get unusable placeholders.
+            $staff = User::create($data + ['role' => 'staff', 'salary_type' => 'monthly']);
             $staff->update(['employee_id' => 'STF'.str_pad((string) $staff->id, 4, '0', STR_PAD_LEFT)]);
         });
 
         return redirect()->route('accounts.index', ['role' => 'staff'])->with('success', 'Staff member added.');
+    }
+
+    public function show(User $staff)
+    {
+        abort_unless($staff->isStaff(), 404);
+
+        return view('staff.show', ['person' => $staff]);
     }
 
     public function edit(User $staff)
@@ -58,8 +64,20 @@ class StaffController extends Controller
             'hire_date' => 'nullable|date',
             'monthly_salary' => 'required|decimal:0,2|min:0|max:99999999.99',
             'is_active' => 'sometimes|boolean',
+            'email' => ['nullable', 'email', 'max:255', \Illuminate\Validation\Rule::unique('users', 'email')->ignore($staff?->id)],
+            'password' => 'nullable|string|min:8|confirmed',
         ]);
         $data['is_active'] = $request->boolean('is_active', $staff?->is_active ?? true);
+        // Blank email = no sign-in (unusable placeholder). A new password is set only when typed.
+        $data['email'] = filled($data['email'] ?? null) ? $data['email']
+            : ($staff && str_ends_with($staff->email, '@staff.invalid') ? $staff->email : 'staff-'.Str::uuid().'@staff.invalid');
+        if (filled($data['password'] ?? null)) {
+            $data['password'] = Hash::make($data['password']);
+        } elseif (! $staff) {
+            $data['password'] = Hash::make(Str::random(64));
+        } else {
+            unset($data['password']);
+        }
 
         return $data;
     }

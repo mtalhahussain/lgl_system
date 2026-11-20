@@ -18,20 +18,13 @@
                 <input class="form-control" id="name" name="name" value="{{ $batch ? $batch->name : \App\Models\Batch::automaticName($nextBatchNumber, $previewStart) }}" readonly aria-describedby="batch-name-help" @if(!$batch) data-auto-batch-number="{{ $nextBatchNumber }}" @endif>
                 <div class="form-text" id="batch-name-help">{{ $batch ? 'Saved batch name is retained.' : 'Assigned on save using the batch number and start month.' }}</div>
             </div>
-            <div class="col-md-6">
-                <label class="form-label" for="status">Status</label>
-                <select class="form-select" id="status" name="status" aria-describedby="status-help">
-                    <option value="auto" @selected(old('status', $batch?->status) !== 'cancelled')>Automatic from dates</option>
-                    <option value="cancelled" @selected(old('status', $batch?->status) === 'cancelled')>Cancelled</option>
-                </select>
-                <div class="form-text" id="status-help">Upcoming, ongoing and completed follow the start and end dates.@if($batch && $batch->status !== 'cancelled') Current: {{ ucfirst($batch->status) }}.@endif</div>
-            </div>
+            <input type="hidden" name="status" value="{{ $batch?->status === 'cancelled' ? 'cancelled' : 'auto' }}">
             @foreach(['course_id' => ['Level', $courses], 'teacher_id' => ['Teacher', $teachers]] as $field => [$label, $options])
                 <div class="col-md-6">
                     <label class="form-label required" for="{{ $field }}">{{ $label }}</label>
                     <select class="form-select" id="{{ $field }}" name="{{ $field }}" required>
                         @foreach($options as $option)
-                            <option value="{{ $option->id }}" @selected(old($field, $batch?->$field ?? ($field === 'course_id' ? request('course_id') : null)) == $option->id)>{{ $option->name }}@if($field === 'course_id' && $option->level) ({{ $option->level }})@endif</option>
+                            <option value="{{ $option->id }}" @selected(old($field, $batch?->$field ?? request($field)) == $option->id)>{{ $option->name }}@if($field === 'course_id' && $option->level) ({{ $option->level }})@endif</option>
                         @endforeach
                     </select>
                 </div>
@@ -161,16 +154,37 @@
     var add = document.getElementById('schedule-add');
     if (!rows || !tpl || !add) return;
     var next = rows.querySelectorAll('.schedule-row').length;
+    var dayCount = tpl.content.querySelector('select').options.length;
+    var selects = function () { return Array.prototype.slice.call(rows.querySelectorAll('.schedule-row select')); };
+    // One row per weekday: disable days already chosen in other rows; hide Add once all days are used.
+    var syncDays = function () {
+        var all = selects();
+        all.forEach(function (select) {
+            Array.prototype.forEach.call(select.options, function (option) {
+                option.disabled = all.some(function (other) { return other !== select && other.value === option.value; });
+            });
+        });
+        add.hidden = all.length >= dayCount;
+    };
     add.addEventListener('click', function () {
+        var used = selects().map(function (s) { return s.value; });
         var html = tpl.innerHTML.replace(/__i__/g, String(next++));
         var wrap = document.createElement('div');
         wrap.innerHTML = html.trim();
-        rows.appendChild(wrap.firstChild);
+        var row = wrap.firstChild;
+        var select = row.querySelector('select');
+        var free = Array.prototype.find.call(select.options, function (o) { return used.indexOf(o.value) === -1; });
+        if (!free) return;
+        select.value = free.value;
+        rows.appendChild(row);
+        syncDays();
     });
+    rows.addEventListener('change', syncDays);
     rows.addEventListener('click', function (e) {
         var btn = e.target.closest('.schedule-remove');
-        if (btn) { btn.closest('.schedule-row').remove(); }
+        if (btn) { btn.closest('.schedule-row').remove(); syncDays(); }
     });
+    syncDays();
 })();
 </script>
 @endsection

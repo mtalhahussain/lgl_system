@@ -23,7 +23,7 @@
                 </h5>
             </div>
             <div class="card-body">
-                <form action="{{ route('teachers.store') }}" method="POST">
+                @if(can_route('teachers.store'))<form action="{{ route('teachers.store') }}" method="POST">
                     @csrf
                     
                     <div class="row">
@@ -291,7 +291,7 @@
                             <i class="fas fa-save me-1"></i>Create Teacher
                         </button>
                     </div>
-                </form>
+                </form>@endif
             </div>
         </div>
     </div>

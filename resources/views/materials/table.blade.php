@@ -13,10 +13,10 @@
                 @endif
                 <a class="btn btn-sm btn-outline-secondary" href="{{ route('materials.download', $material) }}"><i class="fas fa-download me-1" aria-hidden="true"></i>Download</a>
                 @if($manage)
-                    <form class="d-inline" method="post" action="{{ route('materials.destroy', $material) }}" data-confirm="Delete {{ $material->title }}? The file will be removed.">
+                    @if(can_route('materials.destroy'))<form class="d-inline" method="post" action="{{ route('materials.destroy', $material) }}" data-confirm="Delete {{ $material->title }}? The file will be removed.">
                         @csrf @method('DELETE')
                         <button class="btn btn-sm btn-outline-danger"><i class="fas fa-trash me-1" aria-hidden="true"></i>Delete</button>
-                    </form>
+                    </form>@endif
                 @endif
             </td>
         </tr>

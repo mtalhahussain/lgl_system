@@ -12,7 +12,7 @@ class FeeInstallmentPolicy
      */
     public function viewAny(User $user): bool
     {
-        return in_array($user->role, ['admin']);
+        return $user->actsAsAdmin();
     }
 
     /**
@@ -21,7 +21,7 @@ class FeeInstallmentPolicy
     public function view(User $user, FeeInstallment $installment): bool
     {
         // Admin can view all installments
-        if (in_array($user->role, ['admin'])) {
+        if ($user->actsAsAdmin()) {
             return true;
         }
 
@@ -38,7 +38,7 @@ class FeeInstallmentPolicy
      */
     public function create(User $user): bool
     {
-        return in_array($user->role, ['admin']);
+        return $user->actsAsAdmin();
     }
 
     /**
@@ -46,7 +46,7 @@ class FeeInstallmentPolicy
      */
     public function update(User $user, FeeInstallment $installment): bool
     {
-        return in_array($user->role, ['admin']);
+        return $user->actsAsAdmin();
     }
 
     /**
@@ -54,7 +54,7 @@ class FeeInstallmentPolicy
      */
     public function delete(User $user, FeeInstallment $installment): bool
     {
-        return $user->role === 'admin';
+        return $user->actsAsAdmin();
     }
 
     /**
@@ -62,7 +62,7 @@ class FeeInstallmentPolicy
      */
     public function processPayment(User $user, FeeInstallment $installment): bool
     {
-        return in_array($user->role, ['admin']);
+        return $user->actsAsAdmin();
     }
 
     /**
@@ -70,7 +70,7 @@ class FeeInstallmentPolicy
      */
     public function markPaid(User $user, FeeInstallment $installment): bool
     {
-        return in_array($user->role, ['admin']);
+        return $user->actsAsAdmin();
     }
 
     /**
@@ -78,7 +78,7 @@ class FeeInstallmentPolicy
      */
     public function cancel(User $user, FeeInstallment $installment): bool
     {
-        return in_array($user->role, ['admin']);
+        return $user->actsAsAdmin();
     }
 
     /**
@@ -86,7 +86,7 @@ class FeeInstallmentPolicy
      */
     public function modifyDueDate(User $user, FeeInstallment $installment): bool
     {
-        return $user->role === 'admin';
+        return $user->actsAsAdmin();
     }
 
     /**
@@ -94,6 +94,6 @@ class FeeInstallmentPolicy
      */
     public function generateReminders(User $user): bool
     {
-        return in_array($user->role, ['admin']);
+        return $user->actsAsAdmin();
     }
 }

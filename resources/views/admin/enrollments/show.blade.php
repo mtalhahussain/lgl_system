@@ -45,7 +45,7 @@
             @if($enrollment->status !== 'transferred' && ! $enrollment->enrollment_package_id)
                 <details class="mt-3 d-print-none" @if($errors->hasAny(['discount_amount', 'reason', 'refund_method', 'submission_key'])) open @endif>
                     <summary class="fw-semibold summary-sm"><i class="fas fa-tag me-1" aria-hidden="true"></i>Edit discount</summary>
-                    <form class="mt-3" method="post" action="{{ route('enrollments.discount', $enrollment) }}" data-confirm="Change the discount? The difference is applied to unpaid installments."
+                    @if(can_route('enrollments.discount'))<form class="mt-3" method="post" action="{{ route('enrollments.discount', $enrollment) }}" data-confirm="Change the discount? The difference is applied to unpaid installments."
                         data-discount-preview data-gross="{{ \App\Support\Money::minor($enrollment->total_fee) }}" data-discount="{{ \App\Support\Money::minor($enrollment->discount_amount) }}"
                         data-kept="{{ \App\Support\Money::minor($enrollment->net_paid) }}"
                         data-currency-symbol="{{ setting('currency_symbol', 'Rs.') }}" data-currency-position="{{ setting('currency_position', 'before') }}" data-currency-decimals="{{ setting('currency_decimals', 2) }}">
@@ -75,7 +75,7 @@
                             </fieldset>
                         @endif
                         <button class="btn btn-outline-primary w-100">Update discount</button>
-                    </form>
+                    </form>@endif
                 </details>
             @endif
         </div>
@@ -141,7 +141,7 @@
             <div class="panel-heading"><h2 id="actions-heading">Change enrollment</h2></div>
             <div class="pad-panel-sm">
                 @if($transferBatches->isNotEmpty() && $enrollment->payments->isEmpty() && $enrollment->paid_amount == 0 && !$enrollment->enrollment_package_id)
-                    <form method="post" action="{{ route('enrollments.correct-batch', $enrollment) }}" data-confirm="Correct this mistaken batch? The original enrollment will remain linked in history.">
+                    @if(can_route('enrollments.correct-batch'))<form method="post" action="{{ route('enrollments.correct-batch', $enrollment) }}" data-confirm="Correct this mistaken batch? The original enrollment will remain linked in history.">
                         @csrf @method('PATCH')
                         <label class="form-label" for="correction_batch_id">Correct batch</label>
                         <select id="correction_batch_id" name="new_batch_id" class="form-select mb-2" required>
@@ -151,26 +151,26 @@
                         <input id="correction_reason" name="reason" class="form-control mb-2" minlength="5" maxlength="500" value="{{ old('reason') }}" required>
                         <button class="btn btn-primary w-100">Correct batch</button>
                         <p class="form-text">Same level only, before payments or academic records. Fee agreement and admission date stay unchanged; original enrollment stays in history.</p>
-                    </form>
+                    </form>@endif
                     <hr>
                 @endif
                 @if($transferBatches->isNotEmpty() && $enrollment->paid_amount == 0)
-                    <form method="post" action="{{ route('enrollments.transfer', $enrollment) }}" data-confirm="Transfer this enrollment and move its schedule?">
+                    @if(can_route('enrollments.transfer'))<form method="post" action="{{ route('enrollments.transfer', $enrollment) }}" data-confirm="Transfer this enrollment and move its schedule?">
                         @csrf
                         <label class="form-label" for="new_batch_id">Transfer to batch</label>
                         <select id="new_batch_id" name="new_batch_id" class="form-select mb-2">@foreach($transferBatches as $batch)<option value="{{ $batch->id }}">{{ $batch->name }}</option>@endforeach</select>
                         <button class="btn btn-outline-primary w-100">Transfer</button>
                         <p class="form-text">Same level, unpaid enrollments only.</p>
-                    </form>
+                    </form>@endif
                     <hr>
                 @endif
-                <form method="post" action="{{ route('enrollments.withdraw', $enrollment) }}" data-confirm="Withdraw this enrollment? Existing debt remains due.">
+                @if(can_route('enrollments.withdraw'))<form method="post" action="{{ route('enrollments.withdraw', $enrollment) }}" data-confirm="Withdraw this enrollment? Existing debt remains due.">
                     @csrf @method('PATCH')
                     <label class="form-label" for="dropout_reason">Withdrawal reason</label>
                     <input class="form-control mb-2" id="dropout_reason" name="dropout_reason" minlength="5" maxlength="500" required>
                     <button class="btn btn-outline-danger w-100">Withdraw enrollment</button>
                     <p class="form-text">The agreement, debt and payment history are kept; no refund is issued.</p>
-                </form>
+                </form>@endif
             </div>
         </section>
     @endif

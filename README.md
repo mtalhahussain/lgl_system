@@ -1,6 +1,6 @@
 # LGL institute management
 
-Laravel 12 / PHP 8.2+ institute management using Eloquent, Blade, Tailwind 4 with Bootstrap compatibility, and MySQL-compatible storage. Exactly three roles: Admin, Teacher and Student. Ten functional groups are implemented locally; production deployment is owner-managed.
+Laravel 12 / PHP 8.2+ institute management using Eloquent, Blade, Tailwind 4 with Bootstrap compatibility, and MySQL-compatible storage. Roles: Admin, Teacher and Student, plus Staff who may sign in with the module actions Admin grants in Users > Role permissions. Ten functional groups are implemented locally; production deployment is owner-managed.
 
 ## Local use
 

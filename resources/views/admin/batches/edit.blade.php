@@ -26,7 +26,7 @@
                 </h5>
             </div>
             <div class="card-body">
-                <form action="{{ route('batches.update', $batch) }}" method="POST">
+                @if(can_route('batches.update'))<form action="{{ route('batches.update', $batch) }}" method="POST">
                     @csrf
                     @method('PUT')
                     
@@ -281,7 +281,7 @@
                             <i class="fas fa-times me-2"></i>Cancel
                         </a>
                     </div>
-                </form>
+                </form>@endif
             </div>
         </div>
     </div>

@@ -3,7 +3,7 @@
 @section('content')
 <div class="page-heading">
     <div><div class="eyebrow">OVERVIEW</div><h1>Admin Dashboard</h1><p class="page-subtitle">Welcome back, {{ explode(' ', auth()->user()->name)[0] }}. Here’s your institute at a glance.</p></div>
-    <a class="btn btn-primary" href="{{ route('enrollments.create') }}"><i class="fas fa-plus me-2" aria-hidden="true"></i>New admission</a>
+    @if(can_route('enrollments.create'))<a class="btn btn-primary" href="{{ route('enrollments.create') }}"><i class="fas fa-plus me-2" aria-hidden="true"></i>New admission</a>@endif
 </div>
 <div class="tw:grid tw:grid-cols-1 tw:gap-4 tw:sm:grid-cols-2 tw:xl:grid-cols-4 tw:mb-6">
     @foreach($stats as $label => $value)
@@ -30,6 +30,7 @@
     </div>
 </section>
 @endif
+@include('dashboards.partials.batches-ending-soon')
 @include('dashboards.partials.teacher-next-classes')
 <div class="tw:grid tw:grid-cols-1 tw:gap-5 tw:xl:grid-cols-3 tw:mb-6">
     <section class="panel tw:xl:col-span-2">

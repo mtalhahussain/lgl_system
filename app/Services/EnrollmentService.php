@@ -71,7 +71,7 @@ class EnrollmentService
     public function enrollPackage(int $studentId, array $batchIds, string $price, string $plan, int $installments,
         ?string $method, string $key, User $actor, ?string $reference = null): \App\Models\EnrollmentPackage
     {
-        abort_unless($actor->isAdmin() && $actor->is_active, 403);
+        abort_unless($actor->actsAsAdmin() && $actor->is_active, 403);
         $batchIds = array_values($batchIds);
         \Illuminate\Support\Facades\Validator::make(compact('batchIds', 'price', 'plan', 'installments', 'method', 'key', 'reference'), [
             'batchIds' => 'required|array|min:2|max:4', 'batchIds.*' => 'required|integer|distinct',

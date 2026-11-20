@@ -12,7 +12,7 @@
     @endif
 @endif
 @if($kind === 'students' && !$person && !isset($lead))
-<form method="get" action="{{ route('students.create') }}" class="panel admission-student-picker">
+@if(can_route('students.create'))<form method="get" action="{{ route('students.create') }}" class="panel admission-student-picker">
     @if(request()->filled('batch_id'))<input type="hidden" name="batch_id" value="{{ request('batch_id') }}">@endif
     <label class="form-label" for="choose_student">Student</label>
     <div class="admission-student-picker-row">
@@ -22,7 +22,7 @@
         </select>
         <button class="btn btn-outline-primary" type="submit">Choose</button>
     </div>
-</form>
+</form>@endif
 @endif
 <form method="post" action="{{ $formAction ?? ($person ? route($kind.'.update', $person) : route($kind.'.store')) }}" class="panel form-panel">
     @csrf

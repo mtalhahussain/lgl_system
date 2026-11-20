@@ -17,13 +17,13 @@
     </div>
     <div class="d-flex flex-wrap gap-2">
         @unless(in_array($lead->status, ['submitted', 'converted'], true))
-            <a href="{{ route('leads.edit', $lead) }}" class="btn btn-outline-secondary btn-sm"><i class="fas fa-pen me-1" aria-hidden="true"></i>Edit</a>
+            @if(can_route('leads.edit'))<a href="{{ route('leads.edit', $lead) }}" class="btn btn-outline-secondary btn-sm"><i class="fas fa-pen me-1" aria-hidden="true"></i>Edit</a>@endif
         @endunless
         @unless($lead->status === 'converted')
-            <form method="POST" action="{{ route('leads.destroy', $lead) }}" class="d-inline" onsubmit="return confirm('Delete this lead permanently?')">
+            @if(can_route('leads.destroy'))<form method="POST" action="{{ route('leads.destroy', $lead) }}" class="d-inline" onsubmit="return confirm('Delete this lead permanently?')">
                 @csrf @method('DELETE')
                 <button type="submit" class="btn btn-outline-danger btn-sm"><i class="fas fa-trash me-1" aria-hidden="true"></i>Delete</button>
-            </form>
+            </form>@endif
         @endunless
         <a href="{{ route('leads.index') }}" class="btn btn-outline-secondary btn-sm">Back to leads</a>
     </div>
@@ -73,28 +73,28 @@
             <h2 class="h6 text-uppercase text-muted">Inquiry follow-up</h2>
             @if(in_array($lead->status, ['new', 'contacted']))
                 @if($lead->status === 'new')
-                    <form method="post" action="{{ route('leads.contact', $lead) }}" class="mb-3">@csrf
+                    @if(can_route('leads.contact'))<form method="post" action="{{ route('leads.contact', $lead) }}" class="mb-3">@csrf
                         <button class="btn btn-outline-primary w-100">Mark as contacted</button>
-                    </form>
+                    </form>@endif
                 @endif
                 <p class="small text-muted">Contact the person, confirm their interest and qualify them when ready.</p>
-                <form method="post" action="{{ route('leads.qualify', $lead) }}" class="mb-3">@csrf
+                @if(can_route('leads.qualify'))<form method="post" action="{{ route('leads.qualify', $lead) }}" class="mb-3">@csrf
                     <button class="btn btn-primary w-100">Qualify lead</button>
-                </form>
+                </form>@endif
             @elseif(in_array($lead->status, ['qualified', 'submitted']))
                 <p class="small text-muted">This lead is ready for review and student registration.</p>
-                <a href="{{ route('leads.convert', $lead) }}" class="btn btn-primary w-100 mb-3">Convert to student</a>
+                @if(can_route('leads.convert'))<a href="{{ route('leads.convert', $lead) }}" class="btn btn-primary w-100 mb-3">Convert to student</a>@endif
             @elseif($lead->status === 'converted')
                 <div class="alert alert-success">Converted to a student. @if($lead->student)<a href="{{ route('students.show', $lead->student) }}">Open student</a>.@endif</div>
             @elseif($lead->status === 'rejected')
                 <div class="alert alert-dark">Lead rejected: {{ $lead->rejected_reason }}</div>
             @endif
             @unless(in_array($lead->status, ['converted', 'rejected']))
-                <form method="post" action="{{ route('leads.reject', $lead) }}">@csrf
+                @if(can_route('leads.reject'))<form method="post" action="{{ route('leads.reject', $lead) }}">@csrf
                     <label class="form-label small" for="reason">Reject reason</label>
                     <textarea class="form-control mb-2" id="reason" name="reason" rows="2" minlength="5" maxlength="500" required></textarea>
                     <button class="btn btn-outline-danger w-100">Reject lead</button>
-                </form>
+                </form>@endif
             @endunless
         </div>
     </div>

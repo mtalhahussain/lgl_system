@@ -72,6 +72,13 @@
                                     <i class="fas fa-tachometer-alt me-2"></i>Dashboard
                                 </a>
                             </li>
+                        @elseif(auth()->user()->isStaff())
+                            <li class="nav-item">
+                                <a class="nav-link {{ request()->routeIs('staff.dashboard') ? 'active' : '' }}"
+                                   href="{{ route('staff.dashboard') }}">
+                                    <i class="fas fa-tachometer-alt me-2"></i>Dashboard
+                                </a>
+                            </li>
                         @elseif(auth()->user()->isTeacher())
                             <li class="nav-item">
                                 <a class="nav-link {{ request()->is('teacher/dashboard') ? 'active' : '' }}" 
@@ -123,7 +130,7 @@
                             @endif
                         @endif
                         
-                        @if((auth()->user()->isAdmin() || auth()->user()->isTeacher()) && module_visible('students'))
+                        @if(can_route('students.index'))
                         <!-- Student Management -->
                         <li class="nav-item">
                             <a class="nav-link {{ request()->is('students*', 'enrollments*', 'enrollment-packages*') ? 'active' : '' }}"
@@ -133,14 +140,20 @@
                         </li>
                         @endif
                         
-                        @if(auth()->user()->isAdmin())
-                        <!-- Teacher Management -->
+                        @if(! can_route('students.index') && can_route('enrollments.index'))
+                        <li class="nav-item"><a class="nav-link {{ request()->is('enrollments*', 'enrollment-packages*') ? 'active' : '' }}" href="{{ route('enrollments.index') }}"><i class="fas fa-user-plus me-2" aria-hidden="true"></i>Admissions</a></li>
+                        @endif
+
+                        @if(can_route('leads.index'))
                         <li class="nav-item">
                             <a class="nav-link {{ request()->is('leads*') ? 'active' : '' }}"
                                href="{{ route('leads.index') }}">
                                 <i class="fas fa-user-tag me-2" aria-hidden="true"></i>Leads
                             </a>
                         </li>
+                        @endif
+                        @if(can_route('teachers.index'))
+                        <!-- Teacher Management -->
                         <li class="nav-item">
                             <a class="nav-link {{ request()->is('teachers*') ? 'active' : '' }}"
                                href="{{ url('/teachers') }}">
@@ -149,12 +162,11 @@
                         </li>
                         @endif
                         
-                        @if(auth()->user()->isAdmin() || auth()->user()->isTeacher())
-                        @if(module_visible('class_sessions'))
+                        @if(can_route('class-sessions.index'))
                         <li class="nav-item"><a class="nav-link {{ request()->is('class-sessions*') ? 'active' : '' }}" href="{{ route('class-sessions.index') }}"><i class="fas fa-calendar-alt me-2" aria-hidden="true"></i>Class Sessions</a></li>
                         @endif
                         <!-- Level Management -->
-                        @if(module_visible('courses'))
+                        @if(can_route('courses.index'))
                         <li class="nav-item">
                             <a class="nav-link {{ request()->is('courses*') ? 'active' : '' }}" 
                                href="{{ url('/courses') }}">
@@ -164,7 +176,7 @@
                         @endif
                         
                         <!-- Batch Management -->
-                        @if(module_visible('batches'))
+                        @if(can_route('batches.index'))
                         <li class="nav-item">
                             <a class="nav-link {{ request()->is('batches*') ? 'active' : '' }}" 
                                href="{{ url('/batches') }}">
@@ -172,9 +184,8 @@
                             </a>
                         </li>
                         @endif
-                        @endif
                         
-                        @if(auth()->user()->isAdmin())
+                        @if(can_route('fees.index'))
                         <!-- Fee Management -->
                         <li class="nav-item">
                             <a class="nav-link {{ request()->is('fees*') && !request()->is('fees/reports') ? 'active' : '' }}" 
@@ -185,7 +196,7 @@
 
                         @endif
 
-                        @if((auth()->user()->isAdmin() || auth()->user()->isTeacher()) && module_visible('payroll'))
+                        @if(can_route('payroll.index'))
                         <li class="nav-item">
                             <a class="nav-link {{ request()->is('payroll*') ? 'active' : '' }}" href="{{ route('payroll.index') }}">
                                 <i class="fas fa-hand-holding-usd me-2"></i>{{ auth()->user()->isTeacher() ? 'My Earnings' : 'Payroll' }}
@@ -193,7 +204,7 @@
                         </li>
                         @endif
                         
-                        @if((auth()->user()->isAdmin() || auth()->user()->isTeacher()) && module_visible('attendance'))
+                        @if(can_route('attendance.index'))
                         <!-- Attendance Management -->
                         <li class="nav-item">
                             <a class="nav-link {{ request()->is('attendance*') || request()->is('biometric/teachers') ? 'active' : '' }}"
@@ -203,15 +214,15 @@
                         </li>
                         @endif
 
-                        @if(auth()->user()->isAdmin())
+                        @if(can_route('certificates.index'))
                         <li class="nav-item"><a class="nav-link {{ request()->is('certificates*') ? 'active' : '' }}" href="{{ route('certificates.index') }}"><i class="fas fa-award me-2" aria-hidden="true"></i>Certificates</a></li>
                         @endif
 
-                        @if((auth()->user()->isAdmin() || auth()->user()->isTeacher()) && module_visible('exams'))
+                        @if(can_route('exams.index'))
                         <li class="nav-item"><a class="nav-link {{ request()->is('exams*') ? 'active' : '' }}" href="{{ route('exams.index') }}"><i class="fas fa-clipboard-list me-2" aria-hidden="true"></i>Exams</a></li>
                         @endif
 
-                        @if(auth()->user()->isAdmin())
+                        @if(can_route('reports.index'))
                         <!-- Reports & Analytics -->
                         <li class="nav-item">
                             <a class="nav-link {{ request()->is('reports*') ? 'active' : '' }}" 

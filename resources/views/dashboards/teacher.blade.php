@@ -44,5 +44,5 @@
 </ul></section>
 <a class="btn btn-primary" href="{{ route('attendance.index') }}">Review attendance</a>
 <a class="btn btn-outline-primary" href="{{ route('class-sessions.index', ['from' => today()->startOfWeek()->toDateString(), 'to' => today()->endOfWeek()->toDateString()]) }}">This week's teaching</a>
-<a class="btn btn-outline-secondary" href="{{ route('class-sessions.create') }}">Extra / makeup class</a>
+@if(can_route('class-sessions.create'))<a class="btn btn-outline-secondary" href="{{ route('class-sessions.create') }}">Extra / makeup class</a>@endif
 @endsection

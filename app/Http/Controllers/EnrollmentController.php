@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Enrollment;
 use App\Services\EnrollmentService;
 use App\Services\FeeCalculatorService;
+use App\Services\PayrollService;
 use App\Support\ListQuery;
 use App\Support\Money;
 use Illuminate\Http\Request;
@@ -158,8 +159,10 @@ class EnrollmentController extends Controller
                 $validated['new_batch_id'],
                 $validated['transfer_date'] ?? null
             );
+            $payWarning = app(PayrollService::class)->refreshBatchDue($enrollment->batch_id, $request->user());
             if (!$request->expectsJson()) {
-                return redirect()->route('enrollments.show', $newEnrollment)->with('success', 'Student transferred. Fee schedule preserved.');
+                return redirect()->route('enrollments.show', $newEnrollment)->with('success', 'Student transferred. Fee schedule preserved.')
+                    ->with('warning', $payWarning);
             }
             
             return response()->json([
@@ -194,8 +197,10 @@ class EnrollmentController extends Controller
                 $validated['dropout_reason'],
                 $validated['refund_amount'] ?? 0
             );
+            $payWarning = app(PayrollService::class)->refreshBatchDue($enrollment->batch_id, $request->user());
             if (!$request->expectsJson()) {
-                return redirect()->route('enrollments.show', $enrollment)->with('success', 'Enrollment withdrawn. Existing debt and payment history preserved.');
+                return redirect()->route('enrollments.show', $enrollment)->with('success', 'Enrollment withdrawn. Existing debt and payment history preserved.')
+                    ->with('warning', $payWarning);
             }
             
             return response()->json([

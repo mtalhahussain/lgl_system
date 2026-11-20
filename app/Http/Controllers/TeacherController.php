@@ -98,9 +98,10 @@ class TeacherController extends Controller
         $batches = $teacher->taughtBatches()->with('course:id,name,level')->withCount('activeEnrollments')
             ->orderByRaw("CASE status WHEN 'ongoing' THEN 0 WHEN 'upcoming' THEN 1 WHEN 'completed' THEN 2 ELSE 3 END")
             ->orderByDesc('start_date')->get();
-        $dues = TeacherDue::with(['batch:id,name', 'payouts.reversal'])->where('teacher_id', $teacher->id)
+        // Pay records are Payroll data: Admin-only (Staff never gets Payroll), the teacher sees their own.
+        $dues = auth()->user()->isStaff() ? collect() : TeacherDue::with(['batch:id,name', 'payouts.reversal'])->where('teacher_id', $teacher->id)
             ->orderByDesc('id')->get();
-        $otherTeachers = auth()->user()->isAdmin()
+        $otherTeachers = can_route('teachers.reassign')
             ? User::where('role', 'teacher')->where('is_active', true)->where('id', '!=', $teacher->id)->orderBy('name')->pluck('name', 'id')
             : collect();
         $openBatchCount = $batches->whereIn('status', ['upcoming', 'ongoing'])->count();

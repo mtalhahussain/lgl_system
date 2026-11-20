@@ -155,7 +155,7 @@ class BatchController extends Controller
             'meeting_link' => 'nullable|url:http,https|max:2000',
             'notes' => 'nullable|string|max:2000',
             // Recurring weekly class days/times (optional template).
-            'schedule' => 'nullable|array|max:50',
+            'schedule' => 'nullable|array|max:7',
             'schedule.*.weekday' => 'nullable|in:mon,tue,wed,thu,fri,sat,sun',
             'schedule.*.start' => 'nullable|date_format:H:i',
             'schedule.*.end' => 'nullable|date_format:H:i',
@@ -192,9 +192,9 @@ class BatchController extends Controller
             $clean[] = ['weekday' => $weekday, 'start_time' => $start, 'end_time' => $end];
         }
 
-        $keys = array_map(fn ($row) => $row['weekday'].' '.$row['start_time'], $clean);
-        if (count($keys) !== count(array_unique($keys))) {
-            throw ValidationException::withMessages(['schedule' => 'The same day and start time cannot be entered twice.']);
+        $days = array_column($clean, 'weekday');
+        if (count($days) !== count(array_unique($days))) {
+            throw ValidationException::withMessages(['schedule' => 'Each weekday can be selected only once.']);
         }
 
         return $clean;

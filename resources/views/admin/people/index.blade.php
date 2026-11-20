@@ -4,7 +4,7 @@
 @php $students = $kind === 'students'; @endphp
 <x-list.header :title="ucfirst($kind)" eyebrow="People" :subtitle="$students ? 'Admitted learners and their batches' : 'Teaching staff and assignments'">
     <a class="btn btn-primary" href="{{ route($kind.'.create') }}"><i class="fas fa-plus me-1" aria-hidden="true"></i>{{ $students ? 'Student admission' : 'Add teacher' }}</a>
-    @if($students)<a class="btn btn-outline-primary" href="{{ route('enrollment-packages.create') }}">Multi-level package</a>@endif
+    @if($students) @if(can_route('enrollment-packages.create'))<a class="btn btn-outline-primary" href="{{ route('enrollment-packages.create') }}">Multi-level package</a>@endif @endif
 </x-list.header>
 <x-list.kpis :items="$kpis" />
 <div class="panel list-panel">
@@ -60,7 +60,7 @@
                             <li><a class="dropdown-item" href="{{ route($kind.'.show', $person) }}"><i class="fas fa-eye me-2" aria-hidden="true"></i>View</a></li>
                             <li><a class="dropdown-item" href="{{ route($kind.'.edit', $person) }}"><i class="fas fa-pen me-2" aria-hidden="true"></i>Edit</a></li>
                             @if($students)<li><a class="dropdown-item" href="{{ route('fees.student', $person) }}"><i class="fas fa-money-bill me-2" aria-hidden="true"></i>Fees</a></li>@endif
-                            @if($students && $person->is_active)<li><a class="dropdown-item" href="{{ route('students.create', ['student_id' => $person->id]) }}">Add admission</a></li>@endif
+                            @if($students && $person->is_active) @if(can_route('students.create'))<li><a class="dropdown-item" href="{{ route('students.create', ['student_id' => $person->id]) }}">Add admission</a></li>@endif @endif
                             @if($person->is_active)
                                 <li><hr class="dropdown-divider"></li>
                                 <li><form method="post" action="{{ route($kind.'.destroy', $person) }}" data-confirm="Deactivate {{ $person->name }}? History will be preserved.">@csrf @method('DELETE')

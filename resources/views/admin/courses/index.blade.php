@@ -2,7 +2,7 @@
 @section('title', 'Levels')
 @section('content')
 <x-list.header title="Levels" eyebrow="Academics" subtitle="Level catalogue, default fees and batch activity">
-    <a class="btn btn-primary" href="{{ route('courses.create') }}"><i class="fas fa-plus me-1" aria-hidden="true"></i>Add course</a>
+    @if(can_route('courses.create'))<a class="btn btn-primary" href="{{ route('courses.create') }}"><i class="fas fa-plus me-1" aria-hidden="true"></i>Add course</a>@endif
 </x-list.header>
 <x-list.kpis :items="$kpis" />
 <div class="panel list-panel">
@@ -30,11 +30,11 @@
                     <td class="text-end">
                         <x-list.row-menu :label="$course->name">
                             <li><a class="dropdown-item" href="{{ route('courses.show', $course) }}"><i class="fas fa-eye me-2" aria-hidden="true"></i>View</a></li>
-                            <li><a class="dropdown-item" href="{{ route('courses.edit', $course) }}"><i class="fas fa-pen me-2" aria-hidden="true"></i>Edit</a></li>
-                            <li><a class="dropdown-item" href="{{ route('batches.create', ['course_id' => $course->id]) }}"><i class="fas fa-layer-group me-2" aria-hidden="true"></i>New batch</a></li>
+                            @if(can_route('courses.edit'))<li><a class="dropdown-item" href="{{ route('courses.edit', $course) }}"><i class="fas fa-pen me-2" aria-hidden="true"></i>Edit</a></li>@endif
+                            @if(can_route('batches.create'))<li><a class="dropdown-item" href="{{ route('batches.create', ['course_id' => $course->id]) }}"><i class="fas fa-layer-group me-2" aria-hidden="true"></i>New batch</a></li>@endif
                             <li><hr class="dropdown-divider"></li>
-                            <li><form method="post" action="{{ route('courses.toggle-status', $course) }}" data-confirm="{{ $course->is_active ? 'Deactivate' : 'Activate' }} {{ $course->name }}? Existing batches and history stay unchanged.">@csrf
-                                <button class="dropdown-item {{ $course->is_active ? 'text-danger' : '' }}"><i class="fas fa-power-off me-2" aria-hidden="true"></i>{{ $course->is_active ? 'Deactivate' : 'Activate' }}</button></form></li>
+                            <li>@if(can_route('courses.toggle-status'))<form method="post" action="{{ route('courses.toggle-status', $course) }}" data-confirm="{{ $course->is_active ? 'Deactivate' : 'Activate' }} {{ $course->name }}? Existing batches and history stay unchanged.">@csrf
+                                <button class="dropdown-item {{ $course->is_active ? 'text-danger' : '' }}"><i class="fas fa-power-off me-2" aria-hidden="true"></i>{{ $course->is_active ? 'Deactivate' : 'Activate' }}</button></form>@endif</li>
                         </x-list.row-menu>
                     </td>
                 </tr>

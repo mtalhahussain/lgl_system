@@ -24,7 +24,7 @@ class UserRolesAndPermissionsTest extends TestCase
 
     public function test_admin_creates_users_of_every_role_from_one_form(): void
     {
-        $this->actingAs($this->admin)->get('/accounts/create')->assertOk()->assertSee('Role')->assertSee('Staff (no sign-in)');
+        $this->actingAs($this->admin)->get('/accounts/create')->assertOk()->assertSee('Role')->assertSee('Optional for staff');
 
         $this->post('/accounts', ['role' => 'admin', 'name' => 'Second Admin', 'email' => 'admin2@example.test',
             'password' => 'secret123', 'password_confirmation' => 'secret123', 'salary_type' => 'monthly', 'designation' => 'Ignored'])
@@ -44,14 +44,26 @@ class UserRolesAndPermissionsTest extends TestCase
         $this->post('/accounts', ['role' => 'student', 'name' => 'New Student', 'email' => 's@example.test', 'monthly_salary' => '5000'])
             ->assertSessionHasNoErrors();
         $student = User::where('email', 's@example.test')->sole();
+        $this->get('/accounts')->assertSee(route('students.show', $student), false)->assertSee(route('teachers.show', $teacher), false)
+            ->assertDontSee('href="'.url('/students/'.$this->admin->id).'"', false);
+        $this->get(route('staff.show', $student))->assertNotFound();
         $this->assertSame(['student', null], [$student->role, $student->monthly_salary]);
 
+        // Staff without an email never signs in (unusable placeholder email).
         $this->post('/accounts', ['role' => 'staff', 'name' => 'Guard', 'phone' => '03009999999', 'designation' => 'Security guard',
-            'monthly_salary' => '25000', 'email' => 'ignored@example.test', 'password' => 'ignored12', 'password_confirmation' => 'ignored12'])
+            'monthly_salary' => '25000'])
             ->assertSessionHasNoErrors()->assertRedirect('/accounts?role=staff');
         $staff = User::where('role', 'staff')->sole();
         $this->assertStringEndsWith('@staff.invalid', $staff->email);
         $this->assertSame(['Security guard', 'monthly', '25000.00'], [$staff->designation, $staff->salary_type, (string) $staff->monthly_salary]);
+
+        // Staff with an email and password can sign in.
+        $this->post('/accounts', ['role' => 'staff', 'name' => 'Front Desk', 'phone' => '03008888888', 'designation' => 'Receptionist',
+            'monthly_salary' => '30000', 'email' => 'desk@example.test', 'password' => 'desk12345', 'password_confirmation' => 'desk12345'])
+            ->assertSessionHasNoErrors();
+        $desk = User::where('email', 'desk@example.test')->sole();
+        $this->assertSame(['staff', 'monthly'], [$desk->role, $desk->salary_type]);
+        $this->assertTrue(Hash::check('desk12345', $desk->password));
     }
 
     public function test_create_validates_role_specific_fields_and_is_admin_only(): void
@@ -89,12 +101,13 @@ class UserRolesAndPermissionsTest extends TestCase
         $this->actingAs($teacher)->get('/exams')->assertOk();
         $this->get('/teacher/dashboard')->assertOk()->assertSee(route('exams.index'), false);
 
-        $this->actingAs($this->admin)->get('/accounts')->assertOk()->assertSee('Role permissions')->assertSee('My Earnings');
-        $allTeacher = array_fill_keys(array_keys(config('modules.teacher')), '1');
-        $allStudent = array_fill_keys(array_keys(config('modules.student')), '1');
+        $this->actingAs($this->admin)->get('/accounts')->assertOk()->assertSee(route('accounts.permissions.edit'), false)->assertDontSee('My Earnings');
+        $this->get('/accounts/permissions')->assertOk()->assertSee('Role permissions')->assertSee('My Earnings')->assertSee('Back to Users');
+        $allTeacher = array_fill_keys(array_keys(config('modules.teacher')), ['all' => '1']);
+        $allStudent = array_fill_keys(array_keys(config('modules.student')), ['all' => '1']);
         unset($allTeacher['exams'], $allStudent['fees']);
         $this->put('/accounts/permissions', ['permissions' => ['teacher' => $allTeacher, 'student' => $allStudent]])
-            ->assertRedirect(route('accounts.index').'#role-permissions');
+            ->assertRedirect(route('accounts.permissions.edit'));
         $this->assertSame(1, AuditLog::where('action', 'role_permissions.updated')->count());
         $this->assertFalse(RolePermission::where(['role' => 'teacher', 'module' => 'exams'])->sole()->allowed);
 
@@ -107,7 +120,7 @@ class UserRolesAndPermissionsTest extends TestCase
         $this->actingAs($this->admin)->get('/exams')->assertOk();
 
         // Saving again with everything ticked restores access.
-        $this->put('/accounts/permissions', ['permissions' => ['teacher' => $allTeacher + ['exams' => '1'], 'student' => $allStudent + ['fees' => '1']]]);
+        $this->put('/accounts/permissions', ['permissions' => ['teacher' => $allTeacher + ['exams' => ['view' => '1']], 'student' => $allStudent + ['fees' => ['view' => '1']]]]);
         $this->actingAs($teacher)->get('/exams')->assertOk();
         $this->actingAs($student)->get('/fees/student/'.$student->id)->assertOk();
     }

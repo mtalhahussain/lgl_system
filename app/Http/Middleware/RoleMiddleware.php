@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Models\RolePermission;
 use Closure;
 use Illuminate\Http\Request;
 
@@ -14,8 +15,12 @@ class RoleMiddleware
             return redirect()->route('login');
         }
 
-        // Check if user has any of the required roles
-        if (!in_array(auth()->user()->role, $roles)) {
+        $user = auth()->user();
+        // Staff may use an admin route only when Admin granted Staff the matching module action (Users > Role permissions).
+        $staffGranted = $user->isStaff() && in_array('admin', $roles, true)
+            && RolePermission::staffAllowsRoute($user, $request->route()?->getName());
+
+        if (!in_array($user->role, $roles) && !$staffGranted) {
             abort(403, 'Unauthorized. You do not have permission to access this page.');
         }
 

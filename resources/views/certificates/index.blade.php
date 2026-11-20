@@ -8,7 +8,7 @@
 </x-list.header>
 
 <div class="certificate-workspace">
-    <form class="panel form-panel" method="post" action="{{ route('certificates.store') }}">
+    @if(can_route('certificates.store'))<form class="panel form-panel" method="post" action="{{ route('certificates.store') }}">
         @csrf
         <div class="form-section">
         <h2 class="form-section-title">Issue Certificate</h2>
@@ -63,7 +63,7 @@
             <a class="btn btn-outline-secondary" href="{{ route('exams.index') }}">Cancel</a>
             <button class="btn btn-primary" type="submit"><i class="fas fa-award me-1" aria-hidden="true"></i>Issue &amp; print</button>
         </div>
-    </form>
+    </form>@endif
     <aside class="panel certificate-preview" aria-labelledby="preview-heading">
         <h2 class="form-section-title" id="preview-heading">Certificate details preview</h2>
         <p class="form-section-note">Check the text below. The printed certificate uses the institute template.</p>
@@ -104,7 +104,7 @@
             @unless($certificate->isRevoked())
             <tr class="collapse d-print-none" id="revoke-{{ $certificate->id }}">
                 <td colspan="7">
-                    <form method="post" action="{{ route('certificates.revoke', $certificate) }}" class="certificate-revoke-form">
+                    @if(can_route('certificates.revoke'))<form method="post" action="{{ route('certificates.revoke', $certificate) }}" class="certificate-revoke-form">
                         @csrf
                         <div class="certificate-revoke-field">
                             <label class="form-label small" for="reason-{{ $certificate->id }}">Reason for revoking {{ $certificate->certificate_number }}</label>
@@ -113,7 +113,7 @@
                         </div>
                         <button class="btn btn-outline-secondary btn-sm" type="button" data-bs-toggle="collapse" data-bs-target="#revoke-{{ $certificate->id }}">Cancel</button>
                         <button class="btn btn-danger btn-sm" type="submit">Confirm revoke</button>
-                    </form>
+                    </form>@endif
                 </td>
             </tr>
             @endunless

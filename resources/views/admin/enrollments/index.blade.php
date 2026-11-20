@@ -2,8 +2,8 @@
 @section('title', 'Enrollments')
 @section('content')
 <x-list.header title="Enrollments" eyebrow="Admissions" subtitle="Student admissions, fee agreements and status">
-    <a class="btn btn-outline-primary" href="{{ route('enrollment-packages.create') }}">Multi-level package</a>
-    <a class="btn btn-primary" href="{{ route('students.create') }}">Student admission</a>
+    @if(can_route('enrollment-packages.create'))<a class="btn btn-outline-primary" href="{{ route('enrollment-packages.create') }}">Multi-level package</a>@endif
+    @if(can_route('students.create'))<a class="btn btn-primary" href="{{ route('students.create') }}">Student admission</a>@endif
 </x-list.header>
 <x-list.kpis :items="$kpis" />
 <div class="panel list-panel">

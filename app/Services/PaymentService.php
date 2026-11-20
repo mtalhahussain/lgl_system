@@ -20,7 +20,7 @@ class PaymentService
 
     public function pay(int $enrollmentId, string $amount, string $method, string $key, User $actor, ?string $reference = null, ?int $installmentId = null): Payment
     {
-        abort_unless($actor->isAdmin() && $actor->is_active, 403);
+        abort_unless($actor->actsAsAdmin() && $actor->is_active, 403);
         $minor = Money::minor($amount);
         if ($minor <= 0 || ! in_array($method, ['cash', 'bank', 'card', 'jazzcash', 'easypaisa', 'online'], true)
             || ! preg_match('/^[A-Za-z0-9_-]{16,64}$/D', $key)) {
@@ -91,7 +91,7 @@ class PaymentService
 
     public function reverse(Payment $payment, User $actor, string $reason): PaymentReversal
     {
-        abort_unless($actor->isAdmin() && $actor->is_active, 403);
+        abort_unless($actor->actsAsAdmin() && $actor->is_active, 403);
         $package = $payment->enrollment->packagePurchase;
         if (! $package || ! in_array($payment->id, array_column($package->receipt_details['modules'], 'payment_id'), true)) {
             return $this->reverseSingle($payment, $actor, $reason);
@@ -115,7 +115,7 @@ class PaymentService
 
     private function reverseSingle(Payment $payment, User $actor, string $reason): PaymentReversal
     {
-        abort_unless($actor->isAdmin() && $actor->is_active, 403);
+        abort_unless($actor->actsAsAdmin() && $actor->is_active, 403);
         if (strlen(trim($reason)) < 5 || strlen($reason) > 1000 || $payment->legacy_source !== null) {
             throw ValidationException::withMessages(['reason' => 'Provide a reason of 5–1000 characters. Imported opening balances need separate reconciliation.']);
         }
@@ -145,7 +145,8 @@ class PaymentService
      */
     public function changeDiscount(Enrollment $enrollment, string $percentage, User $actor, string $reason, ?array $refund = null, ?int $fixedDiscountMinor = null): Enrollment
     {
-        abort_unless($actor->isAdmin() && $actor->is_active, 403);
+        // Refunds stay Admin-only: Staff may change a discount only when no refund is recorded with it.
+        abort_unless(($actor->isAdmin() || ($actor->isStaff() && $refund === null)) && $actor->is_active, 403);
         if (strlen(trim($reason)) < 5 || strlen($reason) > 1000) {
             throw ValidationException::withMessages(['reason' => 'Provide a reason of 5–1000 characters.']);
         }

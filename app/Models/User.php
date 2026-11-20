@@ -12,10 +12,10 @@ use Illuminate\Support\Facades\Schema;
 
 class User extends Authenticatable
 {
-    /** Roles that can sign in. */
-    public const ROLES = ['admin', 'teacher', 'student'];
+    /** Roles that can sign in. Staff signs in only when given a real email (others keep an unusable placeholder). */
+    public const ROLES = ['admin', 'teacher', 'student', 'staff'];
 
-    /** Every stored role; staff (receptionist, cleaner, guard, …) is paid and may use the machine but never signs in. */
+    /** Every stored role; staff (receptionist, cleaner, guard, …) is paid, may use the machine, and uses only the modules Admin grants. */
     public const ALL_ROLES = ['admin', 'teacher', 'student', 'staff'];
 
     /** People who are paid and may punch the attendance machine. */
@@ -228,5 +228,20 @@ class User extends Authenticatable
     public function isStaff()
     {
         return $this->role === 'staff';
+    }
+
+    /**
+     * Admin, or Staff acting on an admin screen. Staff reaches admin routes only for module actions Admin granted
+     * (RoleMiddleware + Users > Role permissions), so code behind those routes treats Staff like Admin.
+     */
+    public function canSignIn(): bool
+    {
+        // Staff kept without sign-in has an unusable placeholder email.
+        return in_array($this->role, self::ROLES, true) && ! str_ends_with((string) $this->email, '@staff.invalid');
+    }
+
+    public function actsAsAdmin(): bool
+    {
+        return $this->isAdmin() || $this->isStaff();
     }
 }

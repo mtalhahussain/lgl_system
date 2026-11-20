@@ -23,9 +23,10 @@
                 <input class="form-control @error('name') is-invalid @enderror" id="name" name="name" value="{{ old('name') }}" maxlength="255" required>
                 @error('name')<div class="invalid-feedback">{{ $message }}</div>@enderror
             </div>
-            <div class="col-md-6" data-role-section="admin teacher student">
-                <label class="form-label required" for="email">Email (sign-in)</label>
-                <input class="form-control @error('email') is-invalid @enderror" id="email" name="email" type="email" value="{{ old('email') }}" maxlength="255" @required($role !== 'staff')>
+            <div class="col-md-6">
+                <label class="form-label required" for="email" data-required-for="admin teacher student">Email (sign-in)</label>
+                <input class="form-control @error('email') is-invalid @enderror" id="email" name="email" type="email" value="{{ old('email') }}" maxlength="255" aria-describedby="email-help" @required($role !== 'staff')>
+                <div class="form-text" id="email-help" data-role-section="staff">Optional for staff. With an email and password the staff member can sign in and use the modules Admin grants to Staff (Users &gt; Role permissions). Leave blank for staff who never sign in.</div>
                 @error('email')<div class="invalid-feedback">{{ $message }}</div>@enderror
             </div>
             <div class="col-md-6">
@@ -78,7 +79,7 @@
         </div>
     </div>
 
-    <div class="form-section" data-role-section="admin teacher student">
+    <div class="form-section">
         <h2 class="form-section-title">Password (optional)</h2>
         <p class="form-section-note">Leave blank to create the account without a usable password; set one later from the person's edit page.</p>
         <div class="row g-3">

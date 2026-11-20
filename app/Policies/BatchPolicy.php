@@ -12,7 +12,7 @@ class BatchPolicy
      */
     public function viewAny(User $user): bool
     {
-        return in_array($user->role, ['admin', 'teacher']);
+        return ($user->actsAsAdmin() || $user->isTeacher());
     }
 
     /**
@@ -21,7 +21,7 @@ class BatchPolicy
     public function view(User $user, Batch $batch): bool
     {
         // Admin can view all batches
-        if (in_array($user->role, ['admin'])) {
+        if ($user->actsAsAdmin()) {
             return true;
         }
 
@@ -45,7 +45,7 @@ class BatchPolicy
      */
     public function create(User $user): bool
     {
-        return $user->role === 'admin';
+        return $user->actsAsAdmin();
     }
 
     /**
@@ -54,7 +54,7 @@ class BatchPolicy
     public function update(User $user, Batch $batch): bool
     {
         // Only admin can update batch details
-        if ($user->role === 'admin') {
+        if ($user->actsAsAdmin()) {
             return true;
         }
 
@@ -71,7 +71,7 @@ class BatchPolicy
      */
     public function delete(User $user, Batch $batch): bool
     {
-        return $user->role === 'admin';
+        return $user->actsAsAdmin();
     }
 
     /**
@@ -79,7 +79,7 @@ class BatchPolicy
      */
     public function manageEnrollments(User $user, Batch $batch): bool
     {
-        return in_array($user->role, ['admin']);
+        return $user->actsAsAdmin();
     }
 
     /**
@@ -87,7 +87,7 @@ class BatchPolicy
      */
     public function viewFinancials(User $user, Batch $batch): bool
     {
-        return in_array($user->role, ['admin']);
+        return $user->actsAsAdmin();
     }
 
     /**
@@ -96,7 +96,7 @@ class BatchPolicy
     public function markAttendance(User $user, Batch $batch): bool
     {
         // Admin can mark attendance for any batch
-        if ($user->role === 'admin') {
+        if ($user->actsAsAdmin()) {
             return true;
         }
 
@@ -114,7 +114,7 @@ class BatchPolicy
     public function viewAttendance(User $user, Batch $batch): bool
     {
         // Admin can view attendance for any batch
-        if ($user->role === 'admin') {
+        if ($user->actsAsAdmin()) {
             return true;
         }
 

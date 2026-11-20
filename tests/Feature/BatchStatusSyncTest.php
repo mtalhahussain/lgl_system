@@ -149,7 +149,8 @@ class BatchStatusSyncTest extends TestCase
         $this->batch('StartsInTwo', 'upcoming', today()->addDays(2));
         $this->batch('StartsInThree', 'upcoming', today()->addDays(3));
         $this->batch('EndsTomorrow', 'ongoing', today()->subMonth(), today()->addDay());
-        $this->batch('EndsInThree', 'ongoing', today()->subMonth(), today()->addDays(3));
+        // Outside both the 2-day reminders and the 7-day "Teacher slots freeing up" panel.
+        $this->batch('EndsInThree', 'ongoing', today()->subMonth(), today()->addDays(8));
         $this->batch('CancelledSoon', 'cancelled', today()->addDay());
 
         $this->actingAs($this->admin)->get('/admin/dashboard')->assertOk()

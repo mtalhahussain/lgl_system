@@ -6,11 +6,11 @@
         <span><i class="fas fa-hourglass-half" aria-hidden="true"></i>{{ $course->duration_weeks }} weeks</span>
         @if($course->sessions_per_week)<span><i class="fas fa-calendar-week" aria-hidden="true"></i>{{ $course->sessions_per_week }} sessions/week{{ $course->session_duration_minutes ? ' · '.$course->session_duration_minutes.' min' : '' }}</span>@endif
     </x-slot:meta>
-    <a class="btn btn-primary" href="{{ route('batches.create', ['course_id' => $course->id]) }}"><i class="fas fa-plus me-1" aria-hidden="true"></i>New batch</a>
-    <a class="btn btn-outline-primary" href="{{ route('courses.edit', $course) }}"><i class="fas fa-pen me-1" aria-hidden="true"></i>Edit</a>
-    <form class="d-inline" method="post" action="{{ route('courses.toggle-status', $course) }}" data-confirm="{{ $course->is_active ? 'Deactivate this level? Existing batches stay unchanged.' : 'Activate this level?' }}">
+    @if(can_route('batches.create'))<a class="btn btn-primary" href="{{ route('batches.create', ['course_id' => $course->id]) }}"><i class="fas fa-plus me-1" aria-hidden="true"></i>New batch</a>@endif
+    @if(can_route('courses.edit'))<a class="btn btn-outline-primary" href="{{ route('courses.edit', $course) }}"><i class="fas fa-pen me-1" aria-hidden="true"></i>Edit</a>@endif
+    @if(can_route('courses.toggle-status'))<form class="d-inline" method="post" action="{{ route('courses.toggle-status', $course) }}" data-confirm="{{ $course->is_active ? 'Deactivate this level? Existing batches stay unchanged.' : 'Activate this level?' }}">
         @csrf <button class="btn btn-outline-secondary">{{ $course->is_active ? 'Deactivate' : 'Activate' }}</button>
-    </form>
+    </form>@endif
 </x-show.hero>
 
 <x-list.kpis :items="[
@@ -59,7 +59,7 @@
 
 <section class="panel mt-4" aria-labelledby="materials-heading">
     <div class="panel-heading"><h2 id="materials-heading">Books &amp; Materials</h2><span class="page-subtitle">{{ $materials->count() }} {{ Str::plural('file', $materials->count()) }} · visible to assigned teachers and active/completed students</span></div>
-    <form class="pad-panel-body" method="post" action="{{ route('materials.store', $course) }}" enctype="multipart/form-data">
+    @if(can_route('materials.store'))<form class="pad-panel-body" method="post" action="{{ route('materials.store', $course) }}" enctype="multipart/form-data">
         @csrf
         <div class="row g-3 align-items-end">
             <div class="col-md-4">
@@ -83,7 +83,7 @@
             <button class="btn btn-primary"><i class="fas fa-upload me-1" aria-hidden="true"></i>Upload</button>
             <span class="form-text">PDF, Word, PowerPoint, JPG or PNG · max 20 MB</span>
         </div>
-    </form>
+    </form>@endif
     @include('materials.table', ['materials' => $materials, 'manage' => true])
 </section>
 @endsection

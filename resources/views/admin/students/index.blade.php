@@ -212,14 +212,14 @@
                                            class="btn btn-sm btn-outline-warning" title="Edit">
                                             <i class="fas fa-edit"></i>
                                         </a>
-                                        <form method="POST" action="{{ route('students.destroy', $student) }}" 
+                                        @if(can_route('students.destroy'))<form method="POST" action="{{ route('students.destroy', $student) }}" 
                                               class="d-inline" onsubmit="return confirm('Are you sure you want to delete this student?')">
                                             @csrf
                                             @method('DELETE')
                                             <button type="submit" class="btn btn-sm btn-outline-danger" title="Delete">
                                                 <i class="fas fa-trash"></i>
                                             </button>
-                                        </form>
+                                        </form>@endif
                                     </div>
                                 </td>
                             </tr>

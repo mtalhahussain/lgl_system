@@ -38,7 +38,7 @@ class LevelMaterial extends Model
      */
     public static function scopeAccessibleTo(Builder $query, User $user): Builder
     {
-        if ($user->isAdmin()) {
+        if ($user->actsAsAdmin()) {
             return $query;
         }
         if ($user->isTeacher()) {

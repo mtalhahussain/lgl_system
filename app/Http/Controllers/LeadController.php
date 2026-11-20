@@ -2,29 +2,17 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Batch;
 use App\Models\Lead;
 use App\Models\User;
-use App\Services\EnrollmentService;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\URL;
-use Illuminate\Support\Str;
-use Illuminate\Validation\ValidationException;
 
 class LeadController extends Controller
 {
-    public function __construct(private EnrollmentService $enrollmentService) {}
-
-    // Hours a qualify prefill link stays valid.
-    private const PREFILL_TTL_HOURS = 48;
-
     // ---- Public intake (landing page, no auth) --------------------------------
 
     public function showApplyForm()
     {
-        return view('public.apply.form');
+        return view('public.apply.form', ['inquiryAction' => request()->routeIs('inquiry.form') ? request()->fullUrl() : route('apply.store')]);
     }
 
     public function storeApply(Request $request)
@@ -40,15 +28,24 @@ class LeadController extends Controller
             'cnic' => ['nullable', 'string', 'max:20', 'regex:/^[0-9\-]{13,20}$/'],
             'phone' => ['required', 'string', 'max:20', 'regex:/^\+?[0-9]+$/D'],
             'email' => 'nullable|string|email|max:255',
-            'program_interest' => 'nullable|string|max:255',
+            'program_interest' => ['required', \Illuminate\Validation\Rule::in(\App\Services\EnrollmentService::LEVELS)],
             'message' => 'nullable|string|max:1000',
-        ]);
+        ], [], ['program_interest' => 'level of interest']);
 
-        $lead = Lead::create(array_merge($data, [
-            'source' => Lead::SOURCE_PUBLIC,
-            'status' => Lead::STATUS_NEW,
-            'raw_payload' => $data,
-        ]));
+        try {
+            \Illuminate\Support\Facades\Cache::lock('inquiry:phone:'.hash('sha256', $data['phone']), 10)->block(3, function () use ($data) {
+                // Repeat submissions get the same public response without exposing contact records.
+                if (Lead::where('source', Lead::SOURCE_PUBLIC)->where('phone', $data['phone'])
+                    ->where('created_at', '>=', now()->subDay())->exists()) {
+                    return;
+                }
+                Lead::create(array_merge($data, [
+                    'source' => Lead::SOURCE_PUBLIC, 'status' => Lead::STATUS_NEW, 'raw_payload' => $data,
+                ]));
+            });
+        } catch (\Illuminate\Contracts\Cache\LockTimeoutException) {
+            abort(429, 'Please wait a moment before submitting again.');
+        }
 
         return redirect()->route('apply.thanks');
     }
@@ -136,7 +133,11 @@ class LeadController extends Controller
 
         $leads = $query->paginate(25)->withQueryString();
 
-        return view('admin.leads.index', compact('leads'));
+        $linkExpiry = in_array($request->query('link_expiry'), ['24h', '7d'], true) ? $request->query('link_expiry') : 'permanent';
+        $inquiryUrl = $linkExpiry === 'permanent' ? route('apply.form')
+            : \Illuminate\Support\Facades\URL::temporarySignedRoute('inquiry.form', $linkExpiry === '24h' ? now()->addDay() : now()->addDays(7));
+
+        return view('admin.leads.index', compact('leads', 'linkExpiry', 'inquiryUrl'));
     }
 
     // ---- Manual leads (walk-in, phone call, referral) -------------------------
@@ -211,129 +212,72 @@ class LeadController extends Controller
         $lead->load(['verifiedBy:id,name', 'assignedTo:id,name', 'student:id,name']);
 
         $duplicates = $this->duplicatesFor($lead);
-        $prefillUrl = $lead->isQualified() ? $this->prefillUrl($lead) : null;
+        return view('admin.leads.show', compact('lead', 'duplicates'));
+    }
 
-        return view('admin.leads.show', compact('lead', 'duplicates', 'prefillUrl'));
+    public function contact(Lead $lead)
+    {
+        \Illuminate\Support\Facades\DB::transaction(function () use ($lead) {
+            $fresh = Lead::whereKey($lead->id)->lockForUpdate()->firstOrFail();
+            abort_unless(in_array($fresh->status, [Lead::STATUS_NEW, Lead::STATUS_CONTACTED], true), 422, 'This lead is no longer awaiting contact.');
+            $fresh->update(['status' => Lead::STATUS_CONTACTED, 'assigned_to' => auth()->id()]);
+        });
+
+        return redirect()->route('leads.show', $lead)->with('success', 'Lead marked as contacted.');
     }
 
     public function qualify(Lead $lead)
     {
-        abort_unless(in_array($lead->status, [Lead::STATUS_NEW, Lead::STATUS_CONTACTED], true), 422, 'Lead cannot be qualified from its current status.');
-
-        $lead->update([
-            'status' => Lead::STATUS_QUALIFIED,
-            'verified_by' => auth()->id(),
-            'verified_at' => now(),
-        ]);
+        \Illuminate\Support\Facades\DB::transaction(function () use ($lead) {
+            $fresh = Lead::whereKey($lead->id)->lockForUpdate()->firstOrFail();
+            abort_unless(in_array($fresh->status, [Lead::STATUS_NEW, Lead::STATUS_CONTACTED], true), 422, 'Lead cannot be qualified from its current status.');
+            $fresh->update(['status' => Lead::STATUS_QUALIFIED, 'verified_by' => auth()->id(), 'verified_at' => now()]);
+        });
 
         return redirect()->route('leads.show', $lead)
-            ->with('success', 'Lead qualified. Share the application link below with the applicant.');
+            ->with('success', 'Lead qualified. You can now register the student.');
     }
 
     public function reject(Request $request, Lead $lead)
     {
         $request->validate(['reason' => 'required|string|min:5|max:500']);
 
-        abort_if(in_array($lead->status, [Lead::STATUS_CONVERTED, Lead::STATUS_REJECTED], true), 422, 'Lead is already closed.');
-
-        $lead->update([
-            'status' => Lead::STATUS_REJECTED,
-            'rejected_reason' => $request->input('reason'),
-            'verified_by' => auth()->id(),
-            'verified_at' => now(),
-        ]);
+        \Illuminate\Support\Facades\DB::transaction(function () use ($lead, $request) {
+            $fresh = Lead::whereKey($lead->id)->lockForUpdate()->firstOrFail();
+            abort_if(in_array($fresh->status, [Lead::STATUS_CONVERTED, Lead::STATUS_REJECTED], true), 422, 'Lead is already closed.');
+            $fresh->update(['status' => Lead::STATUS_REJECTED, 'rejected_reason' => $request->input('reason'),
+                'verified_by' => auth()->id(), 'verified_at' => now()]);
+        });
 
         return redirect()->route('leads.show', $lead)->with('success', 'Lead rejected.');
     }
 
     public function convert(Lead $lead)
     {
-        abort_unless($lead->status === Lead::STATUS_SUBMITTED, 422, 'The applicant has not completed their registration yet.');
+        abort_unless(\App\Services\StudentRegistrationService::canConvert($lead), 422, 'Qualify the lead before conversion. Converted or rejected leads cannot be registered again.');
+        $prefill = array_merge($lead->raw_payload ?? [], $lead->submitted_payload ?? [],
+            $lead->only(['name', 'father_name', 'cnic', 'phone', 'email']));
 
-        $prefill = array_merge($lead->raw_payload ?? [], $lead->submitted_payload ?? []);
-        $duplicates = $this->duplicatesFor($lead);
-        $batches = Batch::where('status', '!=', 'cancelled')->orderBy('name')->get(['id', 'name']);
-
-        return view('admin.leads.convert', compact('lead', 'prefill', 'duplicates', 'batches'));
+        return view('admin.people.form', ['kind' => 'students', 'person' => null, 'lead' => $lead,
+            'prefill' => $prefill, 'duplicates' => $this->duplicatesFor($lead),
+            'formAction' => route('leads.convert.store', $lead),
+            'batches' => \App\Services\StudentRegistrationService::availableBatches()]);
     }
 
     public function storeConvert(Request $request, Lead $lead)
     {
-        abort_unless($lead->status === Lead::STATUS_SUBMITTED, 422, 'The applicant has not completed their registration yet.');
-
-        $data = $request->validate([
-            'name' => 'required|string|max:255',
-            'email' => 'required|string|email|max:255|unique:users,email',
-            'father_name' => 'nullable|string|max:255',
-            'cnic' => ['nullable', 'string', 'max:20', 'regex:/^[0-9\-]{13,20}$/'],
-            'phone' => ['required', 'string', 'max:20', 'regex:/^\+?[0-9]+$/D'],
-            'address' => 'required|string|max:500',
-            'date_of_birth' => 'nullable|date|before:today',
-            'emergency_contact' => ['nullable', 'string', 'max:20', 'regex:/^\+?[0-9]+$/D'],
-            'password' => 'nullable|required_with:password_confirmation|string|min:8|confirmed',
-            'is_active' => 'sometimes|boolean',
-            'batch_id' => 'nullable|exists:batches,id',
-            'discount_percentage' => 'nullable|numeric|min:0|max:100',
-        ]);
-
-        DB::beginTransaction();
-        try {
-            // Re-check the lead is still open under the write to avoid a double-convert race.
-            $fresh = Lead::whereKey($lead->id)->lockForUpdate()->first();
-            if (! $fresh || $fresh->status !== Lead::STATUS_SUBMITTED) {
-                throw ValidationException::withMessages(['status' => 'This lead has already been converted.']);
-            }
-
-            $student = User::create([
-                'name' => $data['name'],
-                'email' => $data['email'],
-                'father_name' => $data['father_name'] ?? null,
-                'cnic' => $data['cnic'] ?? null,
-                'password' => Hash::make($request->filled('password') ? $data['password'] : Str::random(64)),
-                'role' => 'student',
-                'phone' => $data['phone'],
-                'address' => $data['address'],
-                'date_of_birth' => $data['date_of_birth'] ?? null,
-                'emergency_contact' => $data['emergency_contact'] ?? null,
-                'is_active' => $request->boolean('is_active', true),
-            ]);
-
-            if (! empty($data['batch_id'])) {
-                $batch = Batch::findOrFail($data['batch_id']);
-                $this->enrollmentService->enrollStudent(
-                    $student->id,
-                    $batch->id,
-                    $data['discount_percentage'] ?? 0
-                );
-            }
-
-            $fresh->update([
-                'status' => Lead::STATUS_CONVERTED,
-                'student_id' => $student->id,
-                'converted_at' => now(),
-            ]);
-
-            DB::commit();
-        } catch (ValidationException $e) {
-            DB::rollBack();
-            throw $e;
-        } catch (\Throwable $e) {
-            DB::rollBack();
-
-            return back()->withInput()->withErrors(['error' => 'Failed to create student: '.$e->getMessage()]);
+        abort_unless(\App\Services\StudentRegistrationService::canConvert($lead), 422, 'Qualify the lead before conversion. Converted or rejected leads cannot be registered again.');
+        if (is_array($request->input('schedule'))) {
+            $request->merge(['schedule' => array_values(array_filter($request->input('schedule'), fn ($row) => !is_array($row) || filled($row['amount'] ?? null) || filled($row['due_date'] ?? null)))]);
         }
+        $data = $request->validate(\App\Services\StudentRegistrationService::rules($request->filled('student_id'), $request->input('student_id')));
+        $student = app(\App\Services\StudentRegistrationService::class)->register($data, $lead);
 
-        return redirect()->route('students.show', $student)
-            ->with('success', 'Student created from lead and ready.');
+        return redirect()->route('students.show', $student)->with('success', $request->filled('batch_id')
+            ? 'Lead converted: student registered and enrolled. Fee plan created.' : 'Lead converted: student registered. Admission can be added later.');
     }
 
     // ---- Helpers --------------------------------------------------------------
-
-    /** Signed, time-limited prefill link for a qualified lead. */
-    private function prefillUrl(Lead $lead): string
-    {
-        return URL::temporarySignedRoute('apply.complete', now()->addHours(self::PREFILL_TTL_HOURS), ['lead' => $lead->id]);
-    }
 
     /** Existing students and other open leads sharing this lead's CNIC or phone. */
     private function duplicatesFor(Lead $lead): array

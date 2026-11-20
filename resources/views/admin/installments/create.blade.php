@@ -21,7 +21,7 @@
         </h5>
     </div>
     <div class="card-body">
-        <form action="{{ route('installments.store') }}" method="POST" id="installmentForm">
+        @if(can_route('installments.store'))<form action="{{ route('installments.store') }}" method="POST" id="installmentForm">
             @csrf
             
             <div class="row">
@@ -179,7 +179,7 @@
                     <i class="fas fa-check me-1"></i>Create Installments
                 </button>
             </div>
-        </form>
+        </form>@endif
     </div>
 </div>
 

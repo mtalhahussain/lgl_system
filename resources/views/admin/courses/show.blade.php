@@ -243,20 +243,20 @@
                             <i class="fas fa-edit me-1"></i>Edit Level
                         </a>
                         @if($course->is_active)
-                            <form method="POST" action="{{ route('courses.toggle-status', $course) }}" class="d-inline">
+                            @if(can_route('courses.toggle-status'))<form method="POST" action="{{ route('courses.toggle-status', $course) }}" class="d-inline">
                                 @csrf
                                 <button type="submit" class="btn btn-outline-secondary w-100" 
                                         onclick="return confirm('Are you sure you want to deactivate this level?')">
                                     <i class="fas fa-pause me-1"></i>Deactivate Level
                                 </button>
-                            </form>
+                            </form>@endif
                         @else
-                            <form method="POST" action="{{ route('courses.toggle-status', $course) }}" class="d-inline">
+                            @if(can_route('courses.toggle-status'))<form method="POST" action="{{ route('courses.toggle-status', $course) }}" class="d-inline">
                                 @csrf
                                 <button type="submit" class="btn btn-outline-success w-100">
                                     <i class="fas fa-play me-1"></i>Activate Level
                                 </button>
-                            </form>
+                            </form>@endif
                         @endif
                     </div>
                 </div>

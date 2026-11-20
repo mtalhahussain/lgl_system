@@ -10,7 +10,7 @@
 @endphp
 <div class="doc-wrap">
     <div class="doc-actions d-print-none">
-        <a class="btn btn-outline-secondary" href="{{ route('fees.student', $package->student_id) }}">{{ auth()->user()->isAdmin() ? 'Student fees' : 'My fees' }}</a>
+        <a class="btn btn-outline-secondary" href="{{ route('fees.student', $package->student_id) }}">{{ auth()->user()->actsAsAdmin() ? 'Student fees' : 'My fees' }}</a>
         <button class="btn btn-primary ms-auto" type="button" onclick="window.print()">Print</button>
     </div>
     <x-show.document :kind="$levels.($full ? ' Package Receipt' : ' Package Agreement')" :number="$package->receipt_number" :institute="$details['institute_name']"
@@ -36,16 +36,16 @@
             <p class="form-text mb-0">@if($full)One payment, split between the level ledgers. This summary is not an additional collection.@else Agreement only: each level's installments are collected and receipted from the fee ledger.@endif Original agreed fees and dates are shown.</p>
         </div>
     </x-show.document>
-    @if(auth()->user()->isAdmin() && $full && $payments->isNotEmpty() && ! $reversal)
+    @if(can_route('payments.reverse') && $full && $payments->isNotEmpty() && ! $reversal)
         <details class="panel p-4 mt-4 d-print-none">
             <summary class="fw-semibold">Reverse entire package payment</summary>
-            <form class="mt-3" method="post" action="{{ route('payments.reverse', $payments->first()) }}" data-confirm="Reverse all original package payments and restore every level balance?">
+            @if(can_route('payments.reverse'))<form class="mt-3" method="post" action="{{ route('payments.reverse', $payments->first()) }}" data-confirm="Reverse all original package payments and restore every level balance?">
                 @csrf
                 <label class="form-label" for="reason">Reason</label>
                 <input class="form-control mb-3" id="reason" name="reason" minlength="5" maxlength="1000" required>
                 <p class="form-text">All level allocations reverse together. Original receipt, agreed fees and enrollments remain. This corrects a recorded payment; it does not cancel a course or issue a refund.</p>
                 <button class="btn btn-outline-danger">Reverse full package payment</button>
-            </form>
+            </form>@endif
         </details>
     @endif
 </div>

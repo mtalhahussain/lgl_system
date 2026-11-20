@@ -29,6 +29,7 @@
     .contact { font-size: 8pt; color: #6b7280; margin-top: 1mm; }
     .rule { border-bottom: 2px solid #0f2a4a; margin: 4mm 0 5mm; }
     .title { font-size: 12pt; font-weight: bold; letter-spacing: .5pt; text-transform: uppercase; }
+    .title-cell { width:45mm; }
     .meta { font-size: 8.5pt; color: #6b7280; }
     .amount { border: 1px solid #0f2a4a; padding: 2mm 3mm; text-align: right; }
     .amount small { display: block; font-size: 7.5pt; color: #6b7280; }
@@ -59,7 +60,7 @@
             <div class="meta">Voucher {{ $payout->voucher_number }}</div>
             <div class="meta">{{ $payout->paid_at->format('d M Y, h:i A') }}</div>
         </td>
-        <td style="width: 45mm;">
+        <td class="title-cell">
             <div class="amount"><small>Amount</small><strong>{{ $currency }} {{ number_format((float) $payout->amount, 2) }}</strong></div>
         </td>
     </tr></table>

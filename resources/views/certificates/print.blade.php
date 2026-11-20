@@ -1,4 +1,5 @@
 @php
+    $documentLogo = \App\Support\PdfImage::instituteLogo();
     $templatePath = public_path('template.png');
     $templateSrc = null;
     if (is_file($templatePath)) {
@@ -15,47 +16,16 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Certificate {{ $cert->certificate_number }}</title>
-    <style>
-        .revoked-overlay { position:absolute; top:0; left:0; right:0; bottom:0; display:flex; align-items:center; justify-content:center; pointer-events:none; }
-        .revoked-stamp { border:6px solid #c0202a; color:#c0202a; font-size:54pt; font-weight:700; letter-spacing:6pt; padding:6mm 16mm; transform:rotate(-18deg); opacity:.75; }
-        .revoked-reason { position:absolute; bottom:3mm; left:10mm; font-size:8pt; color:#c0202a; }
-        @page { size: A4 landscape; margin: 0; }
-        * { box-sizing: border-box; }
-        html, body { margin: 0; padding: 0; }
-        body { background: #e9e9e9; font-family: 'Georgia', 'Times New Roman', serif; color: #1a1a1a; }
-        .sheet {
-            position: relative;
-            width: 297mm; height: 210mm;
-            margin: 0 auto;
-            background: #fff center/cover no-repeat;
-            @if($templateSrc) background-image: url('{{ $templateSrc }}'); @endif
-            overflow: hidden;
-        }
-        /* Text block over the empty centre/right of the template. */
-        .cert-body {
-            position: absolute;
-            top: 46mm; left: 120mm; right: 18mm;
-        }
-        .cert-title { font-size: 30pt; font-weight: 700; margin: 0 0 10mm; letter-spacing: .3pt; }
-        .cert-grats { font-size: 15pt; font-style: italic; margin: 0 0 2mm; }
-        .cert-name { color: #c0202a; font-weight: 700; font-style: italic; }
-        .cert-line { font-size: 14pt; margin: 0 0 1mm; }
-        .cert-course { font-size: 15pt; font-weight: 700; margin: 0 0 8mm; }
-        .cert-date { font-size: 13pt; margin: 0 0 8mm; }
-        .cert-date strong { font-weight: 700; }
-        .cert-text { font-size: 11.5pt; line-height: 1.5; max-width: 150mm; }
-        .cert-number { position: absolute; bottom: 6mm; right: 10mm; font-size: 8pt; color: #888; }
-        .toolbar { text-align: center; padding: 14px; }
-        .toolbar button { font: inherit; padding: 8px 18px; cursor: pointer; }
-        @media print { .toolbar { display: none; } body { background: #fff; } .sheet { margin: 0; } }
-    </style>
+    @vite('resources/css/certificate-print.css')
 </head>
 <body>
     <div class="toolbar">
-        <a href="{{ route('certificates.pdf', [$cert, 'download' => 1]) }}" style="font:inherit; padding:8px 18px; margin:0 4px; border:1px solid #888; color:#1a1a1a; text-decoration:none;">Download PDF</a>
-        <a href="{{ route('certificates.pdf', $cert) }}" target="_blank" rel="noopener" style="font:inherit; padding:8px 18px; margin:0 4px; border:1px solid #888; color:#1a1a1a; text-decoration:none;">Print PDF</a>
+        <a href="{{ route('certificates.pdf', [$cert, 'download' => 1]) }}">Download PDF</a>
+        <a href="{{ route('certificates.pdf', $cert) }}" target="_blank" rel="noopener">Print PDF</a>
     </div>
     <div class="sheet">
+        @if($templateSrc)<img class="certificate-background" src="{{ $templateSrc }}" alt="">@endif
+        @if($documentLogo)<div class="certificate-logo"><img src="{{ $documentLogo }}" alt="Institute logo"></div>@endif
         <div class="cert-body">
             <h1 class="cert-title">Teilnahmebescheinigung</h1>
             <p class="cert-grats">Herzlichen Glückwunsch, <span class="cert-name">{{ $soLine }}</span></p>

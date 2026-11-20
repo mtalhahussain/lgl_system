@@ -1,23 +1,6 @@
 @extends('layouts.admin')
 @section('title', $exam ? 'Edit exam' : 'New exam')
-@push('styles')
-<style>
-    .exam-form-grid { display:grid; grid-template-columns:minmax(0, 1fr) minmax(0, 1.35fr); }
-    .exam-form-grid > .form-section { border-bottom:0; }
-    .exam-form-grid > .form-section + .form-section { border-left:1px solid var(--line); }
-    .exam-section-table { width:100%; min-width:360px; margin:18px 0 0; }
-    .exam-section-table th { font-size:12px; color:var(--muted); font-weight:600; }
-    .exam-section-table td { vertical-align:middle; padding-top:16px; padding-bottom:16px; }
-    .exam-section-table th:first-child { width:36%; }
-    .exam-section-name { font-weight:600; color:var(--navy); }
-    .exam-section-skill { display:block; font-size:12px; color:var(--muted); margin-top:3px; }
-    .exam-pass-note { background:var(--accent-soft); border-radius:10px; padding:14px 16px; margin-top:16px; font-size:13px; color:var(--navy); }
-    @media(max-width:991.98px) {
-        .exam-form-grid { grid-template-columns:minmax(0, 1fr); }
-        .exam-form-grid > .form-section + .form-section { border-left:0; border-top:1px solid var(--line); }
-    }
-</style>
-@endpush
+
 @section('content')
 @php
     $action = $exam ? route('exams.update', $exam) : route('exams.store');
@@ -43,7 +26,7 @@
                     @endforeach
                 </select>
                 @error('batch_id')<div class="invalid-feedback">{{ $message }}</div>@enderror
-                @if($batches->isEmpty())<p class="form-text mb-0">No batches available. <a href="{{ route('batches.create') }}">Create a batch</a> before scheduling an exam.</p>@endif
+                @if($batches->isEmpty())<p class="form-text mb-0">No batches available. @if(can_route('batches.create'))<a href="{{ route('batches.create') }}">Create a batch</a>@endif before scheduling an exam.</p>@endif
             </div>
             <div class="mb-3">
                 <label class="form-label required" for="name">Exam name</label>

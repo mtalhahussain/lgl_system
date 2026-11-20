@@ -56,7 +56,7 @@ class BatchScheduleTest extends TestCase
         $this->actingAs($this->admin)->post(route('batches.store'), $this->batchPayload())
             ->assertRedirect(route('batches.index'));
 
-        $batch = Batch::firstWhere('name', 'A1-Eve');
+        $batch = Batch::firstOrFail();
         $this->assertCount(2, $batch->schedules);
         $this->assertEqualsCanonicalizing(['mon', 'wed'], $batch->schedules->pluck('weekday')->all());
         $this->assertSame(4.0, $batch->weeklyHours());
@@ -68,7 +68,7 @@ class BatchScheduleTest extends TestCase
     public function test_editing_a_batch_replaces_its_schedule(): void
     {
         $this->actingAs($this->admin)->post(route('batches.store'), $this->batchPayload());
-        $batch = Batch::firstWhere('name', 'A1-Eve');
+        $batch = Batch::firstOrFail();
 
         $this->actingAs($this->admin)->put(route('batches.update', $batch), $this->batchPayload([
             'schedule' => [['weekday' => 'fri', 'start' => '10:00', 'end' => '11:30']],
@@ -89,14 +89,14 @@ class BatchScheduleTest extends TestCase
                 ['weekday' => '', 'start' => '', 'end' => ''],
             ],
         ]))->assertRedirect(route('batches.index'));
-        $this->assertCount(1, Batch::firstWhere('name', 'A1-Eve')->schedules);
+        $this->assertCount(1, Batch::firstOrFail()->schedules);
 
         // An incomplete row (day + start but no end) is rejected.
         $this->actingAs($this->admin)->post(route('batches.store'), $this->batchPayload([
             'name' => 'Bad',
             'schedule' => [['weekday' => 'tue', 'start' => '09:00', 'end' => '']],
         ]))->assertSessionHasErrors('schedule');
-        $this->assertNull(Batch::firstWhere('name', 'Bad'));
+        $this->assertDatabaseCount('batches', 1);
     }
 
     public function test_schedule_end_must_be_after_start(): void
@@ -112,7 +112,7 @@ class BatchScheduleTest extends TestCase
             'start_date' => today()->startOfWeek()->toDateString(),
             'end_date' => today()->startOfWeek()->addWeek()->toDateString(),
         ]));
-        $batch = Batch::firstWhere('name', 'A1-Eve');
+        $batch = Batch::firstOrFail();
 
         $this->actingAs($this->admin)->post(route('class-sessions.generate-from-schedule', $batch), [
             'from' => today()->startOfWeek()->toDateString(),
@@ -139,7 +139,7 @@ class BatchScheduleTest extends TestCase
     public function test_generate_from_schedule_requires_a_schedule(): void
     {
         $this->actingAs($this->admin)->post(route('batches.store'), $this->batchPayload(['schedule' => []]));
-        $batch = Batch::firstWhere('name', 'A1-Eve');
+        $batch = Batch::firstOrFail();
 
         $this->actingAs($this->admin)->post(route('class-sessions.generate-from-schedule', $batch), [])
             ->assertSessionHasErrors('schedule');
@@ -149,7 +149,7 @@ class BatchScheduleTest extends TestCase
     public function test_generate_from_schedule_blocked_for_other_teacher(): void
     {
         $this->actingAs($this->admin)->post(route('batches.store'), $this->batchPayload());
-        $batch = Batch::firstWhere('name', 'A1-Eve');
+        $batch = Batch::firstOrFail();
         $other = User::factory()->create(['role' => 'teacher', 'is_active' => true]);
 
         $this->actingAs($other)->post(route('class-sessions.generate-from-schedule', $batch), [])->assertForbidden();
@@ -168,19 +168,19 @@ class BatchScheduleTest extends TestCase
     public function test_student_timetable_shows_own_classes_and_join_link_only(): void
     {
         $this->actingAs($this->admin)->post(route('batches.store'), $this->batchPayload());
-        $batch = Batch::firstWhere('name', 'A1-Eve');
+        $batch = Batch::firstOrFail();
 
         $student = User::factory()->create(['role' => 'student', 'is_active' => true]);
         app(EnrollmentService::class)->enrollStudent($student->id, $batch->id, 0, 1);
 
         $mine = $this->actingAs($student)->get(route('student.timetable'));
         $mine->assertOk();
-        $mine->assertSee('A1-Eve');
+        $mine->assertSee($batch->name);
         $mine->assertSee('Join class');
         $mine->assertSee('https://zoom.us/j/123');
 
         $other = User::factory()->create(['role' => 'student', 'is_active' => true]);
-        $this->actingAs($other)->get(route('student.timetable'))->assertOk()->assertDontSee('A1-Eve');
+        $this->actingAs($other)->get(route('student.timetable'))->assertOk()->assertDontSee($batch->name);
     }
 
     public function test_teacher_cannot_create_a_batch(): void
@@ -192,7 +192,7 @@ class BatchScheduleTest extends TestCase
     public function test_saving_again_keeps_existing_classes_and_cancelled_dates_and_extends_duration(): void
     {
         $this->actingAs($this->admin)->post(route('batches.store'), $this->batchPayload());
-        $batch = Batch::firstWhere('name', 'A1-Eve');
+        $batch = Batch::firstOrFail();
         $first = $batch->classSessions()->orderBy('session_date')->first();
         $first->update(['status' => 'cancelled', 'topic' => 'Holiday']);
         $ids = $batch->classSessions()->pluck('id')->all();
@@ -226,7 +226,7 @@ class BatchScheduleTest extends TestCase
     public function test_teacher_sees_today_attendance_and_own_timing_without_bulk_generator(): void
     {
         $this->actingAs($this->admin)->post(route('batches.store'), $this->batchPayload());
-        $batch = Batch::firstWhere('name', 'A1-Eve');
+        $batch = Batch::firstOrFail();
         $today = $batch->classSessions()->whereDate('session_date', today())->firstOrFail();
         $student = User::factory()->create(['role' => 'student', 'is_active' => true]);
         app(EnrollmentService::class)->enrollStudent($student->id, $batch->id, 0, 1);
@@ -243,7 +243,7 @@ class BatchScheduleTest extends TestCase
             ->assertSessionHasNoErrors();
         $this->assertDatabaseHas('attendances', ['class_session_id' => $today->id, 'student_id' => $student->id, 'status' => 'present']);
         $other = User::factory()->create(['role' => 'teacher', 'is_active' => true]);
-        $this->actingAs($other)->get(route('teacher.dashboard'))->assertOk()->assertDontSee('A1-Eve');
+        $this->actingAs($other)->get(route('teacher.dashboard'))->assertOk()->assertDontSee($batch->name);
         $this->get(route('class-sessions.attendance', $today))->assertForbidden();
     }
 
@@ -260,7 +260,9 @@ class BatchScheduleTest extends TestCase
         $slot = ['weekday' => 'mon', 'start' => '18:00', 'end' => '20:00'];
         $this->post(route('batches.store'), $this->batchPayload(['name' => 'Duplicate', 'schedule' => [$slot, $slot]]))
             ->assertSessionHasErrors('schedule');
-        $this->assertNull(Batch::firstWhere('name', 'Duplicate'));
+        $this->post(route('batches.store'), $this->batchPayload(['name' => 'Same day', 'schedule' => [$slot, ['weekday' => 'mon', 'start' => '09:00', 'end' => '10:00']]]))
+            ->assertSessionHasErrors('schedule');
+        $this->assertDatabaseCount('batches', 2);
     }
 
     public function test_multiple_slots_are_generated_without_past_classes_or_rewriting_existing_times(): void
@@ -270,12 +272,14 @@ class BatchScheduleTest extends TestCase
             'end_date' => today()->addWeek()->toDateString(),
             'schedule' => [
                 ['weekday' => 'mon', 'start' => '09:00', 'end' => '10:00'],
-                ['weekday' => 'mon', 'start' => '18:00', 'end' => '20:00'],
+                ['weekday' => 'tue', 'start' => '18:00', 'end' => '20:00'],
             ],
         ]);
         $this->actingAs($this->admin)->post(route('batches.store'), $payload)->assertSessionHasNoErrors();
-        $batch = Batch::firstWhere('name', 'A1-Eve');
-        $this->assertSame(4, $batch->classSessions()->count());
+        $batch = Batch::firstOrFail();
+        $expected = collect(\Carbon\CarbonPeriod::create(today(), today()->addWeek()))
+            ->filter(fn ($date) => $date->isMonday() || $date->isTuesday())->count();
+        $this->assertSame($expected, $batch->classSessions()->count());
         $this->assertSame(0, $batch->classSessions()->whereDate('session_date', '<', today())->count());
         $before = $batch->classSessions()->orderBy('id')->get()->toArray();
         $payload['schedule'][0]['start'] = '08:00';

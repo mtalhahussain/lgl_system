@@ -1,7 +1,7 @@
 @extends('layouts.admin')
 @section('title', $person ? 'Edit Staff' : 'Add Staff')
 @section('content')
-<x-list.header :title="$person ? 'Edit staff member' : 'Add staff member'" eyebrow="People" subtitle="Receptionist, cleaner, security guard and other non-teaching staff. Staff are paid monthly and do not sign in." />
+<x-list.header :title="$person ? 'Edit staff member' : 'Add staff member'" eyebrow="People" subtitle="Receptionist, cleaner, security guard and other non-teaching staff. Staff are paid monthly; give an email and password only to staff who should sign in." />
 <form method="post" action="{{ $person ? route('staff.update', $person) : route('staff.store') }}" class="panel form-panel">
     @csrf
     @if($person) @method('PUT') @endif
@@ -33,6 +33,28 @@
             <div class="col-md-6">
                 <label class="form-label" for="address">Address</label>
                 <input class="form-control" id="address" name="address" maxlength="500" value="{{ old('address', $person?->address) }}">
+            </div>
+        </div>
+    </div>
+    <div class="form-section">
+        <h2 class="form-section-title">Sign-in (optional)</h2>
+        <p class="form-section-note">Staff who sign in see only the modules Admin grants to Staff (Users &gt; Role permissions). Leave the email blank for staff who never sign in.</p>
+        @php $loginEmail = $person && ! str_ends_with($person->email, '@staff.invalid') ? $person->email : null; @endphp
+        <div class="row g-3">
+            <div class="col-md-6">
+                <label class="form-label" for="email">Email (sign-in)</label>
+                <input class="form-control @error('email') is-invalid @enderror" id="email" name="email" type="email" maxlength="255" value="{{ old('email', $loginEmail) }}" autocomplete="off">
+                @error('email')<div class="invalid-feedback">{{ $message }}</div>@enderror
+            </div>
+            <div class="col-md-6">
+                <label class="form-label" for="password">{{ $loginEmail ? 'New password' : 'Password' }}</label>
+                <input class="form-control @error('password') is-invalid @enderror" type="password" id="password" name="password" minlength="8" autocomplete="new-password">
+                @error('password')<div class="invalid-feedback">{{ $message }}</div>@enderror
+            </div>
+            <div class="col-md-6">
+                <label class="form-label" for="password_confirmation">Confirm password</label>
+                <input class="form-control" type="password" id="password_confirmation" name="password_confirmation" minlength="8" autocomplete="new-password">
+                @if($loginEmail)<div class="form-text">Leave both password fields blank to keep the current password.</div>@endif
             </div>
         </div>
     </div>

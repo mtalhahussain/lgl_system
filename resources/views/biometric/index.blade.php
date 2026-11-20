@@ -1,25 +1,7 @@
 @extends('layouts.admin')
 @section('title', 'Attendance Machine')
 @section('content')
-@push('styles')
-<style>
-.conn-grid{display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));margin-bottom:14px}
-.conn-card{border:1px solid var(--line);border-radius:10px;padding:12px 14px;background:#fff}
-.conn-step{font-size:10px;font-weight:650;letter-spacing:.05em;text-transform:uppercase;color:var(--muted)}
-.conn-card h3{font-size:12.5px;font-weight:600;margin:5px 0 0;display:flex;align-items:center}
-.conn-dot{width:9px;height:9px;border-radius:50%;display:inline-block;margin-right:7px;flex:none}
-.dot-ok{background:#127a46}.dot-warn{background:#d98a00}.dot-bad{background:#dc2626}.dot-muted{background:#9aa3b2}
-.conn-label{font-size:13px;font-weight:600;margin:6px 0 0;color:var(--ink)}
-.conn-fix{font-size:11.5px;line-height:1.45;color:var(--muted);margin:4px 0 0}
-.conn-alert{border:1px solid #f9cfcb;background:#fdecec;color:#7a271a;border-radius:9px;padding:10px 13px;font-size:12.5px;margin-bottom:14px}
-.conn-alert code{display:block;margin-top:5px;white-space:normal;color:#991b1b;background:none;padding:0}
-.conn-log{width:100%;font-size:12px;border-collapse:collapse;margin-top:8px}
-.conn-log th,.conn-log td{text-align:left;padding:6px 8px;border-bottom:1px solid var(--line);vertical-align:top}
-.conn-log th{font-size:10px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);font-weight:650}
-.conn-log time{font-variant-numeric:tabular-nums;color:var(--muted)}
-.conn-actions{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px}
-</style>
-@endpush
+
 <x-list.header title="Attendance Machine" eyebrow="Attendance" subtitle="Hikvision face and fingerprint punches mark students present or late in their running class" />
 <x-list.kpis :items="$kpis" />
 <div class="tw:grid tw:grid-cols-1 tw:gap-5 tw:lg:grid-cols-2 tw:mb-6">

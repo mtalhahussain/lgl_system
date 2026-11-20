@@ -137,6 +137,36 @@ class PayrollTest extends TestCase
         $this->assertDatabaseCount('teacher_dues', 1);
     }
 
+    public function test_withdrawing_a_student_recalculates_the_unpaid_batch_due(): void
+    {
+        $batch = $this->batch($this->perStudent, 'completed');
+        foreach (['active', 'active', 'completed'] as $status) {
+            $this->enroll($batch, $status);
+        }
+        $this->actingAs($this->admin)->post('/payroll/batches', ['batch_id' => $batch->id]);
+        $this->assertSame('4500.00', TeacherDue::sole()->amount);
+
+        $leaving = $batch->enrollments()->where('status', 'active')->first();
+        $this->patch("/enrollments/{$leaving->id}/withdraw", ['dropout_reason' => 'Left the course'])
+            ->assertSessionHas('success')->assertSessionMissing('warning');
+        $current = TeacherDue::open()->sole();
+        $this->assertSame([2, '3000.00', 'batch:'.$batch->id], [$current->student_count, $current->amount, $current->active_key]);
+        $this->assertSame(1, TeacherDue::whereNotNull('voided_at')->count());
+
+        // Once paid, the due is left alone and the admin is told to reverse the payout first.
+        $this->post("/payroll/dues/{$current->id}/payouts", $this->payload(['amount' => '3000']));
+        $next = $batch->enrollments()->where('status', 'active')->first();
+        $this->patch("/enrollments/{$next->id}/withdraw", ['dropout_reason' => 'Left the course'])->assertSessionHas('warning');
+        $this->assertSame('3000.00', TeacherDue::open()->sole()->amount);
+
+        // After reversing, the next change recalculates; with no students left the due is cancelled.
+        $this->post('/payroll/payouts/'.TeacherPayout::sole()->id.'/reverse', ['reason' => 'Recalculate pay']);
+        $last = $batch->enrollments()->where('status', 'completed')->first();
+        $last->update(['status' => 'active']);
+        $this->patch("/enrollments/{$last->id}/withdraw", ['dropout_reason' => 'Left the course'])->assertSessionHas('warning');
+        $this->assertSame(0, TeacherDue::open()->count());
+    }
+
     public function test_earlier_monthly_batch_dues_block_completion_pay_until_voided(): void
     {
         $batch = $this->batch($this->perStudent, 'completed');

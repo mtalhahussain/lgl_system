@@ -40,8 +40,11 @@ Route::middleware('guest')->group(function () {
 // Public lead capture (no auth; web group gives session + CSRF). Throttled + honeypot.
 Route::middleware('throttle:30,1')->group(function () {
     Route::get('/apply', [LeadController::class, 'showApplyForm'])->name('apply.form');
-    Route::post('/apply', [LeadController::class, 'storeApply'])->name('apply.store');
+    Route::post('/apply', [LeadController::class, 'storeApply'])->name('apply.store')->middleware('throttle:inquiry-submit');
     Route::get('/apply/thanks', [LeadController::class, 'thanks'])->name('apply.thanks');
+
+    Route::get('/inquiry', [LeadController::class, 'showApplyForm'])->name('inquiry.form')->middleware('signed');
+    Route::post('/inquiry', [LeadController::class, 'storeApply'])->name('inquiry.store')->middleware(['signed', 'throttle:inquiry-submit']);
 
     // Prefilled completion of a qualified lead. Signed, time-limited, status-gated.
     Route::middleware('signed')->group(function () {
@@ -69,6 +72,7 @@ Route::middleware(['auth', EnsureActiveAccount::class, EnsureModuleAccess::class
     Route::get('/accounts', [AccountController::class, 'index'])->name('accounts.index')->middleware('role:admin');
     Route::get('/accounts/create', [AccountController::class, 'create'])->name('accounts.create')->middleware('role:admin');
     Route::post('/accounts', [AccountController::class, 'store'])->name('accounts.store')->middleware('role:admin');
+    Route::get('/accounts/permissions', [AccountController::class, 'permissions'])->name('accounts.permissions.edit')->middleware('role:admin');
     Route::put('/accounts/permissions', [AccountController::class, 'updatePermissions'])->name('accounts.permissions')->middleware('role:admin');
     Route::patch('/accounts/{user}', [AccountController::class, 'update'])->name('accounts.update')->middleware('role:admin');
 
@@ -82,6 +86,7 @@ Route::middleware(['auth', EnsureActiveAccount::class, EnsureModuleAccess::class
         Route::put('/leads/{lead}', [LeadController::class, 'update'])->name('leads.update');
         Route::delete('/leads/{lead}', [LeadController::class, 'destroy'])->name('leads.destroy');
         Route::post('/leads/{lead}/qualify', [LeadController::class, 'qualify'])->name('leads.qualify');
+        Route::post('/leads/{lead}/contact', [LeadController::class, 'contact'])->name('leads.contact');
         Route::post('/leads/{lead}/reject', [LeadController::class, 'reject'])->name('leads.reject');
         Route::get('/leads/{lead}/convert', [LeadController::class, 'convert'])->name('leads.convert');
         Route::post('/leads/{lead}/convert', [LeadController::class, 'storeConvert'])->name('leads.convert.store');
@@ -98,6 +103,8 @@ Route::middleware(['auth', EnsureActiveAccount::class, EnsureModuleAccess::class
                 return redirect()->route('teacher.dashboard');
             case 'student':
                 return redirect()->route('student.dashboard');
+            case 'staff':
+                return redirect()->route('staff.dashboard');
             default:
                 return redirect()->route('login');
         }
@@ -106,6 +113,8 @@ Route::middleware(['auth', EnsureActiveAccount::class, EnsureModuleAccess::class
     // Role-specific dashboards
     Route::get('/admin/dashboard', [AdminController::class, 'dashboard'])
         ->name('admin.dashboard')->middleware('role:admin');
+    Route::get('/staff/dashboard', [AdminController::class, 'staffDashboard'])
+        ->name('staff.dashboard')->middleware('role:staff');
 
     Route::get('/teacher/dashboard', [TeacherController::class, 'dashboard'])
         ->name('teacher.dashboard')->middleware('role:teacher');
@@ -235,6 +244,7 @@ Route::middleware(['auth', EnsureActiveAccount::class, EnsureModuleAccess::class
     // Non-teaching staff (no sign-in): Admin only; listed on the Users page.
     Route::get('/staff/create', [StaffController::class, 'create'])->name('staff.create')->middleware('role:admin');
     Route::post('/staff', [StaffController::class, 'store'])->name('staff.store')->middleware('role:admin');
+    Route::get('/staff/{staff}', [StaffController::class, 'show'])->name('staff.show')->middleware('role:admin')->whereNumber('staff');
     Route::get('/staff/{staff}/edit', [StaffController::class, 'edit'])->name('staff.edit')->middleware('role:admin');
     Route::put('/staff/{staff}', [StaffController::class, 'update'])->name('staff.update')->middleware('role:admin');
 

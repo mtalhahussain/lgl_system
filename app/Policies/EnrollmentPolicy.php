@@ -12,7 +12,7 @@ class EnrollmentPolicy
      */
     public function viewAny(User $user): bool
     {
-        return in_array($user->role, ['admin', 'teacher']);
+        return ($user->actsAsAdmin() || $user->isTeacher());
     }
 
     /**
@@ -21,7 +21,7 @@ class EnrollmentPolicy
     public function view(User $user, Enrollment $enrollment): bool
     {
         // Admin can view all enrollments
-        if (in_array($user->role, ['admin'])) {
+        if ($user->actsAsAdmin()) {
             return true;
         }
 
@@ -43,7 +43,7 @@ class EnrollmentPolicy
      */
     public function create(User $user): bool
     {
-        return in_array($user->role, ['admin']);
+        return $user->actsAsAdmin();
     }
 
     /**
@@ -51,7 +51,7 @@ class EnrollmentPolicy
      */
     public function update(User $user, Enrollment $enrollment): bool
     {
-        return in_array($user->role, ['admin']);
+        return $user->actsAsAdmin();
     }
 
     /**
@@ -59,7 +59,7 @@ class EnrollmentPolicy
      */
     public function delete(User $user, Enrollment $enrollment): bool
     {
-        return $user->role === 'admin';
+        return $user->actsAsAdmin();
     }
 
     /**
@@ -67,7 +67,7 @@ class EnrollmentPolicy
      */
     public function transfer(User $user, Enrollment $enrollment): bool
     {
-        return in_array($user->role, ['admin']);
+        return $user->actsAsAdmin();
     }
 
     /**
@@ -75,7 +75,7 @@ class EnrollmentPolicy
      */
     public function drop(User $user, Enrollment $enrollment): bool
     {
-        return in_array($user->role, ['admin']);
+        return $user->actsAsAdmin();
     }
 
     /**
@@ -84,7 +84,7 @@ class EnrollmentPolicy
     public function viewFinancials(User $user, Enrollment $enrollment): bool
     {
         // Admin can view financial details
-        if (in_array($user->role, ['admin'])) {
+        if ($user->actsAsAdmin()) {
             return true;
         }
 
@@ -101,7 +101,7 @@ class EnrollmentPolicy
      */
     public function managePayments(User $user, Enrollment $enrollment): bool
     {
-        return in_array($user->role, ['admin']);
+        return $user->actsAsAdmin();
     }
 
     /**
@@ -109,7 +109,7 @@ class EnrollmentPolicy
      */
     public function applyDiscount(User $user, Enrollment $enrollment): bool
     {
-        return $user->role === 'admin';
+        return $user->actsAsAdmin();
     }
 
     /**
@@ -117,6 +117,6 @@ class EnrollmentPolicy
      */
     public function complete(User $user, Enrollment $enrollment): bool
     {
-        return in_array($user->role, ['admin']);
+        return $user->actsAsAdmin();
     }
 }

@@ -100,6 +100,32 @@ class PayrollService
         return $batch->enrollments()->whereIn('status', ['active', 'completed'])->count();
     }
 
+    /**
+     * Keeps a per-student batch due in line with the students still in the batch after one leaves.
+     * Dues are immutable, so an unpaid due is voided and regenerated; a due with posted payouts is left
+     * unchanged and a warning is returned (reverse the payouts first to recalculate).
+     */
+    public function refreshBatchDue(int $batchId, User $actor): ?string
+    {
+        return DB::transaction(function () use ($batchId, $actor) {
+            $due = TeacherDue::lockForUpdate()->where('active_key', 'batch:'.$batchId)->first();
+            if (! $due || $this->studentsInBatch(Batch::findOrFail($batchId)) === $due->student_count) {
+                return null;
+            }
+            if ($due->payouts()->posted()->exists()) {
+                return 'Teacher pay for this batch was already paid for '.$due->student_count.' students. Reverse the payout in Payroll to recalculate it.';
+            }
+            $this->void($due, $actor, 'Recalculated automatically: students in the batch changed.');
+            try {
+                $this->generateBatchDue($batchId, $actor);
+            } catch (ValidationException $e) {
+                return 'Teacher pay for this batch was cancelled and not regenerated: '.collect($e->errors())->flatten()->first();
+            }
+
+            return null;
+        }, 3);
+    }
+
     public function void(TeacherDue $due, User $actor, string $reason): TeacherDue
     {
         $this->assertAdmin($actor);

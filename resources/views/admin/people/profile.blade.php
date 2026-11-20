@@ -42,13 +42,13 @@
         </div>
     </div>
     <div class="profile-actions d-print-none">
-        @if($isAdmin)<a class="btn btn-primary" href="{{ route($kind.'.edit', $person) }}"><i class="fas fa-pen me-1" aria-hidden="true"></i>Edit</a>@endif
+        @if(can_route($kind.'.edit'))<a class="btn btn-primary" href="{{ route($kind.'.edit', $person) }}"><i class="fas fa-pen me-1" aria-hidden="true"></i>Edit</a>@endif
         @if($isTeacherProfile && $isAdmin)
             <a class="btn btn-outline-primary" href="{{ route('payroll.index', ['teacher_id' => $person->id]) }}"><i class="fas fa-hand-holding-usd me-1" aria-hidden="true"></i>Payroll</a>
         @elseif(! $isTeacherProfile)
-            @if($isAdmin || $viewer->id === $person->id)<a class="btn btn-outline-primary" href="{{ route('fees.student', $person) }}"><i class="fas fa-receipt me-1" aria-hidden="true"></i>Fees and receipts</a>@endif
+            @if(($viewer->actsAsAdmin() && can_route('fees.student')) || $viewer->id === $person->id)<a class="btn btn-outline-primary" href="{{ route('fees.student', $person) }}"><i class="fas fa-receipt me-1" aria-hidden="true"></i>Fees and receipts</a>@endif
             <a class="btn btn-outline-primary" href="{{ route('attendance.student', $person) }}"><i class="fas fa-clipboard-check me-1" aria-hidden="true"></i>Attendance</a>
-            @if($isAdmin)<a class="btn btn-outline-primary" href="{{ route('certificates.index', ['student' => $person->id]) }}"><i class="fas fa-award me-1" aria-hidden="true"></i>Issue Certificate</a>@endif
+            @if(can_route('certificates.index'))<a class="btn btn-outline-primary" href="{{ route('certificates.index', ['student' => $person->id]) }}"><i class="fas fa-award me-1" aria-hidden="true"></i>Issue Certificate</a>@endif
         @endif
     </div>
 </div>
@@ -134,7 +134,7 @@
                             <p class="text-muted mb-0">No other active teacher is available to receive these batches. Add or activate another teacher first.</p>
                         @else
                             <p class="page-subtitle mb-14px">When this teacher leaves, move their {{ $openBatchCount }} active/upcoming {{ \Illuminate\Support\Str::plural('batch', $openBatchCount) }} to another teacher. Classes, sessions, attendance and future pay follow the new teacher; completed batches and past pay stay unchanged.</p>
-                            <form method="post" action="{{ route('teachers.reassign', $person) }}" class="tw:flex tw:flex-col tw:gap-3">
+                            @if(can_route('teachers.reassign'))<form method="post" action="{{ route('teachers.reassign', $person) }}" class="tw:flex tw:flex-col tw:gap-3">
                                 @csrf
                                 <div>
                                     <label class="form-label required" for="new_teacher_id">New teacher</label>
@@ -152,7 +152,7 @@
                                     <label class="form-check-label" for="deactivate">Deactivate this teacher after moving the batches</label>
                                 </div>
                                 <div><button type="submit" class="btn btn-primary" data-confirm="Reassign {{ $openBatchCount }} {{ \Illuminate\Support\Str::plural('batch', $openBatchCount) }} to the selected teacher?"><i class="fas fa-people-arrows me-1" aria-hidden="true"></i>Reassign batches</button></div>
-                            </form>
+                            </form>@endif
                         @endif
                     @else
                         <p class="text-muted mb-0">No active or upcoming batches to reassign.@if($person->is_active) This teacher can be deactivated from Edit.@endif</p>
@@ -168,9 +168,9 @@
                     <tbody>
                     @forelse($enrollments->sortByDesc('enrollment_date') as $row)
                         <tr>
-                            <td>@if($isAdmin)<a class="cell-main" href="{{ route('enrollments.show', $row) }}">{{ $row->batch?->name }}</a>@else<span class="cell-main">{{ $row->batch?->name }}</span>@endif<span class="cell-sub">{{ $row->batch?->course?->name }}@if($row->batch?->course?->level) ({{ $row->batch?->course?->level }})@endif</span></td>
+                            <td>@if(can_route('enrollments.show'))<a class="cell-main" href="{{ route('enrollments.show', $row) }}">{{ $row->batch?->name }}</a>@else<span class="cell-main">{{ $row->batch?->name }}</span>@endif<span class="cell-sub">{{ $row->batch?->course?->name }}@if($row->batch?->course?->level) ({{ $row->batch?->course?->level }})@endif</span></td>
                             <td>{{ $row->enrollment_date?->format('d M Y') }}</td>
-                            <td class="num"><strong>{{ $row->discount_percentage }}%</strong>@if(\App\Support\Money::minor($row->discount_amount) > 0)<span class="cell-sub">{{ currency_format($row->discount_amount) }}</span>@endif</td>
+                            <td class="num"><strong>{{ currency_format($row->discount_amount) }}</strong></td>
                             <td class="num">{{ currency_format(\App\Support\Money::decimal(max(0, \App\Support\Money::minor($row->total_fee) - \App\Support\Money::minor($row->discount_amount)))) }}<span class="cell-sub">of {{ currency_format($row->total_fee) }}</span></td>
                             <td class="num">{{ currency_format($row->remaining_fee) }}</td>
                             <td><x-list.status :value="$row->status" :label="$row->status === 'dropped' ? 'withdrawn' : null" /></td>

@@ -139,7 +139,7 @@ class EnrollmentIntegrityTest extends TestCase
         app(EnrollmentService::class)->enrollStudent($this->student->id, $this->batch->id);
         $this->post('/students', ['name' => 'Rejected', 'email' => 'rejected@lgl.com', 'phone' => '03001234567',
             'address' => 'Karachi', 'password' => 'safe-password', 'password_confirmation' => 'safe-password',
-            'batch_id' => $this->batch->id])->assertSessionHasErrors('error');
+            'batch_id' => $this->batch->id])->assertSessionHasErrors('batch_id');
         $this->assertDatabaseMissing('users', ['email' => 'rejected@lgl.com']);
         $this->assertDatabaseCount('enrollments', 1);
     }

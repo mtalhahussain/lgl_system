@@ -194,11 +194,10 @@ export function initAutoSave(root = document) {
     });
 }
 
-// Live "what will happen" line for the enrollment discount form. Amounts are integer minor units and the
-// discount uses the same rounding as PaymentService::changeDiscount (half up on basis points).
+// Preview exact fixed discounts; legacy percentage fixtures retain their original rounding.
 export function initDiscountPreview(root = document) {
     root.querySelectorAll('form[data-discount-preview]').forEach((form) => {
-        const input = form.querySelector('[name="discount_percentage"]');
+        const input = form.querySelector('[name="discount_amount"], [name="discount_percentage"]');
         const output = form.querySelector('[data-preview]');
         const refundSection = form.querySelector('[data-refund-section]');
         const refundMethod = form.querySelector('[name="refund_method"]');
@@ -217,24 +216,25 @@ export function initDiscountPreview(root = document) {
             if (refundMethod) refundMethod.required = on;
         };
         const update = () => {
-            const match = /^\s*(\d{1,3})(?:\.(\d{1,2}))?\s*$/.exec(input.value);
+            const match = /^\s*(\d{1,10})(?:\.(\d{1,2}))?\s*$/.exec(input.value);
             const basisPoints = match ? Number(match[1]) * 100 + Number((match[2] ?? '').padEnd(2, '0')) : NaN;
-            if (!match || basisPoints > 10000) {
+            const fixed = input.name === 'discount_amount';
+            if (!match || basisPoints > (fixed ? gross : 10000)) {
                 output.hidden = true;
                 refundNeeded(false);
                 return;
             }
-            const newDiscount = Math.floor((gross * basisPoints + 5000) / 10000);
+            const newDiscount = fixed ? basisPoints : Math.floor((gross * basisPoints + 5000) / 10000);
             const oldNet = gross - oldDiscount;
             const newNet = gross - newDiscount;
             const oldDue = Math.max(0, oldNet - kept);
             const refund = Math.max(0, kept - newNet);
             const newDue = Math.max(0, newNet - kept);
-            const from = `${data.currentPercent}% → ${input.value.trim()}%`;
+            const from = fixed ? `${money(oldDiscount)} → ${money(newDiscount)}` : `${data.currentPercent}% → ${input.value.trim()}%`;
             let tone = 'info';
             let text;
             if (newDiscount === oldDiscount) {
-                text = `No change: the discount stays ${data.currentPercent}%.`;
+                text = `No change: the discount stays ${fixed ? money(oldDiscount) : `${data.currentPercent}%`}.`;
             } else if (refund > 0) {
                 tone = 'warn';
                 text = `Discount ${from}: net fee ${money(oldNet)} → ${money(newNet)}. The student has paid ${money(kept)}, so a refund of ${money(refund)} will be recorded — fill in the refund section below.`;

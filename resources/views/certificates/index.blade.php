@@ -1,20 +1,6 @@
 @extends('layouts.admin')
 @section('title', 'Certificates')
-@push('styles')
-<style>
-    .certificate-workspace { display:grid; grid-template-columns:minmax(0, 1.25fr) minmax(0, 1fr); gap:24px; align-items:start; }
-    .certificate-preview { padding:28px; background:var(--accent-soft); }
-    .certificate-preview-sheet { background:white; border:1px solid var(--line); outline:1px solid #efdfa6; outline-offset:-9px; padding:36px 24px; text-align:center; border-radius:4px; overflow-wrap:anywhere; }
-    .certificate-preview-sheet .fa-award { color:var(--gold-ink); font-size:32px; margin-bottom:18px; }
-    .certificate-preview-sheet h3 { font-family:Georgia,serif; font-size:24px; margin:8px 0 24px; }
-    .certificate-preview-name { color:var(--navy); font-size:22px; font-weight:700; margin:12px 0; }
-    .certificate-preview-level { display:inline-block; padding:6px 18px; border-radius:20px; color:var(--gold-ink); background:var(--accent-soft); font-weight:700; margin:12px 0; }
-    .certificate-revoke-form { display:flex; flex-wrap:wrap; gap:10px; align-items:end; padding:12px; background:#fff7f7; border-radius:8px; }
-    .certificate-revoke-field { flex:1 1 240px; }
-    @media(max-width:991.98px) { .certificate-workspace { grid-template-columns:minmax(0, 1fr); } }
-    @media(max-width:575.98px) { .certificate-preview { padding:18px; } }
-</style>
-@endpush
+
 @section('content')
 <a class="back-link" href="{{ route('exams.index') }}"><i class="fas fa-arrow-left" aria-hidden="true"></i>Back to Exams</a>
 <x-list.header title="Certificates" eyebrow="Academics" subtitle="Issue completion certificates and manage previously issued records.">
@@ -22,7 +8,7 @@
 </x-list.header>
 
 <div class="certificate-workspace">
-    <form class="panel form-panel" method="post" action="{{ route('certificates.store') }}">
+    @if(can_route('certificates.store'))<form class="panel form-panel" method="post" action="{{ route('certificates.store') }}">
         @csrf
         <div class="form-section">
         <h2 class="form-section-title">Issue Certificate</h2>
@@ -77,7 +63,7 @@
             <a class="btn btn-outline-secondary" href="{{ route('exams.index') }}">Cancel</a>
             <button class="btn btn-primary" type="submit"><i class="fas fa-award me-1" aria-hidden="true"></i>Issue &amp; print</button>
         </div>
-    </form>
+    </form>@endif
     <aside class="panel certificate-preview" aria-labelledby="preview-heading">
         <h2 class="form-section-title" id="preview-heading">Certificate details preview</h2>
         <p class="form-section-note">Check the text below. The printed certificate uses the institute template.</p>
@@ -118,7 +104,7 @@
             @unless($certificate->isRevoked())
             <tr class="collapse d-print-none" id="revoke-{{ $certificate->id }}">
                 <td colspan="7">
-                    <form method="post" action="{{ route('certificates.revoke', $certificate) }}" class="certificate-revoke-form">
+                    @if(can_route('certificates.revoke'))<form method="post" action="{{ route('certificates.revoke', $certificate) }}" class="certificate-revoke-form">
                         @csrf
                         <div class="certificate-revoke-field">
                             <label class="form-label small" for="reason-{{ $certificate->id }}">Reason for revoking {{ $certificate->certificate_number }}</label>
@@ -127,7 +113,7 @@
                         </div>
                         <button class="btn btn-outline-secondary btn-sm" type="button" data-bs-toggle="collapse" data-bs-target="#revoke-{{ $certificate->id }}">Cancel</button>
                         <button class="btn btn-danger btn-sm" type="submit">Confirm revoke</button>
-                    </form>
+                    </form>@endif
                 </td>
             </tr>
             @endunless

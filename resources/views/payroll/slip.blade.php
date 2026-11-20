@@ -11,7 +11,7 @@
         <a class="btn btn-outline-primary ms-auto" href="{{ route('payroll.slip.pdf', [$payout, 'download' => 1]) }}"><i class="fas fa-file-pdf me-1" aria-hidden="true"></i>Download PDF</a>
         <a class="btn btn-primary" href="{{ route('payroll.slip.pdf', $payout) }}" target="_blank" rel="noopener"><i class="fas fa-print me-1" aria-hidden="true"></i>Print PDF</a>
     </div>
-    <x-show.document kind="Salary Payment Slip" :number="$payout->voucher_number" :institute="$details['institute_name'] ?? null"
+    <x-show.document kind="Salary Payment Slip" :number="$payout->voucher_number" :institute="$details['institute_name'] ?? null" :logo="\App\Support\PdfImage::instituteLogo()"
         :amount="$payout->amount" :currency="$details['currency_code'] ?? 'PKR'" :date="$payout->paid_at->format('d M Y, h:i A')" :reversal="$payout->reversal"
         :rows="['Paid to' => $teacher, 'For' => $details['description'] ?? null,
             'Due amount' => isset($details['due_amount']) ? ($details['currency_code'] ?? 'PKR').' '.number_format((float) $details['due_amount'], 2) : null,

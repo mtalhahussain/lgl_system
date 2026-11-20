@@ -6,12 +6,18 @@ use App\Models\User;
 
 class UserPolicy
 {
+    /** Staff acts only on student and teacher records; never on Admin or Staff accounts. */
+    public function before(User $user, string $ability, mixed $model = null): ?bool
+    {
+        return $user->isStaff() && $model instanceof User && ! in_array($model->role, ['student', 'teacher'], true) ? false : null;
+    }
+
     /**
      * Determine whether the user can view any users.
      */
     public function viewAny(User $user): bool
     {
-        return in_array($user->role, ['admin', 'teacher']);
+        return ($user->actsAsAdmin() || $user->isTeacher());
     }
 
     /**
@@ -20,7 +26,7 @@ class UserPolicy
     public function view(User $user, User $model): bool
     {
         // Admin can view all users
-        if ($user->role === 'admin') {
+        if ($user->actsAsAdmin()) {
             return true;
         }
 
@@ -47,7 +53,7 @@ class UserPolicy
      */
     public function create(User $user): bool
     {
-        return $user->role === 'admin';
+        return $user->actsAsAdmin();
     }
 
     /**
@@ -56,7 +62,7 @@ class UserPolicy
     public function update(User $user, User $model): bool
     {
         // Admin can update all users
-        if ($user->role === 'admin') {
+        if ($user->actsAsAdmin()) {
             return true;
         }
 
@@ -82,7 +88,7 @@ class UserPolicy
     public function delete(User $user, User $model): bool
     {
         // Admin can delete users (except themselves)
-        return $user->role === 'admin' && $user->id !== $model->id;
+        return $user->actsAsAdmin() && $user->id !== $model->id;
     }
 
     /**
@@ -100,7 +106,7 @@ class UserPolicy
     public function viewFinancials(User $user, User $model): bool
     {
         // Admin can view financial info
-        if (in_array($user->role, ['admin'])) {
+        if ($user->actsAsAdmin()) {
             return true;
         }
 
@@ -117,7 +123,7 @@ class UserPolicy
      */
     public function assignBatches(User $user, User $teacher): bool
     {
-        return $user->role === 'admin' && $teacher->role === 'teacher';
+        return $user->actsAsAdmin() && $teacher->role === 'teacher';
     }
 
     /**
@@ -126,7 +132,7 @@ class UserPolicy
     public function viewReports(User $user, User $model): bool
     {
         // Admin can view all reports
-        if ($user->role === 'admin') {
+        if ($user->actsAsAdmin()) {
             return true;
         }
 

@@ -3,8 +3,8 @@
 @section('content')
 <div class="panel-heading d-flex justify-content-between align-items-center">
     <h1>{{ $exam->name }}</h1>
-    @if(auth()->user()->isAdmin())
-        <a class="btn btn-outline-secondary" href="{{ route('exams.edit', $exam) }}">Edit exam</a>
+    @if(can_route('exams.edit'))
+        @if(can_route('exams.edit'))<a class="btn btn-outline-secondary" href="{{ route('exams.edit', $exam) }}">Edit exam</a>@endif
     @endif
 </div>
 
@@ -44,7 +44,7 @@
                 </td>
                 <td class="d-print-none text-nowrap">
                     <button class="btn btn-primary btn-sm" type="submit" form="res-{{ $student->id }}">Save</button>
-                    @if($result && $result->overall_passed && auth()->user()->isAdmin())
+                    @if($result && $result->overall_passed && can_route('certificates.store'))
                         @if($result->activeCertificate)
                             <a class="btn btn-outline-success btn-sm" href="{{ route('certificates.print', $result->activeCertificate) }}" target="_blank" rel="noopener">Cert {{ $result->activeCertificate->certificate_number }}</a>
                         @else

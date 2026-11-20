@@ -1,10 +1,10 @@
 @extends('layouts.admin')
 @section('title', 'Fee Ledger')
 @section('content')
-@php $isAdmin = auth()->user()->isAdmin(); @endphp
+@php $isAdmin = auth()->user()->actsAsAdmin(); @endphp
 <x-list.header :title="$student ? $student->name.' — Fees' : ($batch ? $batch->name.' — Fees' : 'Fee Ledger')" eyebrow="Finance"
     subtitle="Fee agreements, installment balances and recorded payments">
-    @if($isAdmin && ! $student && ! $batch)<a class="btn btn-outline-primary" href="{{ route('fees.reports') }}"><i class="fas fa-chart-line me-1" aria-hidden="true"></i>Collection report</a>@endif
+    @if(can_route('fees.reports') && ! $student && ! $batch)<a class="btn btn-outline-primary" href="{{ route('fees.reports') }}"><i class="fas fa-chart-line me-1" aria-hidden="true"></i>Collection report</a>@endif
 </x-list.header>
 <x-list.kpis :items="$kpis" />
 <div class="panel list-panel">
@@ -31,7 +31,7 @@
                     $detailId = 'ledger_detail_'.$enrollment->id;
                 @endphp
                 <tr>
-                    <td><span class="cell-main">{{ $enrollment->student->name }}</span><span class="cell-sub">{{ $enrollment->batch->name }}@if($enrollment->batch->course?->level) ({{ $enrollment->batch->course?->level }})@endif · {{ $enrollment->status }}@if(\App\Support\Money::minor($enrollment->discount_amount) > 0) · {{ $enrollment->discount_percentage }}% off @endif</span></td>
+                    <td><span class="cell-main">{{ $enrollment->student->name }}</span><span class="cell-sub">{{ $enrollment->batch->name }}@if($enrollment->batch->course?->level) ({{ $enrollment->batch->course?->level }})@endif · {{ $enrollment->status }}@if(\App\Support\Money::minor($enrollment->discount_amount) > 0) · {{ currency_format($enrollment->discount_amount) }} off @endif</span></td>
                     <td class="num">{{ currency_format($net) }}</td>
                     <td class="num">{{ currency_format($enrollment->net_paid) }}@if(\App\Support\Money::minor($enrollment->refunded_amount ?? '0') > 0)<span class="cell-sub">after {{ currency_format($enrollment->refunded_amount) }} refund</span>@endif</td>
                     <td class="num"><strong>{{ currency_format($enrollment->remaining_fee) }}</strong></td>
@@ -64,10 +64,10 @@
                                     @endforelse
                                     </tbody>
                                 </table>
-                                <p class="cell-sub mt-2">Agreed {{ currency_format($enrollment->total_fee) }}; discount {{ $enrollment->discount_percentage }}% ({{ currency_format($enrollment->discount_amount) }}).@if(auth()->user()->isAdmin() && $enrollment->status !== 'transferred' && ! $enrollment->enrollment_package_id) <a href="{{ route('enrollments.show', $enrollment) }}#fee-heading">Edit discount</a>@endif
+                                <p class="cell-sub mt-2">Agreed {{ currency_format($enrollment->total_fee) }}; discount {{ currency_format($enrollment->discount_amount) }}.@if(can_route('enrollments.discount') && $enrollment->status !== 'transferred' && ! $enrollment->enrollment_package_id) <a href="{{ route('enrollments.show', $enrollment) }}#fee-heading">Edit discount</a>@endif
                                 @if($enrollment->enrollment_package_id)<a href="{{ route('enrollment-packages.show', $enrollment->enrollment_package_id) }}">Package agreement</a>@endif</p>
                             </div>
-                            @if($isAdmin && $enrollment->status !== 'transferred')
+                            @if(can_route('fees.pay') && $enrollment->status !== 'transferred')
                                 <div class="col-lg-6">
                                     @if(\App\Support\Money::minor($enrollment->remaining_fee) > 0)
                                         <form method="post" action="{{ route('whatsapp.enrollment', $enrollment) }}" class="mb-3" data-confirm="Send a WhatsApp fee reminder to {{ $enrollment->student?->name }} for the earliest unpaid installment?">
@@ -76,7 +76,7 @@
                                         </form>
                                     @endif
                                     <h2 class="h6">Record payment</h2>
-                                    <form method="post" action="{{ route('payments.store', $enrollment) }}" class="row g-2">
+                                    @if(can_route('payments.store'))<form method="post" action="{{ route('payments.store', $enrollment) }}" class="row g-2">
                                         @csrf
                                         <input type="hidden" name="submission_key" value="{{ old('submission_key', (string) \Illuminate\Support\Str::uuid()) }}">
                                         <div class="col-sm-6"><label class="form-label" for="amount_{{ $enrollment->id }}">Payment amount</label>
@@ -88,7 +88,7 @@
                                         <div class="col-12"><label class="form-label" for="reference_{{ $enrollment->id }}">Reference</label>
                                             <input class="form-control" id="reference_{{ $enrollment->id }}" name="reference" maxlength="255"></div>
                                         <div class="col-12"><button class="btn btn-primary">Record payment</button></div>
-                                    </form>
+                                    </form>@endif
                                 </div>
                             @endif
                         </div>

@@ -37,7 +37,7 @@ class PaymentController extends Controller
 
     public function show(Request $request, Payment $payment)
     {
-        abort_unless($request->user()->isAdmin() || ($request->user()->isStudent()
+        abort_unless($request->user()->actsAsAdmin() || ($request->user()->isStudent()
             && $payment->enrollment->student_id === $request->user()->id), 403);
         $payment->load(['enrollment.student', 'enrollment.batch.course', 'allocations.installment', 'reversal']);
 

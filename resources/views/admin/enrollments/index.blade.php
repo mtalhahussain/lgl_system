@@ -2,8 +2,8 @@
 @section('title', 'Enrollments')
 @section('content')
 <x-list.header title="Enrollments" eyebrow="Admissions" subtitle="Student admissions, fee agreements and status">
-    <a class="btn btn-outline-primary" href="{{ route('enrollment-packages.create') }}">Multi-level package</a>
-    <a class="btn btn-primary" href="{{ route('enrollments.create') }}"><i class="fas fa-user-plus me-1" aria-hidden="true"></i>Enroll student</a>
+    @if(can_route('enrollment-packages.create'))<a class="btn btn-outline-primary" href="{{ route('enrollment-packages.create') }}">Multi-level package</a>@endif
+    @if(can_route('students.create'))<a class="btn btn-primary" href="{{ route('students.create') }}">Student admission</a>@endif
 </x-list.header>
 <x-list.kpis :items="$kpis" />
 <div class="panel list-panel">
@@ -26,7 +26,7 @@
                     <td>{{ $enrollment->batch->course?->name }}@if($enrollment->batch->course?->level) ({{ $enrollment->batch->course?->level }})@endif<span class="cell-sub">{{ $enrollment->batch->name }}</span></td>
                     <td>{{ $enrollment->enrollment_date?->format('d M Y') }}</td>
                     <td><x-list.status :value="$enrollment->status" :label="$statuses[$enrollment->status] ?? null" /></td>
-                    <td class="num">{{ $enrollment->discount_percentage }}%@if(\App\Support\Money::minor($enrollment->discount_amount) > 0)<span class="cell-sub">{{ currency_format($enrollment->discount_amount) }}</span>@endif</td>
+                    <td class="num">{{ currency_format($enrollment->discount_amount) }}</td>
                     <td class="num">{{ currency_format($enrollment->remaining_fee) }}</td>
                     <td class="text-end">
                         <x-list.row-menu :label="$enrollment->student->name">

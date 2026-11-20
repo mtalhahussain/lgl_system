@@ -6,8 +6,8 @@
 <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
     <h1 class="h2"><i class="fas fa-bell me-2"></i>Notifications</h1>
     <div class="btn-toolbar mb-2 mb-md-0 gap-2">
-        @if(auth()->user()->isAdmin())
-            <a href="{{ route('notifications.announce') }}" class="btn btn-primary"><i class="fas fa-bullhorn me-1"></i>New Announcement</a>
+        @if(can_route('notifications.announce'))
+            @if(can_route('notifications.announce'))<a href="{{ route('notifications.announce') }}" class="btn btn-primary"><i class="fas fa-bullhorn me-1"></i>New Announcement</a>@endif
         @endif
         <form method="POST" action="{{ route('notifications.readAll') }}" onsubmit="event.preventDefault(); fetch(this.action,{method:'POST',headers:{'X-CSRF-TOKEN':'{{ csrf_token() }}','X-Requested-With':'XMLHttpRequest'}}).then(()=>location.reload());">
             <button type="submit" class="btn btn-outline-secondary"><i class="fas fa-check-double me-1"></i>Mark all read</button>

@@ -12,7 +12,7 @@ class EnsureActiveAccount
     public function handle(Request $request, Closure $next): Response
     {
         $user = $request->user()->fresh();
-        if (! $user?->is_active || ! in_array($user->role, \App\Models\User::ROLES, true)) {
+        if (! $user?->is_active || ! $user->canSignIn()) {
             Auth::logout();
             $request->session()->invalidate();
             $request->session()->regenerateToken();

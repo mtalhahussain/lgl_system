@@ -80,7 +80,9 @@ class BatchController extends Controller
     {
         [$data, $schedule] = $this->validatedBatch($request);
         $created = DB::transaction(function () use ($data, $schedule) {
+            $data['name'] = 'BTC-'.\Illuminate\Support\Str::ulid();
             $batch = Batch::create($data);
+            $batch->update(['name' => Batch::automaticName($batch->id, $data['start_date'])]);
             $this->saveSchedule($batch, $schedule);
 
             return app(BatchSessionScheduler::class)->generate($batch, auth()->id());
@@ -141,7 +143,7 @@ class BatchController extends Controller
     private function validatedBatch(Request $request): array
     {
         $data = $request->validate([
-            'name' => 'required|string|max:255',
+            'name' => 'exclude',
             'course_id' => ['required', Rule::exists('courses', 'id')->where('is_active', true)],
             'teacher_id' => ['required', Rule::exists('users', 'id')->where('role', 'teacher')->where('is_active', true)],
             'start_date' => 'required|date',
@@ -153,7 +155,7 @@ class BatchController extends Controller
             'meeting_link' => 'nullable|url:http,https|max:2000',
             'notes' => 'nullable|string|max:2000',
             // Recurring weekly class days/times (optional template).
-            'schedule' => 'nullable|array|max:50',
+            'schedule' => 'nullable|array|max:7',
             'schedule.*.weekday' => 'nullable|in:mon,tue,wed,thu,fri,sat,sun',
             'schedule.*.start' => 'nullable|date_format:H:i',
             'schedule.*.end' => 'nullable|date_format:H:i',
@@ -190,9 +192,9 @@ class BatchController extends Controller
             $clean[] = ['weekday' => $weekday, 'start_time' => $start, 'end_time' => $end];
         }
 
-        $keys = array_map(fn ($row) => $row['weekday'].' '.$row['start_time'], $clean);
-        if (count($keys) !== count(array_unique($keys))) {
-            throw ValidationException::withMessages(['schedule' => 'The same day and start time cannot be entered twice.']);
+        $days = array_column($clean, 'weekday');
+        if (count($days) !== count(array_unique($days))) {
+            throw ValidationException::withMessages(['schedule' => 'Each weekday can be selected only once.']);
         }
 
         return $clean;

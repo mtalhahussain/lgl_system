@@ -1,4 +1,5 @@
 @php
+    $documentLogo = \App\Support\PdfImage::instituteLogo();
     $templateSrc = \App\Support\PdfImage::dataUri(public_path('template.png'));
     if (! $templateSrc) {
         \Illuminate\Support\Facades\Log::warning('Certificate template image missing; rendering on a plain background.', ['path' => public_path('template.png')]);
@@ -17,6 +18,8 @@
     body { font-family: 'DejaVu Serif', Georgia, serif; color: #1a1a1a; }
     .sheet { position: relative; width: 297mm; height: 210mm; overflow: hidden; }
     .bg { position: absolute; top: 0; left: 0; width: 297mm; height: 210mm; }
+    .certificate-logo { position:absolute; top:20mm; left:2mm; width:60mm; height:16mm; background:#fff; text-align:center; }
+    .certificate-logo img { max-width:58mm; max-height:16mm; }
     .cert-body { position: absolute; top: 46mm; left: 120mm; width: 159mm; }
     .cert-title { font-size: 30pt; font-weight: bold; margin: 0 0 10mm; }
     .cert-grats { font-size: 15pt; font-style: italic; margin: 0 0 2mm; }
@@ -33,6 +36,7 @@
 <body>
 <div class="sheet">
     @if($templateSrc)<img class="bg" src="{{ $templateSrc }}" alt="">@endif
+    @if($documentLogo)<div class="certificate-logo"><img src="{{ $documentLogo }}" alt="Institute logo"></div>@endif
     <div class="cert-body">
         <h1 class="cert-title">Teilnahmebescheinigung</h1>
         <p class="cert-grats">Herzlichen Glückwunsch, <span class="cert-name">{{ $soLine }}</span></p>

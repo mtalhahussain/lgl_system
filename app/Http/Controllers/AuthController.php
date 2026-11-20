@@ -30,7 +30,7 @@ class AuthController extends Controller
             ]);
         }
 
-        if (Auth::attemptWhen($credentials, fn ($user) => in_array($user->role, \App\Models\User::ROLES, true), $remember)) {
+        if (Auth::attemptWhen($credentials, fn ($user) => $user->canSignIn(), $remember)) {
             $request->session()->regenerate();
             
             $user = Auth::user();
@@ -56,6 +56,8 @@ class AuthController extends Controller
                     return redirect()->intended('/teacher/dashboard');
                 case 'student':
                     return redirect()->intended('/student/dashboard');
+                case 'staff':
+                    return redirect()->intended('/staff/dashboard');
                 default:
                     return redirect()->intended('/dashboard');
             }

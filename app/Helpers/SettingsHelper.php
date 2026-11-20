@@ -66,3 +66,14 @@ if (!function_exists('module_visible')) {
         return \App\Models\RolePermission::allows(auth()->user(), $module);
     }
 }
+
+if (!function_exists('can_route')) {
+    /**
+     * Whether the signed-in user may open a named route: role guard plus Users > Role permissions
+     * (Staff only for granted module actions). Use it to show menu items and action buttons.
+     */
+    function can_route(string $routeName): bool
+    {
+        return \App\Models\RolePermission::canRoute(auth()->user(), $routeName);
+    }
+}

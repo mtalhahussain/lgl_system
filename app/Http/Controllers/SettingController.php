@@ -7,6 +7,12 @@ use Illuminate\Http\Request;
 
 class SettingController extends Controller
 {
+    public const LOGOS = [
+        'institute_logo' => 'Login logo',
+        'sidebar_logo' => 'Sidebar logo',
+        'document_logo' => 'Certificate / Payslip logo',
+    ];
+
     public function index()
     {
         $this->authorize('viewAny', Setting::class);
@@ -30,25 +36,35 @@ class SettingController extends Controller
             'institute_phone' => 'nullable|string|max:30|regex:/^\+?[0-9]+$/D', 'institute_email' => 'nullable|email|max:255',
             'institute_website' => 'nullable|url:http,https|max:255',
             'institute_logo' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:2048',
+            'sidebar_logo' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:2048',
+            'document_logo' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:2048',
             'currency_code' => 'sometimes|in:PKR,USD,EUR,GBP', 'currency_symbol' => 'sometimes|string|max:10',
             'currency_position' => 'sometimes|in:before,after', 'currency_decimals' => 'sometimes|integer|min:0|max:2',
         ]);
-        if ($request->hasFile('institute_logo')) {
-            $data['institute_logo'] = $request->file('institute_logo')->store('settings', 'public');
-        } else {
-            unset($data['institute_logo']);
-        }
         if (isset($data['currency_code']) && $data['currency_code'] !== Setting::get('currency_code', 'PKR')
             && \Illuminate\Support\Facades\Schema::hasTable('payments') && \App\Models\Payment::exists()) {
             throw \Illuminate\Validation\ValidationException::withMessages(['currency_code' => 'Currency cannot change after payments have been recorded.']);
         }
-        \Illuminate\Support\Facades\DB::transaction(function () use ($data) {
+        foreach (array_keys(self::LOGOS) as $key) {
+            unset($data[$key]);
+        }
+        \Illuminate\Support\Facades\DB::transaction(function () use ($data, $request) {
             foreach ($data as $key => $value) {
                 Setting::where('key', $key)->update(['value' => $value]);
             }
+            foreach (self::LOGOS as $key => $label) {
+                if ($request->hasFile($key)) {
+                    $path = $request->file($key)->store('settings', 'public');
+                    Setting::updateOrCreate(['key' => $key], [
+                        'value' => $path, 'type' => 'file', 'group' => 'institute',
+                        'label' => $label, 'is_public' => true,
+                    ]);
+                }
+            }
         });
 
-        return redirect()->route('settings.index')->with('success', 'Settings updated successfully.');
+        return redirect()->route('settings.index', $request->query('show') === 'true' ? ['show' => 'true'] : [])
+            ->with('success', 'Settings updated successfully.');
     }
 
     // Helper method to get formatted currency

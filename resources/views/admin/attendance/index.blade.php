@@ -3,7 +3,7 @@
 @section('content')
 <x-list.header title="Attendance" eyebrow="Students" subtitle="Mark past and current sessions; future sessions open on their date">
     <a class="btn btn-outline-primary" href="{{ route('attendance.reports') }}"><i class="fas fa-chart-bar me-1" aria-hidden="true"></i>Attendance report</a>
-    <a class="btn btn-primary" href="{{ route('attendance.create') }}"><i class="fas fa-plus me-1" aria-hidden="true"></i>New session</a>
+    @if(can_route('attendance.create'))<a class="btn btn-primary" href="{{ route('attendance.create') }}"><i class="fas fa-plus me-1" aria-hidden="true"></i>New session</a>@endif
 </x-list.header>
 @include('partials.attendance-tabs')
 <x-list.kpis :items="[

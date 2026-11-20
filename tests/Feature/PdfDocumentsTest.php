@@ -111,7 +111,7 @@ class PdfDocumentsTest extends TestCase
     {
         Storage::fake('public');
         $path = UploadedFile::fake()->image('logo.png', 40, 40)->store('settings', 'public');
-        Setting::create(['key' => 'institute_logo', 'value' => $path, 'label' => 'Institute Logo']);
+        Setting::create(['key' => 'document_logo', 'value' => $path, 'label' => 'Document Logo']);
         Setting::create(['key' => 'institute_phone', 'value' => '+923001234567', 'label' => 'Institute Phone']);
         [$admin, $teacher] = $this->teacherAndAdmin();
         $payout = $this->payout($admin, $teacher)->load(['due', 'reversal']);
@@ -121,6 +121,14 @@ class PdfDocumentsTest extends TestCase
         $this->assertStringContainsString('data:image/png;base64,', $html);
         $this->assertStringContainsString('+923001234567', $html);
         $this->assertStringContainsString('Received by', $html);
+        $student = User::factory()->create(['role' => 'student', 'is_active' => true]);
+        $cert = $this->certificate($student);
+        foreach (['certificates.pdf', 'certificates.print'] as $view) {
+            $certificateHtml = view($view, ['cert' => $cert])->render();
+            $this->assertStringContainsString('class="certificate-logo"', $certificateHtml);
+            $this->assertStringContainsString(\App\Support\PdfImage::instituteLogo(), $certificateHtml);
+        }
+        $this->actingAs($admin)->get(route('certificates.pdf', $cert))->assertOk();
         $this->actingAs($admin)->get(route('payroll.slip.pdf', $payout))->assertOk();
     }
 

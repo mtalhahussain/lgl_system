@@ -2,7 +2,7 @@
 @section('title', $batch->name)
 @section('content')
 @php
-    $isAdmin = auth()->user()->isAdmin();
+    $isAdmin = auth()->user()->actsAsAdmin();
     $fill = $batch->max_students ? min(100, round($students->count() / $batch->max_students * 100)) : 0;
     $platform = ['zoom' => 'Zoom', 'google_meet' => 'Google Meet', 'in_person' => 'In person'][$batch->meeting_platform] ?? 'In person';
 @endphp
@@ -15,9 +15,11 @@
     @if($batch->meeting_link)
         <a class="btn btn-success" href="{{ $batch->meeting_link }}" target="_blank" rel="noopener noreferrer"><i class="fas fa-video me-1" aria-hidden="true"></i>Join class</a>
     @endif
-    <a class="btn btn-primary" href="{{ route('attendance.create', ['batch_id' => $batch->id]) }}"><i class="fas fa-clipboard-check me-1" aria-hidden="true"></i>Mark attendance</a>
-    @if($isAdmin)
-        <a class="btn btn-outline-primary" href="{{ route('batches.edit', $batch) }}"><i class="fas fa-pen me-1" aria-hidden="true"></i>Edit</a>
+    @if(can_route('attendance.create'))<a class="btn btn-primary" href="{{ route('attendance.create', ['batch_id' => $batch->id]) }}"><i class="fas fa-clipboard-check me-1" aria-hidden="true"></i>Mark attendance</a>@endif
+    @if(can_route('batches.edit'))
+        @if(can_route('batches.edit'))<a class="btn btn-outline-primary" href="{{ route('batches.edit', $batch) }}"><i class="fas fa-pen me-1" aria-hidden="true"></i>Edit</a>@endif
+    @endif
+    @if(can_route('fees.batch'))
         <a class="btn btn-outline-primary" href="{{ route('fees.batch', $batch) }}"><i class="fas fa-money-bill me-1" aria-hidden="true"></i>Fees</a>
     @endif
 </x-show.hero>
@@ -73,22 +75,22 @@
             @endforelse
         </ul>
         <p class="form-section-note px-4">Regular classes are created automatically when Admin saves the batch schedule. Attendance belongs to each dated class.</p>
-        <div class="px-4 pb-3"><a class="btn btn-outline-secondary btn-sm" href="{{ route('class-sessions.create', ['batch_id' => $batch->id]) }}">Extra / makeup class</a></div>
-        @if(in_array($batch->status, ['upcoming', 'ongoing'], true) && $isAdmin)
+        <div class="px-4 pb-3">@if(can_route('class-sessions.create'))<a class="btn btn-outline-secondary btn-sm" href="{{ route('class-sessions.create', ['batch_id' => $batch->id]) }}">Extra / makeup class</a>@endif</div>
+        @if(in_array($batch->status, ['upcoming', 'ongoing'], true) && $isAdmin && can_route('class-sessions.generate'))
             <details class="px-4 pb-4" @if($errors->hasAny(['days', 'start_time', 'end_time', 'from', 'to', 'topic', 'schedule'])) open @endif>
                 <summary class="fw-semibold">Advanced: generate missing classes</summary>
                 @if($batch->schedules->isNotEmpty())
-                    <form method="post" action="{{ route('class-sessions.generate-from-schedule', $batch) }}" class="row g-2 mt-1 mb-2">
+                    @if(can_route('class-sessions.generate-from-schedule'))<form method="post" action="{{ route('class-sessions.generate-from-schedule', $batch) }}" class="row g-2 mt-1 mb-2">
                         @csrf
                         <div class="col-6"><label class="form-label" for="sch_from">From</label><input class="form-control" type="date" id="sch_from" name="from" min="{{ today()->toDateString() }}" value="{{ max(today(), $batch->start_date)->toDateString() }}"></div>
                         <div class="col-6"><label class="form-label" for="sch_to">To</label><input class="form-control" type="date" id="sch_to" name="to" value="{{ $batch->end_date?->toDateString() }}"></div>
                         <div class="col-12"><button class="btn btn-success btn-sm"><i class="fas fa-calendar-plus me-1" aria-hidden="true"></i>Generate from weekly schedule</button></div>
                         <p class="form-text mb-0">Uses the batch's weekly days and times above. Existing sessions are skipped.</p>
-                    </form>
+                    </form>@endif
                     <hr class="my-2">
                     <p class="form-text mb-1 fw-semibold">Or pick days manually:</p>
                 @endif
-                <form method="post" action="{{ route('class-sessions.generate', $batch) }}" class="row g-2 mt-1">
+                @if(can_route('class-sessions.generate'))<form method="post" action="{{ route('class-sessions.generate', $batch) }}" class="row g-2 mt-1">
                     @csrf
                     <fieldset class="col-12">
                         <legend class="form-label mb-1">Class days</legend>
@@ -106,7 +108,7 @@
                     <div class="col-12"><label class="form-label" for="gen_topic">Topic</label><input class="form-control" id="gen_topic" name="topic" maxlength="255" value="{{ old('topic', 'Class') }}" required></div>
                     <div class="col-12"><button class="btn btn-primary btn-sm">Create sessions</button></div>
                     <p class="form-text mb-0">One session per chosen day inside the batch dates. Dates that already have a session are skipped. Cancel holidays from the session page.</p>
-                </form>
+                </form>@endif
             </details>
         @endif
     </section>

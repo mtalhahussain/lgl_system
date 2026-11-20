@@ -19,7 +19,7 @@ class BackLink
         }
         $name = (string) $route->getName();
         $param = fn (string $key) => $route->parameter($key);
-        $admin = $user->isAdmin();
+        $admin = $user->actsAsAdmin();
 
         // Pages that render their own back button are left out.
         [$target, $args, $label] = match (true) {

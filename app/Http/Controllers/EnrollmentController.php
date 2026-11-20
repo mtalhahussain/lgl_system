@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Enrollment;
 use App\Services\EnrollmentService;
 use App\Services\FeeCalculatorService;
+use App\Services\PayrollService;
 use App\Support\ListQuery;
 use App\Support\Money;
 use Illuminate\Http\Request;
@@ -60,30 +61,8 @@ class EnrollmentController extends Controller
     public function create(Request $request)
     {
         $this->authorize('create', Enrollment::class);
-        
-        // Get available students (users with student role who are not already enrolled in the batch)
-        $students = \App\Models\User::where('role', 'student')
-            ->when($request->batch_id, function ($query) use ($request) {
-                // Exclude students already enrolled in this batch
-                $query->whereDoesntHave('enrollments', function ($q) use ($request) {
-                    $q->where('batch_id', $request->batch_id)
-                      ->where('status', 'active');
-                });
-            })
-            ->get();
 
-        // Get available batches
-        $batches = \App\Models\Batch::with('course')
-            ->whereIn('status', ['upcoming', 'ongoing'])
-            ->get();
-
-        // Pre-select batch if batch_id is provided
-        $selectedBatch = null;
-        if ($request->batch_id) {
-            $selectedBatch = \App\Models\Batch::with('course')->find($request->batch_id);
-        }
-
-        return view('admin.enrollments.create', compact('students', 'batches', 'selectedBatch'));
+        return app(StudentController::class)->create($request);
     }
 
     public function show(Enrollment $enrollment)
@@ -120,6 +99,7 @@ class EnrollmentController extends Controller
             'student_id' => 'required|exists:users,id',
             'batch_id' => 'required|exists:batches,id',
             'discount_percentage' => 'nullable|decimal:0,2|min:0|max:100',
+            'discount_amount' => 'nullable|decimal:0,2|min:0|max:99999999.99',
             'installments' => 'integer|min:1|max:12',
             'schedule' => 'nullable|array|min:1|max:12',
             'schedule.*.amount' => 'required|decimal:0,2|min:0|max:99999999.99',
@@ -132,10 +112,11 @@ class EnrollmentController extends Controller
                 $validated['batch_id'],
                 $validated['discount_percentage'] ?? 0,
                 $validated['installments'] ?? 1,
-                $validated['schedule'] ?? null
+                $validated['schedule'] ?? null,
+                isset($validated['discount_amount']) ? Money::minor((string) $validated['discount_amount']) : null
             );
 
-            $this->notifyEnrollment($enrollment);
+            $this->enrollmentService->notifyEnrollment($enrollment);
 
             return redirect()->route('enrollments.index')
                 ->with('success', 'Student enrolled successfully!');
@@ -145,40 +126,6 @@ class EnrollmentController extends Controller
                 ->withInput()
                 ->withErrors(['error' => $e->getMessage()]);
         }
-    }
-
-    /** Notify the student, the batch teacher and Admins of a new enrollment. */
-    private function notifyEnrollment(Enrollment $enrollment): void
-    {
-        $notifier = app(\App\Services\NotificationService::class);
-        $enrollment->loadMissing('batch.course', 'batch.teacher', 'student');
-        $batch = $enrollment->batch;
-        $course = $batch?->course;
-        $courseName = $course ? trim($course->name.' '.($course->level ?? '')) : 'a level';
-        $batchName = $batch->name ?? '';
-
-        $notifier->toUser($enrollment->student_id, [
-            'type' => 'enrollment', 'icon' => 'fa-user-graduate', 'level' => 'success',
-            'title' => 'Enrollment confirmed',
-            'body' => "You are enrolled in {$courseName} ({$batchName}).",
-            'url' => route('enrollments.show', $enrollment),
-        ]);
-
-        if ($batch?->teacher_id) {
-            $notifier->toUser($batch->teacher_id, [
-                'type' => 'enrollment', 'icon' => 'fa-user-plus', 'level' => 'info',
-                'title' => 'New student in your batch',
-                'body' => ($enrollment->student->name ?? 'A student')." joined {$batchName}.",
-                'url' => route('enrollments.show', $enrollment),
-            ]);
-        }
-
-        $notifier->toAdmins([
-            'type' => 'enrollment', 'icon' => 'fa-user-graduate', 'level' => 'info',
-            'title' => 'New enrollment',
-            'body' => ($enrollment->student->name ?? 'A student')." enrolled in {$courseName} ({$batchName}).",
-            'url' => route('enrollments.show', $enrollment),
-        ], auth()->id());
     }
 
     public function correctBatch(Request $request, Enrollment $enrollment)
@@ -212,8 +159,10 @@ class EnrollmentController extends Controller
                 $validated['new_batch_id'],
                 $validated['transfer_date'] ?? null
             );
+            $payWarning = app(PayrollService::class)->refreshBatchDue($enrollment->batch_id, $request->user());
             if (!$request->expectsJson()) {
-                return redirect()->route('enrollments.show', $newEnrollment)->with('success', 'Student transferred. Fee schedule preserved.');
+                return redirect()->route('enrollments.show', $newEnrollment)->with('success', 'Student transferred. Fee schedule preserved.')
+                    ->with('warning', $payWarning);
             }
             
             return response()->json([
@@ -248,8 +197,10 @@ class EnrollmentController extends Controller
                 $validated['dropout_reason'],
                 $validated['refund_amount'] ?? 0
             );
+            $payWarning = app(PayrollService::class)->refreshBatchDue($enrollment->batch_id, $request->user());
             if (!$request->expectsJson()) {
-                return redirect()->route('enrollments.show', $enrollment)->with('success', 'Enrollment withdrawn. Existing debt and payment history preserved.');
+                return redirect()->route('enrollments.show', $enrollment)->with('success', 'Enrollment withdrawn. Existing debt and payment history preserved.')
+                    ->with('warning', $payWarning);
             }
             
             return response()->json([
@@ -322,13 +273,15 @@ class EnrollmentController extends Controller
 
     public function updateDiscount(Request $request, Enrollment $enrollment, \App\Services\PaymentService $service)
     {
-        $data = $request->validate(['discount_percentage' => 'required|decimal:0,2|min:0|max:100', 'reason' => 'required|string|min:5|max:1000',
+        $data = $request->validate(['discount_percentage' => 'required_without:discount_amount|nullable|decimal:0,2|min:0|max:100',
+            'discount_amount' => 'required_without:discount_percentage|nullable|decimal:0,2|min:0|max:99999999.99', 'reason' => 'required|string|min:5|max:1000',
             'refund_method' => 'nullable|in:'.implode(',', array_keys(\App\Services\PaymentService::REFUND_METHODS)),
             'refund_reference' => 'nullable|string|max:255', 'submission_key' => 'nullable|string|min:16|max:64']);
         $refund = filled($data['refund_method'] ?? null) ? ['method' => $data['refund_method'], 'reference' => $data['refund_reference'] ?? null,
             'submission_key' => $data['submission_key'] ?? null] : null;
         $refundsBefore = $enrollment->refunds()->count();
-        $service->changeDiscount($enrollment, (string) $data['discount_percentage'], $request->user(), $data['reason'], $refund);
+        $service->changeDiscount($enrollment, isset($data['discount_amount']) ? '0' : (string) $data['discount_percentage'], $request->user(), $data['reason'], $refund,
+            isset($data['discount_amount']) ? Money::minor((string) $data['discount_amount']) : null);
         $newRefund = $enrollment->refunds()->count() > $refundsBefore ? $enrollment->refunds()->latest('id')->first() : null;
 
         return $newRefund

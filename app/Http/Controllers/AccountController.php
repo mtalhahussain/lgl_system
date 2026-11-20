@@ -37,14 +37,19 @@ class AccountController extends Controller
         $filters = [['name' => 'role', 'label' => 'Role', 'options' => array_map(fn ($label) => $label === 'Staff' ? $label : $label.'s', array_diff_key($roles, ['admin' => true]))],
             ['name' => 'status', 'label' => 'Status', 'options' => ['active' => 'Active', 'inactive' => 'Inactive']]];
 
-        $permissions = RolePermission::query()->get()->mapWithKeys(fn ($row) => [$row->role.'.'.$row->module => $row->allowed])->all();
-
-        return view('accounts.index', ['accounts' => $list->paginate(), 'roles' => $roles, 'kpis' => $kpis, 'filters' => $filters,
-            'permissionRoles' => collect(RolePermission::managedRoles())->mapWithKeys(fn ($role) => [$role => RolePermission::modulesFor($role)])->all(),
-            'permissions' => $permissions]);
+        return view('accounts.index', ['accounts' => $list->paginate(), 'roles' => $roles, 'kpis' => $kpis, 'filters' => $filters]);
     }
 
-    public const ROLE_LABELS = ['admin' => 'Admin', 'teacher' => 'Teacher', 'student' => 'Student', 'staff' => 'Staff (no sign-in)'];
+    /** Users > Role permissions: role-wide permissions for Teacher, Student and Staff. */
+    public function permissions()
+    {
+        return view('accounts.permissions', [
+            'permissionRoles' => collect(RolePermission::managedRoles())->mapWithKeys(fn ($role) => [$role => RolePermission::modulesFor($role)])->all(),
+            'permissions' => RolePermission::query()->get()->mapWithKeys(fn ($row) => [$row->role.'.'.$row->module.'.'.$row->action => $row->allowed])->all(),
+        ]);
+    }
+
+    public const ROLE_LABELS = ['admin' => 'Admin', 'teacher' => 'Teacher', 'student' => 'Student', 'staff' => 'Staff'];
 
     public function create()
     {
@@ -55,16 +60,17 @@ class AccountController extends Controller
     public function store(Request $request)
     {
         $role = (string) $request->input('role');
-        $signsIn = $role !== 'staff';
+        // Staff signs in only when given an email; staff without one (cleaner, guard, ...) never signs in.
+        $signsIn = $role !== 'staff' || filled($request->input('email'));
         $paid = in_array($role, User::PAID_ROLES, true);
         // Fields of other roles' sections are excluded (ignored), so a form left filled in for another role cannot leak values.
         $data = $request->validate([
             'role' => ['required', Rule::in(User::ALL_ROLES)],
             'name' => 'required|string|max:255',
-            'email' => ['exclude_if:role,staff', 'required', 'email', 'max:255', 'unique:users,email'],
+            'email' => [$role === 'staff' ? 'nullable' : 'required', 'email', 'max:255', 'unique:users,email'],
             'phone' => [$paid ? 'required' : 'nullable', 'string', 'max:20', 'regex:/^\+?[0-9]+$/D'],
             'address' => 'nullable|string|max:500',
-            'password' => ['exclude_if:role,staff', 'nullable', 'required_with:password_confirmation', 'string', 'min:8', 'confirmed'],
+            'password' => ['nullable', 'required_with:password_confirmation', 'string', 'min:8', 'confirmed'],
             'designation' => ['exclude_unless:role,staff', 'required', 'string', 'max:60'],
             'hire_date' => ['exclude_unless:role,teacher,staff', 'nullable', 'date'],
             'salary_type' => ['exclude_unless:role,teacher', 'required', 'in:monthly,per_student'],
@@ -78,8 +84,10 @@ class AccountController extends Controller
             // No shared/default password: blank stores a random, undisclosed hash; a usable one can be set later.
             $attributes['password'] = Hash::make(filled($data['password'] ?? null) ? $data['password'] : Str::random(64));
             if (! $signsIn) {
-                // Staff never signs in; email is a required column, so it gets an unusable placeholder.
+                // Staff without sign-in; email is a required column, so it gets an unusable placeholder.
                 $attributes['email'] = 'staff-'.Str::uuid().'@staff.invalid';
+            }
+            if ($role === 'staff') {
                 $attributes['salary_type'] = 'monthly';
             }
             if ($role === 'teacher') {
@@ -98,21 +106,28 @@ class AccountController extends Controller
             ->with('success', ucfirst($role)." account for {$user->name} created.");
     }
 
-    /** Admin shows or hides Teacher/Student modules; hidden modules leave the menu and their pages return 403. */
+    /**
+     * Admin sets role-wide permissions: Teacher/Student modules shown or hidden; Staff module actions granted.
+     * Hidden or ungranted modules leave the menu and their pages return 403. Only configured modules/actions are saved,
+     * so Admin-only areas can never be granted.
+     */
     public function updatePermissions(Request $request)
     {
-        $request->validate(['permissions' => 'sometimes|array', 'permissions.*' => 'array']);
+        $request->validate(['permissions' => 'sometimes|array', 'permissions.*' => 'array', 'permissions.*.*' => 'array']);
         $submitted = $request->input('permissions', []);
         DB::transaction(function () use ($submitted, $request) {
             $changes = [];
             foreach (RolePermission::managedRoles() as $role) {
                 foreach (array_keys(RolePermission::modulesFor($role)) as $module) {
-                    $allowed = ! empty($submitted[$role][$module]);
-                    $row = RolePermission::firstOrNew(['role' => $role, 'module' => $module]);
-                    if (! $row->exists || $row->allowed !== $allowed) {
-                        $changes["{$role}.{$module}"] = $allowed;
-                        $row->allowed = $allowed;
-                        $row->save();
+                    foreach (array_keys(RolePermission::actionsFor($role, $module)) as $action) {
+                        // One switch per module (`all`) grants or removes every action of it; single actions are still accepted.
+                        $allowed = ! empty($submitted[$role][$module]['all']) || ! empty($submitted[$role][$module][$action]);
+                        $row = RolePermission::firstOrNew(['role' => $role, 'module' => $module, 'action' => $action]);
+                        if (! $row->exists || $row->allowed !== $allowed) {
+                            $changes["{$role}.{$module}.{$action}"] = $allowed;
+                            $row->allowed = $allowed;
+                            $row->save();
+                        }
                     }
                 }
             }
@@ -122,15 +137,19 @@ class AccountController extends Controller
             }
         });
 
-        return redirect()->to(route('accounts.index').'#role-permissions')->with('success', 'Role permissions saved.');
+        if ($request->expectsJson()) {
+            return response()->json(['message' => 'Permission saved.']);
+        }
+
+        return redirect()->route('accounts.permissions.edit')->with('success', 'Role permissions saved.');
     }
 
     public function update(Request $request, User $user)
     {
         $data = $request->validate(['role' => ['required', Rule::in(User::ALL_ROLES)], 'is_active' => 'required|boolean']);
-        // Staff never signs in, so a staff record cannot become a login account (or the reverse); create a new account instead.
+        // Staff records (designation, salary) cannot change to or from another role; create a new account instead.
         if (($data['role'] === 'staff') !== $user->isStaff()) {
-            throw ValidationException::withMessages(['role' => 'Staff records cannot change to or from a sign-in role.']);
+            throw ValidationException::withMessages(['role' => 'Staff records cannot change to or from another role.']);
         }
         DB::transaction(function () use ($request, $user, $data) {
             $admins = User::where('role', 'admin')->where('is_active', true)->orderBy('id')->lockForUpdate()->get();

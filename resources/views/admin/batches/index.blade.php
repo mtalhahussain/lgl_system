@@ -2,7 +2,7 @@
 @section('title', 'Batches')
 @section('content')
 <x-list.header title="Batches" eyebrow="Academics" subtitle="Schedules, teachers, capacity and class platform">
-    <a class="btn btn-primary" href="{{ route('batches.create') }}"><i class="fas fa-plus me-1" aria-hidden="true"></i>Add batch</a>
+    @if(can_route('batches.create'))<a class="btn btn-primary" href="{{ route('batches.create') }}"><i class="fas fa-plus me-1" aria-hidden="true"></i>Add batch</a>@endif
 </x-list.header>
 <x-list.kpis :items="$kpis" />
 <div class="panel list-panel">
@@ -31,13 +31,13 @@
                     <td class="text-end">
                         <x-list.row-menu :label="$batch->name">
                             <li><a class="dropdown-item" href="{{ route('batches.show', $batch) }}"><i class="fas fa-eye me-2" aria-hidden="true"></i>View</a></li>
-                            <li><a class="dropdown-item" href="{{ route('batches.edit', $batch) }}"><i class="fas fa-pen me-2" aria-hidden="true"></i>Edit</a></li>
-                            <li><a class="dropdown-item" href="{{ route('enrollments.create', ['batch_id' => $batch->id]) }}"><i class="fas fa-user-plus me-2" aria-hidden="true"></i>Enroll student</a></li>
+                            @if(can_route('batches.edit'))<li><a class="dropdown-item" href="{{ route('batches.edit', $batch) }}"><i class="fas fa-pen me-2" aria-hidden="true"></i>Edit</a></li>@endif
+                            @if(can_route('enrollments.create'))<li><a class="dropdown-item" href="{{ route('enrollments.create', ['batch_id' => $batch->id]) }}"><i class="fas fa-user-plus me-2" aria-hidden="true"></i>Enroll student</a></li>@endif
                             <li><a class="dropdown-item" href="{{ route('fees.batch', $batch) }}"><i class="fas fa-money-bill me-2" aria-hidden="true"></i>Batch fees</a></li>
                             @if($batch->status !== 'cancelled')
                                 <li><hr class="dropdown-divider"></li>
-                                <li><form method="post" action="{{ route('batches.destroy', $batch) }}" data-confirm="Cancel {{ $batch->name }}? Enrollment and session history will be preserved.">@csrf @method('DELETE')
-                                    <button class="dropdown-item text-danger"><i class="fas fa-ban me-2" aria-hidden="true"></i>Cancel batch</button></form></li>
+                                <li>@if(can_route('batches.destroy'))<form method="post" action="{{ route('batches.destroy', $batch) }}" data-confirm="Cancel {{ $batch->name }}? Enrollment and session history will be preserved.">@csrf @method('DELETE')
+                                    <button class="dropdown-item text-danger"><i class="fas fa-ban me-2" aria-hidden="true"></i>Cancel batch</button></form>@endif</li>
                             @endif
                         </x-list.row-menu>
                     </td>

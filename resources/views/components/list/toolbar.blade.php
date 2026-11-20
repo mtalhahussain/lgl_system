@@ -84,7 +84,7 @@
         @endif
         <div class="list-buttons">
             <button class="btn btn-primary list-apply">Apply</button>
-            @if($csv && auth()->user()->isAdmin())
+            @if($csv && auth()->user()->actsAsAdmin())
                 <a class="btn btn-outline-primary" href="{{ request()->fullUrlWithQuery(['export' => 'csv', 'page' => null]) }}"><i class="fas fa-file-csv me-1" aria-hidden="true"></i>CSV</a>
             @endif
         </div>

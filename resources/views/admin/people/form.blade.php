@@ -1,11 +1,38 @@
 @extends('layouts.admin')
-@section('title', ($person ? 'Edit ' : 'Add ').($kind === 'students' ? 'Student' : 'Teacher'))
+@section('title', $kind === 'students' && !$person ? 'Student admission' : ($person ? 'Edit ' : 'Add ').($kind === 'students' ? 'Student' : 'Teacher'))
 @section('content')
 @php $noun = $kind === 'students' ? 'Student' : 'Teacher'; @endphp
-<x-list.header :title="($person ? 'Edit' : 'Add').' '.$noun" eyebrow="People" :subtitle="$person ? $person->email : 'Create the account and contact profile'" />
-<form method="post" action="{{ $person ? route($kind.'.update', $person) : route($kind.'.store') }}" class="panel form-panel">
+<x-list.header :title="$kind === 'students' && !$person ? 'Student admission' : ($person ? 'Edit' : 'Add').' '.$noun" eyebrow="People" :subtitle="$person ? $person->email : ($kind === 'students' ? 'Enter student details, choose a batch and set the fee plan in one form' : 'Create the account and contact profile')" />
+@if(isset($lead))
+    <p class="alert alert-info">Registering from lead: {{ $lead->name }}. Review the prefilled details before saving.</p>
+    @if($duplicates['students']->isNotEmpty())
+        <div class="alert alert-warning">Possible existing student. Open their profile to avoid registering them twice:
+            @foreach($duplicates['students'] as $duplicate)<a href="{{ route('students.show', $duplicate) }}">{{ $duplicate->name }}</a>@endforeach
+        </div>
+    @endif
+@endif
+@if($kind === 'students' && !$person && !isset($lead))
+@if(can_route('students.create'))<form method="get" action="{{ route('students.create') }}" class="panel admission-student-picker">
+    @if(request()->filled('batch_id'))<input type="hidden" name="batch_id" value="{{ request('batch_id') }}">@endif
+    <label class="form-label" for="choose_student">Student</label>
+    <div class="admission-student-picker-row">
+        <select class="form-select" name="student_id" id="choose_student">
+            <option value="">New student</option>
+            @foreach($availableStudents ?? [] as $candidate)<option value="{{ $candidate->id }}" @selected(old('student_id', $selectedStudent->id ?? null) == $candidate->id)>{{ $candidate->name }} — {{ $candidate->email }}</option>@endforeach
+        </select>
+        <button class="btn btn-outline-primary" type="submit">Choose</button>
+    </div>
+</form>@endif
+@endif
+<form method="post" action="{{ $formAction ?? ($person ? route($kind.'.update', $person) : route($kind.'.store')) }}" class="panel form-panel">
     @csrf
     @if($person) @method('PUT') @endif
+    @if(isset($selectedStudent))
+        <input type="hidden" name="student_id" value="{{ $selectedStudent->id }}">
+        <div class="form-section">
+            <p class="form-section-note mb-0">{{ $selectedStudent->name }} · {{ $selectedStudent->email }}. Saved details are protected. You can complete any empty fields below.</p>
+        </div>
+    @endif
     <div class="form-section">
         <h2 class="form-section-title">Contact details</h2>
         <p class="form-section-note">Email is the login name.</p>
@@ -13,21 +40,28 @@
             @foreach(['name' => 'Name', 'email' => 'Email', 'phone' => 'Phone'] as $field => $label)
                 <div class="col-md-6">
                     <label class="form-label required" for="{{ $field }}">{{ $label }}</label>
-                    <input class="form-control" id="{{ $field }}" name="{{ $field }}" type="{{ $field === 'email' ? 'email' : ($field === 'phone' ? 'tel' : 'text') }}" @if($field === 'phone') inputmode="tel" pattern="\+?[0-9]+" maxlength="20" title="Digits only, with an optional leading +" @endif value="{{ old($field, $person?->$field) }}" required>
+                    <input class="form-control" id="{{ $field }}" name="{{ $field }}" type="{{ $field === 'email' ? 'email' : ($field === 'phone' ? 'tel' : 'text') }}" @if($field === 'phone') inputmode="tel" pattern="\+?[0-9]+" maxlength="20" title="Digits only, with an optional leading +" @endif value="{{ isset($selectedStudent) && filled($selectedStudent->$field) ? $selectedStudent->$field : old($field, $prefill[$field] ?? $person?->$field) }}" @readonly(isset($selectedStudent) && filled($selectedStudent->$field)) @required(!isset($selectedStudent))>
                 </div>
             @endforeach
             <div class="col-md-6">
                 <label class="form-label" for="emergency_contact">Emergency contact</label>
-                <input class="form-control" id="emergency_contact" name="emergency_contact" type="tel" inputmode="tel" pattern="\+?[0-9]+" maxlength="20" title="Digits only, with an optional leading +" value="{{ old('emergency_contact', $person?->emergency_contact) }}">
+                <input class="form-control" id="emergency_contact" name="emergency_contact" type="tel" inputmode="tel" pattern="\+?[0-9]+" maxlength="20" title="Digits only, with an optional leading +" value="{{ isset($selectedStudent) && filled($selectedStudent->emergency_contact) ? $selectedStudent->emergency_contact : old('emergency_contact', $prefill['emergency_contact'] ?? $person?->emergency_contact) }}" @readonly(isset($selectedStudent) && filled($selectedStudent->emergency_contact))>
             </div>
             <div class="col-md-6">
                 <label class="form-label" for="date_of_birth">Date of birth</label>
-                <input class="form-control" type="date" id="date_of_birth" name="date_of_birth" value="{{ old('date_of_birth', $person?->date_of_birth?->format('Y-m-d')) }}">
+                <input class="form-control" type="date" id="date_of_birth" name="date_of_birth" value="{{ isset($selectedStudent) && filled($selectedStudent->date_of_birth) ? $selectedStudent->date_of_birth?->format('Y-m-d') : old('date_of_birth', $prefill['date_of_birth'] ?? $person?->date_of_birth?->format('Y-m-d')) }}" @readonly(isset($selectedStudent) && filled($selectedStudent->date_of_birth))>
             </div>
             <div class="col-md-6">
                 <label class="form-label required" for="address">Address</label>
-                <input class="form-control" id="address" name="address" value="{{ old('address', $person?->address) }}" required>
+                <input class="form-control" id="address" name="address" value="{{ isset($selectedStudent) && filled($selectedStudent->address) ? $selectedStudent->address : old('address', $prefill['address'] ?? $person?->address) }}" @readonly(isset($selectedStudent) && filled($selectedStudent->address)) @required(!isset($selectedStudent))>
             </div>
+            @if($kind === 'students' && !$person)
+                @foreach(['father_name' => 'Father name', 'cnic' => 'CNIC'] as $field => $label)
+                    <div class="col-md-6"><label class="form-label" for="{{ $field }}">{{ $label }}</label>
+                        <input class="form-control" id="{{ $field }}" name="{{ $field }}" value="{{ isset($selectedStudent) && filled($selectedStudent->$field) ? $selectedStudent->$field : old($field, $prefill[$field] ?? '') }}" maxlength="{{ $field === 'cnic' ? 20 : 255 }}" @readonly(isset($selectedStudent) && filled($selectedStudent->$field))>
+                    </div>
+                @endforeach
+            @endif
         </div>
     </div>
     @if($kind === 'teachers')
@@ -87,25 +121,33 @@
         </div>
     @elseif(!$person)
         <div class="form-section">
-            <h2 class="form-section-title">Admission (optional)</h2>
-            <p class="form-section-note">Choosing a batch admits the student and creates a one-installment fee plan.</p>
+            <h2 class="form-section-title">Batch & fee plan</h2>
+            <p class="form-section-note">Select a batch to register and enroll together. The fee plan is created on save; payments are recorded separately. Choose no batch only when admission is pending.</p>
             <div class="row g-3">
                 <div class="col-md-6">
                     <label class="form-label" for="batch_id">Enroll in batch</label>
-                    <select class="form-select" id="batch_id" name="batch_id">
-                        <option value="">Register without enrollment</option>
+                    <select class="form-select" id="batch_id" name="batch_id" @required(isset($selectedStudent))>
+                        <option value="">No batch yet — register only (admission pending)</option>
                         @foreach($batches as $batch)
-                            <option value="{{ $batch->id }}" @selected(old('batch_id') == $batch->id)>{{ $batch->name }}</option>
+                            <option value="{{ $batch->id }}" @selected(old('batch_id', request('batch_id')) == $batch->id)>{{ $batch->name }} — {{ $batch->course->name }} ({{ $batch->course->level }}) · {{ currency_format($batch->course->total_fee) }} · {{ ucfirst($batch->status) }}</option>
                         @endforeach
                     </select>
                 </div>
                 <div class="col-md-6">
-                    <label class="form-label" for="discount_percentage">Discount percentage</label>
-                    <input class="form-control" id="discount_percentage" name="discount_percentage" type="number" min="0" max="100" step="0.01" value="{{ old('discount_percentage', 0) }}">
+                    <label class="form-label" for="installments">Fee installments</label>
+                    <select class="form-select" id="installments" name="installments">
+                        @for($number = 1; $number <= 12; $number++)<option value="{{ $number }}" @selected(old('installments', 1) == $number)>{{ $number === 1 ? '1 — full fee due' : $number.' monthly installments' }}</option>@endfor
+                    </select>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label" for="discount_amount">Discount amount ({{ setting('currency_code', 'PKR') }})</label>
+                    <input class="form-control" id="discount_amount" name="discount_amount" type="number" min="0" max="99999999.99" step="0.01" value="{{ old('discount_amount', 0) }}">
                 </div>
             </div>
+            @include('partials.admission-schedule')
         </div>
     @endif
+    @unless(isset($selectedStudent))
     <div class="form-section">
         <h2 class="form-section-title">Sign-in</h2>
         <p class="form-section-note">{{ $person ? 'Password is optional. Leave blank to keep the current password.' : 'Password is optional. Leave blank to set it later before the first sign-in.' }} If entered, use at least 8 characters and confirm it.</p>
@@ -127,9 +169,10 @@
             </div>
         </div>
     </div>
+    @endunless
     <div class="form-actions">
         <a class="btn btn-outline-secondary" href="{{ route($kind.'.index') }}">Cancel</a>
-        <button class="btn btn-primary">Save</button>
+        <button class="btn btn-primary">{{ $kind === 'students' && !$person ? 'Save student admission' : 'Save' }}</button>
     </div>
 </form>
 @include('partials.machine-sync')

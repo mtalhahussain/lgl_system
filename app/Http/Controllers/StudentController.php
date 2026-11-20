@@ -45,9 +45,10 @@ class StudentController extends Controller
 
             return view('academic.students', compact('students', 'batches'));
         }
-        $courses = Course::orderBy('name')->pluck('name', 'id');
+        $courses = Course::orderBy('level')->orderBy('name')->get(['id', 'name', 'level'])
+            ->mapWithKeys(fn ($course) => [$course->id => $course->name.($course->level ? ' ('.$course->level.')' : '')]);
         $batches = Batch::orderBy('name')->pluck('name', 'id');
-        $list = ListQuery::for(User::students()->with(['enrollments.batch:id,name', 'machineSyncRows']), $request)
+        $list = ListQuery::for(User::students()->with(['enrollments.batch:id,name,course_id', 'enrollments.batch.course:id,name,level', 'machineSyncRows']), $request)
             ->search(['name', 'email', 'phone'])
             ->filter('status', fn ($query, $status) => $query->where('is_active', $status === 'active'), ['active', 'inactive'])
             ->filter('course_id', fn ($query, $id) => $query->whereHas('enrollments.batch', fn ($batch) => $batch->where('course_id', $id)), $courses->keys()->all())
@@ -64,70 +65,30 @@ class StudentController extends Controller
             ['label' => 'Inactive', 'value' => $counts['total'] - $counts['active'], 'icon' => 'fa-user-slash'],
             ['label' => 'Joined this month', 'value' => $counts['recent'], 'icon' => 'fa-user-plus']];
         $filters = [['name' => 'status', 'label' => 'Status', 'options' => ['active' => 'Active', 'inactive' => 'Inactive']],
-            ['name' => 'course_id', 'label' => 'Course', 'options' => $courses], ['name' => 'batch_id', 'label' => 'Batch', 'options' => $batches]];
+            ['name' => 'course_id', 'label' => 'Level', 'options' => $courses], ['name' => 'batch_id', 'label' => 'Batch', 'options' => $batches]];
 
         return view('admin.people.index', ['people' => $list->paginate(), 'kind' => 'students', 'kpis' => $kpis, 'filters' => $filters]);
     }
 
-    public function create()
+    public function create(Request $request)
     {
-        $courses = Course::all();
-        $batches = Batch::where('status', 'ongoing')
-            ->with('course')
-            ->get();
-
-        return view('admin.people.form', ['kind' => 'students', 'person' => null, 'batches' => $batches]);
+        $selectedStudent = $request->filled('student_id')
+            ? User::students()->where('is_active', true)->findOrFail($request->student_id) : null;
+        return view('admin.people.form', ['kind' => 'students', 'person' => null,
+            'selectedStudent' => $selectedStudent, 'availableStudents' => User::students()->where('is_active', true)->orderBy('name')->get(['id', 'name', 'email']),
+            'batches' => \App\Services\StudentRegistrationService::availableBatches()]);
     }
 
     public function store(Request $request)
     {
-        $request->validate([
-            'name' => 'required|string|max:255',
-            'email' => 'required|string|email|max:255|unique:users',
-            'phone' => 'required|string|max:20|regex:/^\+?[0-9]+$/D',
-            'address' => 'required|string|max:500',
-            'date_of_birth' => 'nullable|date|before:today',
-            'emergency_contact' => 'nullable|string|max:20|regex:/^\+?[0-9]+$/D',
-            'password' => 'nullable|required_with:password_confirmation|string|min:8|confirmed',
-            'is_active' => 'sometimes|boolean',
-            'batch_id' => 'nullable|exists:batches,id',
-            'discount_percentage' => 'nullable|numeric|min:0|max:100',
-        ]);
-
-        DB::beginTransaction();
-        try {
-            // Create student user
-            $student = User::create([
-                'name' => $request->name,
-                'email' => $request->email,
-                'password' => Hash::make($request->filled('password') ? $request->password : Str::random(64)),
-                'role' => 'student',
-                'phone' => $request->phone,
-                'address' => $request->address,
-                'date_of_birth' => $request->date_of_birth,
-                'emergency_contact' => $request->emergency_contact,
-                'is_active' => $request->boolean('is_active', true),
-            ]);
-
-            // Enroll in batch
-            if ($request->filled('batch_id')) {
-                $batch = Batch::findOrFail($request->batch_id);
-                $enrollment = $this->enrollmentService->enrollStudent(
-                    $student->id,
-                    $batch->id,
-                    $request->discount_percentage ?? 0
-                );
-            }
-
-            DB::commit();
-
-            return redirect()->route('students.index')
-                ->with('success', 'Student created and enrolled successfully!');
-        } catch (\Exception $e) {
-            DB::rollBack();
-
-            return back()->withErrors(['error' => 'Failed to create student: '.$e->getMessage()]);
+        if (is_array($request->input('schedule'))) {
+            $request->merge(['schedule' => array_values(array_filter($request->input('schedule'), fn ($row) => !is_array($row) || filled($row['amount'] ?? null) || filled($row['due_date'] ?? null)))]);
         }
+        $data = $request->validate(\App\Services\StudentRegistrationService::rules($request->filled('student_id'), $request->input('student_id')));
+        $student = app(\App\Services\StudentRegistrationService::class)->register($data);
+
+        return redirect()->route('students.index')->with('success', $request->filled('batch_id')
+            ? 'Student registered and enrolled. Fee plan created.' : 'Student registered. No batch selected; admission can be added later.');
     }
 
     public function show(User $student)
@@ -214,7 +175,8 @@ class StudentController extends Controller
 
     public function dashboard()
     {
-        $enrollments = auth()->user()->enrollments()->with('batch.course:id,name,level')->orderByDesc('id')->get();
+        $enrollments = auth()->user()->enrollments()->with(['batch.course' => fn ($query) => $query->select('id', 'name', 'level')
+            ->withCount(['materials' => fn ($materials) => $materials->accessibleTo(auth()->user())])])->orderByDesc('id')->get();
         $sessions = ClassSession::whereHas('batch.enrollments', fn ($query) => $query->where('student_id', auth()->id())->where('status', 'active'))
             ->whereIn('status', ['scheduled', 'ongoing'])->whereDate('session_date', '>=', today())->with('batch:id,name,meeting_link,meeting_platform,status')->orderBy('session_date')->orderBy('start_time')->limit(10)->get();
         $attendance = Attendance::getAttendanceStats(auth()->id());

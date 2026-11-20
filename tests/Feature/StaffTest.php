@@ -32,7 +32,7 @@ class StaffTest extends TestCase
         return User::where('role', 'staff')->latest('id')->firstOrFail();
     }
 
-    public function test_admin_adds_staff_who_is_listed_in_users_but_cannot_sign_in(): void
+    public function test_admin_adds_staff_without_email_who_is_listed_in_users_but_cannot_sign_in(): void
     {
         $this->get('/accounts')->assertOk()->assertSee('Add user')->assertSee(route('accounts.create'), false);
         $this->get('/staff/create')->assertOk()->assertSee('Receptionist')->assertSee('Back to Users');
@@ -46,9 +46,11 @@ class StaffTest extends TestCase
 
         $this->get('/accounts?role=staff')->assertOk()->assertSee('Guard Gul')->assertSee('Security guard · 03001112233')
             ->assertDontSee('@staff.invalid')->assertSee(route('staff.edit', $guard), false);
-        $this->get('/accounts')->assertOk()->assertSee('Staff');
+        $this->get('/accounts')->assertOk()->assertSee('Staff')->assertSee(route('staff.show', $guard), false);
+        $this->get(route('staff.show', $guard))->assertOk()->assertSee('Guard Gul')->assertSee('Security guard')
+            ->assertSee('Does not sign in')->assertSee(route('staff.edit', $guard), false)->assertDontSee('@staff.invalid');
 
-        // Even with a known password, staff cannot sign in, and an existing session is ended.
+        // Staff without a sign-in email cannot sign in even with a known password, and an existing session is ended.
         $guard->forceFill(['password' => Hash::make('password123')])->save();
         auth()->logout();
         $this->post('/login', ['email' => $guard->email, 'password' => 'password123'])->assertSessionHasErrors('email');

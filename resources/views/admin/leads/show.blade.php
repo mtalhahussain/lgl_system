@@ -17,13 +17,13 @@
     </div>
     <div class="d-flex flex-wrap gap-2">
         @unless(in_array($lead->status, ['submitted', 'converted'], true))
-            <a href="{{ route('leads.edit', $lead) }}" class="btn btn-outline-secondary btn-sm"><i class="fas fa-pen me-1" aria-hidden="true"></i>Edit</a>
+            @if(can_route('leads.edit'))<a href="{{ route('leads.edit', $lead) }}" class="btn btn-outline-secondary btn-sm"><i class="fas fa-pen me-1" aria-hidden="true"></i>Edit</a>@endif
         @endunless
         @unless($lead->status === 'converted')
-            <form method="POST" action="{{ route('leads.destroy', $lead) }}" class="d-inline" onsubmit="return confirm('Delete this lead permanently?')">
+            @if(can_route('leads.destroy'))<form method="POST" action="{{ route('leads.destroy', $lead) }}" class="d-inline" onsubmit="return confirm('Delete this lead permanently?')">
                 @csrf @method('DELETE')
                 <button type="submit" class="btn btn-outline-danger btn-sm"><i class="fas fa-trash me-1" aria-hidden="true"></i>Delete</button>
-            </form>
+            </form>@endif
         @endunless
         <a href="{{ route('leads.index') }}" class="btn btn-outline-secondary btn-sm">Back to leads</a>
     </div>
@@ -70,45 +70,32 @@
 
     <div class="col-lg-5">
         <div class="card card-body">
-            <h2 class="h6 text-uppercase text-muted">Pipeline</h2>
-
-            @if (in_array($lead->status, ['new','contacted']))
-                <form method="POST" action="{{ route('leads.qualify', $lead) }}" class="mb-3">
-                    @csrf
-                    <button type="submit" class="btn btn-lgl btn-lgl-red w-100">
-                        <i class="fas fa-check"></i> Qualify &amp; generate application link
-                    </button>
-                </form>
-
-                <form method="POST" action="{{ route('leads.reject', $lead) }}">
-                    @csrf
-                    <label class="form-label small" for="reason">Reject reason</label>
-                    <textarea class="form-control mb-2" id="reason" name="reason" rows="2" minlength="5" maxlength="500" placeholder="Why this lead is rejected (min 5 chars)"></textarea>
-                    <button type="submit" class="btn btn-outline-dark w-100">Reject lead</button>
-                </form>
-
-            @elseif ($lead->status === 'qualified')
-                <p class="small text-muted">Share this one-time link with the applicant (valid 48 hours). They confirm their details; CNIC stays locked.</p>
-                <div class="input-group mb-2">
-                    <input type="text" class="form-control" id="prefill" value="{{ $prefillUrl }}" readonly>
-                    <button class="btn btn-dark" type="button" onclick="navigator.clipboard && navigator.clipboard.writeText(document.getElementById('prefill').value)">Copy</button>
-                </div>
-                <p class="small text-muted mb-0">Waiting for the applicant to complete their registration.</p>
-
-            @elseif ($lead->status === 'submitted')
-                <div class="alert alert-success small">Applicant completed their registration on {{ optional($lead->submitted_at)->format('d-m-Y h:i A') }}.</div>
-                <a href="{{ route('leads.convert', $lead) }}" class="btn btn-lgl btn-lgl-red w-100">
-                    <i class="fas fa-user-plus"></i> Review &amp; create student
-                </a>
-
-            @elseif ($lead->status === 'converted')
-                <div class="alert alert-success mb-0">Converted to a student account.
-                    @if ($lead->student)<a href="{{ route('students.show', $lead->student) }}">Open student</a>.@endif
-                </div>
-
-            @elseif ($lead->status === 'rejected')
-                <div class="alert alert-dark mb-0">This lead was rejected.</div>
+            <h2 class="h6 text-uppercase text-muted">Inquiry follow-up</h2>
+            @if(in_array($lead->status, ['new', 'contacted']))
+                @if($lead->status === 'new')
+                    @if(can_route('leads.contact'))<form method="post" action="{{ route('leads.contact', $lead) }}" class="mb-3">@csrf
+                        <button class="btn btn-outline-primary w-100">Mark as contacted</button>
+                    </form>@endif
+                @endif
+                <p class="small text-muted">Contact the person, confirm their interest and qualify them when ready.</p>
+                @if(can_route('leads.qualify'))<form method="post" action="{{ route('leads.qualify', $lead) }}" class="mb-3">@csrf
+                    <button class="btn btn-primary w-100">Qualify lead</button>
+                </form>@endif
+            @elseif(in_array($lead->status, ['qualified', 'submitted']))
+                <p class="small text-muted">This lead is ready for review and student registration.</p>
+                @if(can_route('leads.convert'))<a href="{{ route('leads.convert', $lead) }}" class="btn btn-primary w-100 mb-3">Convert to student</a>@endif
+            @elseif($lead->status === 'converted')
+                <div class="alert alert-success">Converted to a student. @if($lead->student)<a href="{{ route('students.show', $lead->student) }}">Open student</a>.@endif</div>
+            @elseif($lead->status === 'rejected')
+                <div class="alert alert-dark">Lead rejected: {{ $lead->rejected_reason }}</div>
             @endif
+            @unless(in_array($lead->status, ['converted', 'rejected']))
+                @if(can_route('leads.reject'))<form method="post" action="{{ route('leads.reject', $lead) }}">@csrf
+                    <label class="form-label small" for="reason">Reject reason</label>
+                    <textarea class="form-control mb-2" id="reason" name="reason" rows="2" minlength="5" maxlength="500" required></textarea>
+                    <button class="btn btn-outline-danger w-100">Reject lead</button>
+                </form>@endif
+            @endunless
         </div>
     </div>
 </div>

@@ -20,7 +20,7 @@ class PaymentService
 
     public function pay(int $enrollmentId, string $amount, string $method, string $key, User $actor, ?string $reference = null, ?int $installmentId = null): Payment
     {
-        abort_unless($actor->isAdmin() && $actor->is_active, 403);
+        abort_unless($actor->actsAsAdmin() && $actor->is_active, 403);
         $minor = Money::minor($amount);
         if ($minor <= 0 || ! in_array($method, ['cash', 'bank', 'card', 'jazzcash', 'easypaisa', 'online'], true)
             || ! preg_match('/^[A-Za-z0-9_-]{16,64}$/D', $key)) {
@@ -91,7 +91,7 @@ class PaymentService
 
     public function reverse(Payment $payment, User $actor, string $reason): PaymentReversal
     {
-        abort_unless($actor->isAdmin() && $actor->is_active, 403);
+        abort_unless($actor->actsAsAdmin() && $actor->is_active, 403);
         $package = $payment->enrollment->packagePurchase;
         if (! $package || ! in_array($payment->id, array_column($package->receipt_details['modules'], 'payment_id'), true)) {
             return $this->reverseSingle($payment, $actor, $reason);
@@ -115,7 +115,7 @@ class PaymentService
 
     private function reverseSingle(Payment $payment, User $actor, string $reason): PaymentReversal
     {
-        abort_unless($actor->isAdmin() && $actor->is_active, 403);
+        abort_unless($actor->actsAsAdmin() && $actor->is_active, 403);
         if (strlen(trim($reason)) < 5 || strlen($reason) > 1000 || $payment->legacy_source !== null) {
             throw ValidationException::withMessages(['reason' => 'Provide a reason of 5–1000 characters. Imported opening balances need separate reconciliation.']);
         }
@@ -143,23 +143,29 @@ class PaymentService
      * more discount trims the latest installments' outstanding amounts; less discount is added to
      * the latest unpaid installment (or the last one). Paid amounts never change.
      */
-    public function changeDiscount(Enrollment $enrollment, string $percentage, User $actor, string $reason, ?array $refund = null): Enrollment
+    public function changeDiscount(Enrollment $enrollment, string $percentage, User $actor, string $reason, ?array $refund = null, ?int $fixedDiscountMinor = null): Enrollment
     {
-        abort_unless($actor->isAdmin() && $actor->is_active, 403);
+        // Refunds stay Admin-only: Staff may change a discount only when no refund is recorded with it.
+        abort_unless(($actor->isAdmin() || ($actor->isStaff() && $refund === null)) && $actor->is_active, 403);
         if (strlen(trim($reason)) < 5 || strlen($reason) > 1000) {
             throw ValidationException::withMessages(['reason' => 'Provide a reason of 5–1000 characters.']);
         }
         $basisPoints = Money::minor($percentage);
+        $discountField = $fixedDiscountMinor === null ? 'discount_percentage' : 'discount_amount';
         if ($basisPoints > 10000) {
             throw ValidationException::withMessages(['discount_percentage' => 'Discount cannot exceed 100%.']);
         }
 
-        $payload = hash('sha256', json_encode([$enrollment->id, $basisPoints, trim($reason), $refund['method'] ?? null, $refund['reference'] ?? null, $actor->id]));
+        $details = [$enrollment->id, $basisPoints, trim($reason), $refund['method'] ?? null, $refund['reference'] ?? null, $actor->id];
+        if ($fixedDiscountMinor !== null) {
+            $details[] = $fixedDiscountMinor;
+        }
+        $payload = hash('sha256', json_encode($details));
 
-        return DB::transaction(function () use ($enrollment, $basisPoints, $actor, $reason, $refund, $payload) {
+        return DB::transaction(function () use ($enrollment, $basisPoints, $actor, $reason, $refund, $payload, $fixedDiscountMinor, $discountField) {
             $enrollment = Enrollment::lockForUpdate()->findOrFail($enrollment->id);
             if ($enrollment->enrollment_package_id !== null) {
-                throw ValidationException::withMessages(['discount_percentage' => 'Package module prices are fixed by the combined agreement and cannot be edited separately.']);
+                throw ValidationException::withMessages([$discountField => 'Package module prices are fixed by the combined agreement and cannot be edited separately.']);
             }
             // A repeated submission of the same refund returns the already-applied result.
             if (! empty($refund['submission_key']) && ($existing = FeeRefund::where('submission_key', $refund['submission_key'])->first())) {
@@ -170,14 +176,17 @@ class PaymentService
                 return $enrollment;
             }
             if ($enrollment->status === 'transferred') {
-                throw ValidationException::withMessages(['discount_percentage' => 'Change the discount on the enrollment it was transferred to.']);
+                throw ValidationException::withMessages([$discountField => 'Change the discount on the enrollment it was transferred to.']);
             }
             $this->assertReconciled($enrollment);
             $gross = Money::minor($enrollment->total_fee);
             $oldDiscount = Money::minor($enrollment->discount_amount);
-            $newDiscount = intdiv($gross * $basisPoints + 5000, 10000);
+            $newDiscount = $fixedDiscountMinor ?? intdiv($gross * $basisPoints + 5000, 10000);
+            if ($newDiscount < 0 || $newDiscount > $gross) {
+                throw ValidationException::withMessages([$discountField => 'Discount amount cannot exceed the original fee.']);
+            }
             if ($newDiscount === $oldDiscount) {
-                throw ValidationException::withMessages(['discount_percentage' => 'The discount is unchanged.']);
+                throw ValidationException::withMessages([$discountField => 'The discount is unchanged.']);
             }
             $kept = Money::minor($enrollment->paid_amount) - Money::minor($enrollment->refunded_amount ?? '0');
             $refundMinor = max(0, $kept - ($gross - $newDiscount));
@@ -189,7 +198,8 @@ class PaymentService
                 }
                 $max = rtrim(rtrim(intdiv($maxBasisPoints, 100).'.'.str_pad((string) ($maxBasisPoints % 100), 2, '0', STR_PAD_LEFT), '0'), '.');
                 throw ValidationException::withMessages(['refund_method' => 'This student has already paid '.currency_format(Money::decimal($kept))
-                    .'. This discount needs a refund of '.currency_format(Money::decimal($refundMinor)).': choose how it was refunded, or keep the discount at '.$max.'% or less.']);
+                    .'. This discount needs a refund of '.currency_format(Money::decimal($refundMinor)).': choose how it was refunded, or keep the discount at '
+                    .($fixedDiscountMinor === null ? $max.'%' : currency_format(Money::decimal(max(0, $gross - $kept)))).' or less.']);
             }
             if ($refundMinor > 0 && (! array_key_exists($refund['method'], self::REFUND_METHODS)
                 || ! preg_match('/^[A-Za-z0-9_-]{16,64}$/D', (string) ($refund['submission_key'] ?? '')))) {
@@ -221,7 +231,7 @@ class PaymentService
             } else {
                 $target = $installments->first(fn ($row) => Money::minor($row->outstanding_amount) > 0) ?? $installments->first();
                 if (! $target) {
-                    throw ValidationException::withMessages(['discount_percentage' => 'Create a fee schedule before changing the discount.']);
+                    throw ValidationException::withMessages([$discountField => 'Create a fee schedule before changing the discount.']);
                 }
                 $adjust($target, $oldDiscount - $newDiscount);
             }

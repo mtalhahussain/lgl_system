@@ -139,13 +139,13 @@ class ListQuery
     }
 
     /**
-     * Streams every filtered row; only Admin may export.
+     * Streams every filtered row; Admin (or Staff on a granted list) may export.
      *
      * @param  array<string, Closure>  $columns  header => fn ($row) value
      */
     public function csv(string $name, array $columns): StreamedResponse
     {
-        abort_unless($this->request->user()?->isAdmin(), 403);
+        abort_unless($this->request->user()?->actsAsAdmin(), 403);
         $rows = (function () use ($columns) {
             foreach ($this->query->lazy(500) as $row) {
                 yield array_map(fn (Closure $value) => $value($row), array_values($columns));

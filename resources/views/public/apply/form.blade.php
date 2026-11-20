@@ -1,12 +1,12 @@
 @extends('public.layout')
 
-@section('title', 'Apply')
+@section('title', 'Course inquiry')
 
 @section('content')
 <div class="card">
     <div class="card-header">
-        <h1>Apply for admission</h1>
-        <p class="text-muted mb-0 mt-1">Fill the short form and our team will contact you to complete your registration.</p>
+        <h1>Your German journey starts here</h1>
+        <p class="text-muted mb-0 mt-1">Ready to take your first step—or build on what you already know? Tell us a little about yourself. Our team will contact you to discuss the right German level, class timings and fees, and help you plan your next step.</p>
     </div>
     <div class="card-body">
         @if ($errors->any())
@@ -19,7 +19,7 @@
             </div>
         @endif
 
-        <form method="POST" action="{{ route('apply.store') }}" novalidate>
+        <form method="POST" action="{{ $inquiryAction ?? route('apply.store') }}">
             @csrf
 
             {{-- Honeypot: hidden from humans, bots fill it. --}}
@@ -32,16 +32,7 @@
                 <input type="text" class="form-control" id="name" name="name" value="{{ old('name') }}" required maxlength="255">
             </div>
 
-            <div class="mb-3">
-                <label class="form-label" for="father_name">Father's name</label>
-                <input type="text" class="form-control" id="father_name" name="father_name" value="{{ old('father_name') }}" maxlength="255">
-            </div>
 
-            <div class="mb-3">
-                <label class="form-label" for="cnic">CNIC</label>
-                <input type="text" class="form-control" id="cnic" name="cnic" value="{{ old('cnic') }}" inputmode="numeric" placeholder="3520112345678" maxlength="20">
-                <div class="form-text">13-digit CNIC (dashes allowed). Helps us match your record.</div>
-            </div>
 
             <div class="mb-3">
                 <label class="form-label" for="phone">Phone / WhatsApp <span class="req">*</span></label>
@@ -54,8 +45,13 @@
             </div>
 
             <div class="mb-3">
-                <label class="form-label" for="program_interest">Level of interest</label>
-                <input type="text" class="form-control" id="program_interest" name="program_interest" value="{{ old('program_interest') }}" placeholder="e.g. German A1" maxlength="255">
+                <label class="form-label" for="program_interest">Level of interest <span class="req">*</span></label>
+                <select class="form-select" id="program_interest" name="program_interest" required>
+                    <option value="">Select a level</option>
+                    @foreach(\App\Services\EnrollmentService::LEVELS as $code)
+                        <option value="{{ $code }}" @selected(old('program_interest') === $code)>{{ $code }}</option>
+                    @endforeach
+                </select>
             </div>
 
             <div class="mb-3">
@@ -64,7 +60,7 @@
             </div>
 
             <div class="d-grid">
-                <button type="submit" class="btn btn-lgl btn-lg">Submit application</button>
+                <button type="submit" class="btn btn-lgl btn-lg">Send inquiry</button>
             </div>
         </form>
     </div>

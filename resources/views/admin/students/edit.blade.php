@@ -23,7 +23,7 @@
                 </h5>
             </div>
             <div class="card-body">
-                <form method="POST" action="{{ route('students.update', $student) }}">
+                @if(can_route('students.update'))<form method="POST" action="{{ route('students.update', $student) }}">
                     @csrf
                     @method('PUT')
                     
@@ -121,7 +121,7 @@
                             <i class="fas fa-save me-1"></i>Update Student
                         </button>
                     </div>
-                </form>
+                </form>@endif
             </div>
         </div>
     </div>

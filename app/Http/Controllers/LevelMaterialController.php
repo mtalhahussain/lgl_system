@@ -14,6 +14,7 @@ class LevelMaterialController extends Controller
     public function index(Request $request)
     {
         $materials = LevelMaterial::query()->accessibleTo($request->user())
+            ->when($request->filled('course_id'), fn ($query) => $query->where('course_id', (int) $request->input('course_id')))
             ->with('course:id,name,level')->orderBy('title')->get();
         $levels = $materials->groupBy('course_id')->map(fn ($items) => ['course' => $items->first()->course, 'materials' => $items])
             ->sortBy(fn ($group) => $group['course']->name.' '.$group['course']->level)->values();

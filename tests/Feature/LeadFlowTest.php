@@ -56,7 +56,7 @@ class LeadFlowTest extends TestCase
         $this->assertSame('B1', Lead::sole()->program_interest);
     }
 
-    public function test_recent_duplicate_phone_is_ignored_without_replacing_original_inquiry(): void
+    public function test_duplicate_phone_is_ignored_even_after_24_hours_without_replacing_original_inquiry(): void
     {
         $data = ['name' => 'Original inquiry', 'phone' => '03001234567', 'program_interest' => 'A1'];
         $this->post(route('apply.store'), $data)->assertRedirect(route('apply.thanks'));
@@ -65,6 +65,25 @@ class LeadFlowTest extends TestCase
         $this->assertSame('Original inquiry', Lead::sole()->name);
         $this->travel(25)->hours();
         $this->post(route('apply.store'), $data)->assertRedirect(route('apply.thanks'));
+        $this->assertSame(1, Lead::count());
+        $this->assertSame('Original inquiry', Lead::sole()->name);
+    }
+
+    public function test_temporary_and_regenerated_links_do_not_allow_repeat_phone_submissions(): void
+    {
+        $data = ['name' => 'Original inquiry', 'phone' => '03001234567', 'program_interest' => 'A1'];
+        $dayLink = URL::temporarySignedRoute('inquiry.form', now()->addDay());
+        $weekLink = URL::temporarySignedRoute('inquiry.form', now()->addDays(7));
+        $this->post($dayLink, $data)->assertRedirect(route('apply.thanks'));
+        $this->post($dayLink, array_replace($data, ['name' => 'Repeated']))->assertRedirect(route('apply.thanks'));
+        $this->travel(2)->days();
+        $this->post($weekLink, $data)->assertRedirect(route('apply.thanks'));
+        $this->travel(8)->days();
+        $newLink = URL::temporarySignedRoute('inquiry.form', now()->addDays(7));
+        $this->post($newLink, $data)->assertRedirect(route('apply.thanks'));
+        $this->assertSame(1, Lead::count());
+        $this->assertSame('Original inquiry', Lead::sole()->name);
+        $this->post($newLink, array_replace($data, ['phone' => '03001234568']))->assertRedirect(route('apply.thanks'));
         $this->assertSame(2, Lead::count());
     }
 
@@ -97,6 +116,9 @@ class LeadFlowTest extends TestCase
     public function test_admin_can_generate_and_copy_temporary_or_permanent_inquiry_links(): void
     {
         $this->actingAs($this->admin)->get(route('leads.index'))->assertOk()->assertSee('Copy link')
+            ->assertSee('class="accordion-button collapsed"', false)
+            ->assertSee('aria-expanded="false"', false)
+            ->assertSee('id="inquiry-link-panel" class="accordion-collapse collapse"', false)
             ->assertSee('data-copy-target="inquiry_link"', false)->assertSee(route('apply.form'), false);
         $this->get(route('leads.index', ['link_expiry' => '24h']))->assertOk()
             ->assertSee('/inquiry?expires=', false)->assertSee('signature=', false);

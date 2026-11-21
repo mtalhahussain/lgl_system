@@ -23,7 +23,7 @@
                 <tr>
                     <td><a class="cell-main" href="{{ route('courses.show', $course) }}">{{ $course->name }}</a><span class="cell-sub">{{ \Illuminate\Support\Str::limit($course->description, 70) }}</span></td>
                     <td><span class="status-pill">{{ $course->level }}</span></td>
-                    <td>{{ $course->duration_weeks }} weeks<span class="cell-sub">{{ $course->sessions_per_week }} sessions / week</span></td>
+                    <td>{{ $course->duration_weeks }} weeks</td>
                     <td class="num">{{ currency_format($course->total_fee) }}</td>
                     <td>{{ $course->batches_count }}<span class="cell-sub">{{ $course->active_batches_count }} ongoing</span></td>
                     <td><x-list.status :value="$course->is_active ? 'active' : 'inactive'" /></td>

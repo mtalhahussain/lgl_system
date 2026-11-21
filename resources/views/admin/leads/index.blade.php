@@ -13,7 +13,13 @@
     @if(can_route('leads.create'))<a href="{{ route('leads.create') }}" class="btn btn-primary"><i class="fas fa-plus me-1" aria-hidden="true"></i>Add lead</a>@endif
 </div>
 
-<section class="panel form-section mb-3">
+<section class="accordion mb-3" id="inquiry-link-tools">
+    <div class="accordion-item">
+        <h2 class="accordion-header">
+            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#inquiry-link-panel" aria-expanded="false" aria-controls="inquiry-link-panel">Link validity</button>
+        </h2>
+        <div id="inquiry-link-panel" class="accordion-collapse collapse">
+            <div class="accordion-body">
     <form method="get" action="{{ route('leads.index') }}" class="mb-3">
         @foreach(request()->only(['search', 'status', 'source']) as $name => $value)<input type="hidden" name="{{ $name }}" value="{{ $value }}">@endforeach
         <label class="form-label" for="link_expiry">Link validity</label>
@@ -34,6 +40,10 @@
     </div>
     <p class="form-text mb-0" data-copy-status role="status" aria-live="polite"></p>
     <p class="form-text mb-0">Submissions arrive as New leads. Contact, qualify and convert them, or reject with a reason.</p>
+    <p class="form-text mb-0">Each phone number can submit one public inquiry. Link expiry or generating a new link does not allow a repeat submission.</p>
+            </div>
+        </div>
+    </div>
 </section>
 <form method="GET" action="{{ route('leads.index') }}" class="card card-body mb-3">
     <div class="row g-2 align-items-end">

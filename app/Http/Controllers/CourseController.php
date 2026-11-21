@@ -63,12 +63,9 @@ class CourseController extends Controller
             'duration_weeks' => 'required|integer|min:1|max:52',
             'total_fee' => 'required|decimal:0,2|min:0|max:99999999.99',
             'teacher_per_student_amount' => 'nullable|numeric|min:0',
-            'sessions_per_week' => 'required|integer|min:1|max:7',
-            'session_duration_minutes' => 'required|integer|min:30|max:300'
         ]);
 
-        Course::create(array_merge($request->only(['name', 'description', 'level', 'duration_weeks', 'total_fee',
-            'sessions_per_week', 'session_duration_minutes']), ['teacher_per_student_amount' => $request->input('teacher_per_student_amount') ?? 0]));
+        Course::create(array_merge($request->only(['name', 'description', 'level', 'duration_weeks', 'total_fee']), ['teacher_per_student_amount' => $request->input('teacher_per_student_amount') ?? 0]));
 
         return redirect()->route('courses.index')
             ->with('success', 'Level created successfully!');
@@ -106,12 +103,9 @@ class CourseController extends Controller
             'duration_weeks' => 'required|integer|min:1|max:52',
             'total_fee' => 'required|decimal:0,2|min:0|max:99999999.99',
             'teacher_per_student_amount' => 'nullable|numeric|min:0',
-            'sessions_per_week' => 'required|integer|min:1|max:7',
-            'session_duration_minutes' => 'required|integer|min:30|max:300'
         ]);
 
-        $course->update($request->only(['name', 'description', 'level', 'duration_weeks', 'total_fee',
-            'sessions_per_week', 'session_duration_minutes']));
+        $course->update($request->only(['name', 'description', 'level', 'duration_weeks', 'total_fee']));
 
         return redirect()->route('courses.show', $course)
             ->with('success', 'Level updated successfully!');

@@ -35,8 +35,7 @@ class LeadController extends Controller
         try {
             \Illuminate\Support\Facades\Cache::lock('inquiry:phone:'.hash('sha256', $data['phone']), 10)->block(3, function () use ($data) {
                 // Repeat submissions get the same public response without exposing contact records.
-                if (Lead::where('source', Lead::SOURCE_PUBLIC)->where('phone', $data['phone'])
-                    ->where('created_at', '>=', now()->subDay())->exists()) {
+                if (Lead::where('source', Lead::SOURCE_PUBLIC)->where('phone', $data['phone'])->exists()) {
                     return;
                 }
                 Lead::create(array_merge($data, [

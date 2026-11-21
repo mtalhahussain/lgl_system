@@ -19,7 +19,7 @@
 <body class="login-page">
     <main class="login-shell">
         <section class="login-story" aria-label="Welcome">
-            <div>
+            <div class="login-story-main">
                 <div class="login-wordmark">
                     @if($instituteLogo)
                         <img class="login-uploaded-logo" src="{{ asset('storage/'.$instituteLogo) }}" alt="{{ $instituteName }} logo">
@@ -34,14 +34,35 @@
                     <span class="login-kicker"><span class="login-flag" aria-hidden="true"></span> YOUR NEXT CHAPTER STARTS HERE</span>
                     <h1>Learn German. <em>Stay connected.</em></h1>
                     <p>From your next class to your latest results, keep your schedule, attendance and learning progress together in one place.</p>
+                    <ul class="login-features">
+                        <li>
+                            <span class="login-feature-icon"><i class="fas fa-calendar-days" aria-hidden="true"></i></span>
+                            <span><strong>Class schedule</strong><small>Your next classes, days and timings at a glance.</small></span>
+                        </li>
+                        <li>
+                            <span class="login-feature-icon"><i class="fas fa-user-check" aria-hidden="true"></i></span>
+                            <span><strong>Attendance</strong><small>Every session you attend, recorded in one place.</small></span>
+                        </li>
+                        <li>
+                            <span class="login-feature-icon"><i class="fas fa-chart-line" aria-hidden="true"></i></span>
+                            <span><strong>Results &amp; progress</strong><small>Exam results and your level, kept up to date.</small></span>
+                        </li>
+                    </ul>
                     <div class="login-learning-card">
-                        <span class="login-greeting" lang="de">Guten Tag.</span>
-                        <span>A little German. A little closer to your goals.</span>
-                        <div class="login-levels" aria-label="German language learning"><span>Learn</span><span>Practice</span><span>Progress</span></div>
+                        <div class="login-learning-head">
+                            <span class="login-greeting" lang="de">Guten Tag.</span>
+                            <span>A little German. A little closer to your goals.</span>
+                        </div>
+                        <ol class="login-level-path" aria-label="German levels from A1 to C2">
+                            <li>A1</li><li>A2</li><li>B1</li><li>B2</li><li>C1</li><li>C2</li>
+                        </ol>
                     </div>
                 </div>
             </div>
-            <footer class="login-story-footer"><span class="login-flag" aria-hidden="true"></span> Language connects. Learning opens doors.</footer>
+            <footer class="login-story-footer">
+                <span><span class="login-flag" aria-hidden="true"></span> Language connects. Learning opens doors.</span>
+                <span class="login-story-roles">Admin · Teacher · Student</span>
+            </footer>
         </section>
         <section class="login-form-side">
             <div class="login-form">
@@ -67,7 +88,6 @@
                     <label class="login-remember" for="remember"><input type="checkbox" name="remember" id="remember" value="1" @checked(old('remember'))>Remember me on this device</label>
                     <button type="submit" class="btn btn-primary login-submit">Sign in <i class="fas fa-arrow-right" aria-hidden="true"></i></button>
                 </form>
-                <p class="login-fine"><i class="fas fa-lock" aria-hidden="true"></i> Admin · Teacher · Student</p>
                 <p class="login-help">Need help signing in?<br><span>Contact your institute administrator.</span></p>
             </div>
         </section>

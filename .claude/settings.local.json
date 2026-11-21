@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(grep -nE 'protected $fillable|function student|function batch|function user|'\\\\''status'\\\\''|status' app/Models/Enrollment.php)"
+    ]
+  }
+}

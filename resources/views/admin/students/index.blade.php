@@ -181,7 +181,7 @@
                                         <small class="text-muted">ID: {{ $student->device_employee_no }}</small>
                                         <br>
                                         <button class="btn btn-xs btn-outline-danger" 
-                                                onclick="removeFingerprintModal({{ $student->id }}, '{{ $student->name }}')"
+                                                data-action="remove-fingerprint" data-student-id="{{ $student->id }}" data-student-name="{{ $student->name }}"
                                                 title="Remove Fingerprint">
                                             <i class="fas fa-times"></i> Remove
                                         </button>
@@ -191,7 +191,7 @@
                                         </span>
                                         <br>
                                         <button class="btn btn-xs btn-outline-primary" 
-                                                onclick="enrollFingerprintModal({{ $student->id }}, '{{ $student->name }}')"
+                                                data-action="enroll-fingerprint" data-student-id="{{ $student->id }}" data-student-name="{{ $student->name }}"
                                                 title="Enroll Fingerprint">
                                             <i class="fas fa-plus"></i> Enroll
                                         </button>
@@ -213,7 +213,7 @@
                                             <i class="fas fa-edit"></i>
                                         </a>
                                         @if(can_route('students.destroy'))<form method="POST" action="{{ route('students.destroy', $student) }}" 
-                                              class="d-inline" onsubmit="return confirm('Are you sure you want to delete this student?')">
+                                              class="d-inline" data-confirm="Are you sure you want to delete this student?">
                                             @csrf
                                             @method('DELETE')
                                             <button type="submit" class="btn btn-sm btn-outline-danger" title="Delete">
@@ -328,102 +328,7 @@
     </div>
 </div>
 
-<script>
-let currentStudentId = null;
-
-function enrollFingerprintModal(studentId, studentName) {
-    currentStudentId = studentId;
-    document.getElementById('enrollStudentName').textContent = studentName;
-    document.getElementById('deviceEmployeeNo').value = '';
-    
-    const modal = new bootstrap.Modal(document.getElementById('enrollFingerprintModal'));
-    modal.show();
-}
-
-function removeFingerprintModal(studentId, studentName) {
-    currentStudentId = studentId;
-    document.getElementById('removeStudentName').textContent = studentName;
-    
-    const modal = new bootstrap.Modal(document.getElementById('removeFingerprintModal'));
-    modal.show();
-}
-
-document.addEventListener('DOMContentLoaded', function() {
-    // Handle fingerprint enrollment
-    document.getElementById('startEnrollmentBtn').addEventListener('click', function() {
-        const deviceEmployeeNo = document.getElementById('deviceEmployeeNo').value;
-        
-        if (!deviceEmployeeNo || deviceEmployeeNo < 1 || deviceEmployeeNo > 9999) {
-            alert('Please enter a valid device employee number (1-9999)');
-            return;
-        }
-        
-        this.disabled = true;
-        this.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Enrolling...';
-        
-        fetch(`/students/${currentStudentId}/fingerprint/enroll`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
-            },
-            body: JSON.stringify({
-                device_employee_no: parseInt(deviceEmployeeNo)
-            })
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                alert('✅ Fingerprint enrolled successfully!\n\nDevice Employee ID: ' + data.device_employee_no);
-                location.reload();
-            } else {
-                alert('❌ Enrollment failed: ' + data.message);
-            }
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            alert('❌ Failed to enroll fingerprint. Please check console for details.');
-        })
-        .finally(() => {
-            this.disabled = false;
-            this.innerHTML = '<i class="fas fa-fingerprint me-1"></i>Start Enrollment';
-            bootstrap.Modal.getInstance(document.getElementById('enrollFingerprintModal')).hide();
-        });
-    });
-    
-    // Handle fingerprint removal
-    document.getElementById('confirmRemoveBtn').addEventListener('click', function() {
-        this.disabled = true;
-        this.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Removing...';
-        
-        fetch(`/students/${currentStudentId}/fingerprint`, {
-            method: 'DELETE',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
-            }
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                alert('✅ Fingerprint removed successfully!');
-                location.reload();
-            } else {
-                alert('❌ Removal failed: ' + data.message);
-            }
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            alert('❌ Failed to remove fingerprint. Please check console for details.');
-        })
-        .finally(() => {
-            this.disabled = false;
-            this.innerHTML = '<i class="fas fa-trash me-1"></i>Remove Fingerprint';
-            bootstrap.Modal.getInstance(document.getElementById('removeFingerprintModal')).hide();
-        });
-    });
-});
-</script>
+<template data-page-module="admin-students-index"></template>
 
 <style>
 .btn-xs {

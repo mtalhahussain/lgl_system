@@ -246,7 +246,7 @@
                             @if(can_route('courses.toggle-status'))<form method="POST" action="{{ route('courses.toggle-status', $course) }}" class="d-inline">
                                 @csrf
                                 <button type="submit" class="btn btn-outline-secondary w-100" 
-                                        onclick="return confirm('Are you sure you want to deactivate this level?')">
+                                        data-confirm-click="Are you sure you want to deactivate this level?">
                                     <i class="fas fa-pause me-1"></i>Deactivate Level
                                 </button>
                             </form>@endif

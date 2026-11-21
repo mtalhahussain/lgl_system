@@ -98,7 +98,7 @@
                                 @if(can_route('leads.edit'))<a href="{{ route('leads.edit', $lead) }}" class="btn btn-sm btn-outline-secondary" aria-label="Edit {{ $lead->name }}"><i class="fas fa-pen" aria-hidden="true"></i></a>@endif
                             @endunless
                             @unless($lead->status === 'converted')
-                                @if(can_route('leads.destroy'))<form method="POST" action="{{ route('leads.destroy', $lead) }}" class="d-inline" onsubmit="return confirm('Delete this lead permanently?')">
+                                @if(can_route('leads.destroy'))<form method="POST" action="{{ route('leads.destroy', $lead) }}" class="d-inline" data-confirm="Delete this lead permanently?">
                                     @csrf @method('DELETE')
                                     <button type="submit" class="btn btn-sm btn-outline-danger" aria-label="Delete {{ $lead->name }}"><i class="fas fa-trash" aria-hidden="true"></i></button>
                                 </form>@endif

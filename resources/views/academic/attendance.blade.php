@@ -3,7 +3,7 @@
 @section('content')
 <x-list.header :title="auth()->user()->isStudent() ? 'My Attendance' : ($student ? $student->name.' — Attendance' : 'Attendance Report')" eyebrow="Attendance"
     subtitle="Rate = (present + late) ÷ (present + late + absent). Excused records and classes that did not run are not counted.">
-    <button type="button" class="btn btn-outline-primary" onclick="window.print()"><i class="fas fa-print me-1" aria-hidden="true"></i>Print</button>
+    <button type="button" class="btn btn-outline-primary" data-print><i class="fas fa-print me-1" aria-hidden="true"></i>Print</button>
 </x-list.header>
 <x-list.kpis :items="[
     ['label' => 'Attendance rate', 'value' => $stats['attendance_rate'] === null ? 'No marked classes' : $stats['attendance_rate'].'%', 'icon' => 'fa-percent'],

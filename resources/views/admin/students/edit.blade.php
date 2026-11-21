@@ -169,12 +169,12 @@
                 <div class="d-grid gap-2">
                     @if(!$student->fingerprint_enrolled)
                     <button class="btn btn-outline-primary btn-sm" 
-                            onclick="enrollFingerprintModal({{ $student->id }}, '{{ $student->name }}')">
+                            data-action="enroll-fingerprint" data-student-id="{{ $student->id }}" data-student-name="{{ $student->name }}">
                         <i class="fas fa-fingerprint me-1"></i>Enroll Fingerprint
                     </button>
                     @else
                     <button class="btn btn-outline-danger btn-sm" 
-                            onclick="removeFingerprintModal({{ $student->id }}, '{{ $student->name }}')">
+                            data-action="remove-fingerprint" data-student-id="{{ $student->id }}" data-student-name="{{ $student->name }}">
                         <i class="fas fa-times me-1"></i>Remove Fingerprint
                     </button>
                     @endif
@@ -254,18 +254,5 @@
 </div>
 @endif
 
-<script>
-// Fingerprint management functions (simplified version)
-function enrollFingerprintModal(studentId, studentName) {
-    document.getElementById('enrollStudentName').textContent = studentName;
-    const modal = new bootstrap.Modal(document.getElementById('enrollFingerprintModal'));
-    modal.show();
-}
-
-function removeFingerprintModal(studentId, studentName) {
-    document.getElementById('removeStudentName').textContent = studentName;
-    const modal = new bootstrap.Modal(document.getElementById('removeFingerprintModal'));
-    modal.show();
-}
-</script>
+<template data-page-module="admin-students-edit"></template>
 @endsection

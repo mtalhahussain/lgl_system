@@ -11,7 +11,7 @@
 <div class="doc-wrap">
     <div class="doc-actions d-print-none">
         <a class="btn btn-outline-secondary" href="{{ route('fees.student', $package->student_id) }}">{{ auth()->user()->actsAsAdmin() ? 'Student fees' : 'My fees' }}</a>
-        <button class="btn btn-primary ms-auto" type="button" onclick="window.print()">Print</button>
+        <button class="btn btn-primary ms-auto" type="button" data-print>Print</button>
     </div>
     <x-show.document :kind="$levels.($full ? ' Package Receipt' : ' Package Agreement')" :number="$package->receipt_number" :institute="$details['institute_name']"
         :amount="$package->amount" :currency="$currency" :date="$package->created_at->format('d M Y, h:i A')" :reversal="$reversal"

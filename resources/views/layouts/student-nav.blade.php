@@ -25,12 +25,12 @@
         <small class="text-white-50 text-uppercase fw-bold">Quick Actions</small>
     </div>
     
-    <a href="#" class="nav-link" onclick="window.print(); return false;">
+    <a href="#" class="nav-link" data-print>
         <i class="fas fa-print"></i>
         <span>Print Schedule</span>
     </a>
     
-    <a href="#" class="nav-link" onclick="showHelpModal(); return false;">
+    <a href="#" class="nav-link" data-action="show-help">
         <i class="fas fa-question-circle"></i>
         <span>Help & Support</span>
     </a>
@@ -134,9 +134,4 @@
 }
 </style>
 
-<script>
-function showHelpModal() {
-    const modal = new bootstrap.Modal(document.getElementById('helpModal'));
-    modal.show();
-}
-</script>
+<template data-page-module="layouts-student-nav"></template>

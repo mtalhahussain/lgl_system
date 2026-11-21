@@ -305,12 +305,12 @@
                         </a>
                     @endif
                     @if($todayClasses->count() > 0)
-                        <button class="btn btn-outline-success" onclick="showTodaySchedule()">
+                        <button class="btn btn-outline-success" data-action="today-schedule">
                             <i class="fas fa-calendar-day me-2"></i>Today's Schedule
                         </button>
                     @endif
                     @if($student->enrollments->count() > 0)
-                        <button class="btn btn-outline-info" onclick="window.print()">
+                        <button class="btn btn-outline-info" data-print>
                             <i class="fas fa-print me-2"></i>Print Summary
                         </button>
                     @endif
@@ -458,20 +458,5 @@
     </div>
 @endif
 
-<script>
-function showTodaySchedule() {
-    const scheduleModal = new bootstrap.Modal(document.createElement('div'));
-    // Implementation for showing today's schedule modal
-    alert('Today\'s schedule feature coming soon!');
-}
-
-// Auto-refresh for live classes
-setInterval(function() {
-    const liveElements = document.querySelectorAll('.badge:contains("LIVE")');
-    if (liveElements.length > 0) {
-        // Refresh page if there are live classes to update status
-        location.reload();
-    }
-}, 60000); // Check every minute
-</script>
+<template data-page-module="student-dashboard"></template>
 @endsection

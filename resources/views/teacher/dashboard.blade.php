@@ -222,10 +222,5 @@
 @endsection
 
 @push('scripts')
-<script>
-// Auto-refresh upcoming sessions every 5 minutes
-setInterval(function() {
-    location.reload();
-}, 300000);
-</script>
+<template data-page-module="teacher-dashboard"></template>
 @endpush

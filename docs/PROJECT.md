@@ -1,5 +1,9 @@
 # Project requirements, architecture and operations
 
+All application JavaScript, including retained legacy screens and Select2 enhancement, is compiled through Vite. Blade supplies escaped data attributes and page-module markers; it contains no executable inline scripts or event handlers. Existing Bootstrap/Chart.js and local jQuery/Select2 vendor script dependencies retain their loading paths. Upload changed views plus the complete public/build directory together and clear compiled views after deployment.
+
+Admin dashboard omits the Batch reminders panel; teacher availability remains. Batch Add class day and date bounds initialize from the compiled Vite bundle; deploy the updated batch form and complete public/build together.
+
 Course create/edit asks only for catalogue details, default fee and duration in weeks; sessions per week and session duration are no longer editable or displayed on active course pages. Historical columns/values remain for compatibility; new rows use existing database defaults. Batch weekly days/times and class generation remain unchanged.
 
 ## Product and current analysis

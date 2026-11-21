@@ -9,7 +9,8 @@
         @if(can_route('notifications.announce'))
             @if(can_route('notifications.announce'))<a href="{{ route('notifications.announce') }}" class="btn btn-primary"><i class="fas fa-bullhorn me-1"></i>New Announcement</a>@endif
         @endif
-        <form method="POST" action="{{ route('notifications.readAll') }}" onsubmit="event.preventDefault(); fetch(this.action,{method:'POST',headers:{'X-CSRF-TOKEN':'{{ csrf_token() }}','X-Requested-With':'XMLHttpRequest'}}).then(()=>location.reload());">
+        <form method="POST" action="{{ route('notifications.readAll') }}" data-notifications-read-all>
+            @csrf
             <button type="submit" class="btn btn-outline-secondary"><i class="fas fa-check-double me-1"></i>Mark all read</button>
         </form>
     </div>

@@ -13,7 +13,7 @@
         @else
             <a class="btn btn-outline-secondary" href="{{ route('fees.student', auth()->user()) }}"><i class="fas fa-arrow-left me-1" aria-hidden="true"></i>My fees</a>
         @endif
-        <button class="btn btn-primary ms-auto" type="button" onclick="window.print()"><i class="fas fa-print me-1" aria-hidden="true"></i>Print slip</button>
+        <button class="btn btn-primary ms-auto" type="button" data-print><i class="fas fa-print me-1" aria-hidden="true"></i>Print slip</button>
     </div>
     <x-show.document kind="Fee Refund Slip" :number="$refund->voucher_number" :institute="$details['institute_name'] ?? null"
         :amount="$refund->amount" :currency="$details['currency_code'] ?? 'PKR'" :date="$refund->refunded_at->format('d M Y, h:i A')"

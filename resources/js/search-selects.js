@@ -1,5 +1,5 @@
 // Keep native values, validation and existing native change listeners authoritative.
-(() => {
+export function initSearchSelects() {
     const $ = window.jQuery;
     if (!$?.fn.select2) return;
     const ready = new WeakSet();
@@ -109,4 +109,4 @@
         if (records.some(record => [...record.addedNodes].some(node => node.nodeType === 1
             && (node.matches('select, option') || node.querySelector('select'))))) init();
     }).observe(document.documentElement, {childList: true, subtree: true});
-})();
+}

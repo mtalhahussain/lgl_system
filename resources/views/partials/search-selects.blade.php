@@ -5,4 +5,3 @@
 @endunless
 <script src="{{ asset('vendor/jquery/jquery.min.js') }}"></script>
 <script src="{{ asset('vendor/select2/select2.min.js') }}"></script>
-<script src="{{ asset('js/search-selects.js') }}" defer></script>

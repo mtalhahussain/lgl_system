@@ -144,7 +144,7 @@ class BatchStatusSyncTest extends TestCase
         $this->assertSame('ongoing', Batch::latest('id')->first()->status);
     }
 
-    public function test_admin_dashboard_lists_batches_starting_or_ending_within_two_days(): void
+    public function test_admin_dashboard_omits_batch_reminders_but_keeps_teacher_availability(): void
     {
         $this->batch('StartsInTwo', 'upcoming', today()->addDays(2));
         $this->batch('StartsInThree', 'upcoming', today()->addDays(3));
@@ -154,9 +154,9 @@ class BatchStatusSyncTest extends TestCase
         $this->batch('CancelledSoon', 'cancelled', today()->addDay());
 
         $this->actingAs($this->admin)->get('/admin/dashboard')->assertOk()
-            ->assertSee('Batch reminders')->assertSee('StartsInTwo')->assertSee('in 2 days')
-            ->assertSee('EndsTomorrow')->assertSee('Ends tomorrow')
-            ->assertDontSee('StartsInThree')->assertDontSee('EndsInThree')->assertDontSee('CancelledSoon');
+            ->assertDontSee('Batch reminders')->assertDontSee('batch-reminders-heading')
+            ->assertSee('EndsTomorrow')
+            ->assertDontSee('EndsInThree')->assertDontSee('CancelledSoon');
     }
 
     public function test_reminder_panel_hidden_when_empty_and_never_shown_to_teacher_or_student(): void

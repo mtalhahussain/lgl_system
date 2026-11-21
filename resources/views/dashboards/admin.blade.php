@@ -11,25 +11,6 @@
     @endforeach
     <div class="panel metric"><div><div class="metric-label">This month collected</div><div class="metric-value metric-value-sm">{{ $finance ? currency_format($finance['This month net collected']) : 'Unavailable' }}</div><div class="metric-note">Net of period reversals</div></div><span class="metric-icon" class="text-teal"><i class="fas fa-wallet" aria-hidden="true"></i></span></div>
 </div>
-@if($reminders['starting']->isNotEmpty() || $reminders['ending']->isNotEmpty())
-<section class="panel tw:mb-6 border-left-gold" aria-labelledby="batch-reminders-heading">
-    <div class="panel-heading"><h2 id="batch-reminders-heading"><i class="fas fa-bell me-2 text-gold-ink" aria-hidden="true"></i>Batch reminders</h2><span class="page-subtitle">Next 2 days · status updates automatically</span></div>
-    <div class="tw:grid tw:grid-cols-1 tw:gap-5 tw:md:grid-cols-2 tw:p-5">
-        @foreach(['starting' => ['Starting soon', 'start_date', 'Starts'], 'ending' => ['Completing soon', 'end_date', 'Ends']] as $key => [$title, $column, $verb])
-            <div>
-                <h3 class="heading-xs">{{ $title }} ({{ $reminders[$key]->count() }})</h3>
-                @forelse($reminders[$key] as $batch)
-                    @php $days = (int) today()->diffInDays($batch->$column, false); @endphp
-                    <a href="{{ route('batches.show', $batch) }}" class="finance-row color-inherit">
-                        <span><strong>{{ $batch->name }}</strong><small class="fs-11-muted">{{ $batch->course?->name }} · {{ $batch->teacher?->name }}</small></span>
-                        <span class="status-pill">{{ $verb }} {{ $days === 0 ? 'today' : ($days === 1 ? 'tomorrow' : "in {$days} days") }} · {{ $batch->$column->toDateString() }}</span>
-                    </a>
-                @empty<p class="page-subtitle">None.</p>@endforelse
-            </div>
-        @endforeach
-    </div>
-</section>
-@endif
 @include('dashboards.partials.batches-ending-soon')
 @include('dashboards.partials.teacher-next-classes')
 <div class="tw:grid tw:grid-cols-1 tw:gap-5 tw:xl:grid-cols-3 tw:mb-6">

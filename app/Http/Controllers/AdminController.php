@@ -23,11 +23,10 @@ class AdminController extends Controller
             'Teachers' => User::teachers()->where('is_active', true)->count(), 'Ongoing batches' => Batch::where('status', 'ongoing')->count()];
         $finance = \Illuminate\Support\Facades\Schema::hasTable('payments') ? app(\App\Services\OverviewService::class)->financialTotals() : null;
         $recent = Enrollment::with(['student:id,name', 'batch:id,name'])->orderByDesc('id')->limit(10)->get();
-        $reminders = app(\App\Services\OverviewService::class)->batchReminders();
         $teacherNextClasses = app(\App\Services\TeacherScheduleService::class)->upcomingForTeachers();
         $endingSoon = app(\App\Services\TeacherScheduleService::class)->batchesEndingSoon();
 
-        return view('dashboards.admin', compact('stats', 'finance', 'recent', 'reminders', 'teacherNextClasses', 'endingSoon'));
+        return view('dashboards.admin', compact('stats', 'finance', 'recent', 'teacherNextClasses', 'endingSoon'));
     }
 
     /** Staff home: shortcuts to the modules Admin granted to Staff (no finance totals). */

@@ -4,5 +4,5 @@
     <label for="batch_id">Batch</label><select id="batch_id" name="batch_id"><option value="">All batches</option>@foreach($batches as $batch)<option value="{{ $batch->id }}" @selected(request('batch_id') == $batch->id)>{{ $batch->name }}</option>@endforeach</select>
     <label for="course_id">Level</label><select id="course_id" name="course_id"><option value="">All levels</option>@foreach($courses as $course)<option value="{{ $course->id }}" @selected(request('course_id') == $course->id)>{{ $course->name }}</option>@endforeach</select>
     <button class="btn btn-primary">Apply</button>
-    <button type="button" class="btn btn-outline-primary" onclick="window.print()">Print</button>
+    <button type="button" class="btn btn-outline-primary" data-print>Print</button>
 </form>

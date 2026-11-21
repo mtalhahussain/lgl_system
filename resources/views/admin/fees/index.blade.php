@@ -195,7 +195,7 @@
                                 <td>
                                     @if($installment->status === 'pending')
                                         <button class="btn btn-success btn-sm" 
-                                                onclick="payInstallmentModal({{ $installment->id }}, '{{ $installment->enrollment->student->name }}', '{{ currency_format($installment->amount) }}')">
+                                                data-action="pay-installment" data-installment-id="{{ $installment->id }}" data-student-name="{{ $installment->enrollment->student->name }}" data-amount="{{ currency_format($installment->amount) }}">
                                             <i class="fas fa-money-bill-wave me-1"></i>Pay Now
                                         </button>
                                     @else
@@ -288,16 +288,7 @@
     </div>
 </div>
 
-<script>
-function payInstallmentModal(installmentId, studentName, amount) {
-    document.getElementById('studentName').textContent = studentName;
-    document.getElementById('installmentAmount').textContent = amount;
-    document.getElementById('paymentForm').action = `/fees/${installmentId}/pay`;
-    
-    const modal = new bootstrap.Modal(document.getElementById('paymentModal'));
-    modal.show();
-}
-</script>
+<template data-page-module="admin-fees-index"></template>
 
 <style>
 /* Pagination Styling */

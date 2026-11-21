@@ -52,8 +52,9 @@ try {
         const css = await readFile(file, 'utf8');
         await evaluate(`{const style=document.createElement('style');style.textContent=${JSON.stringify(css)};document.head.append(style);}`);
     }
-    for (const file of ['public/vendor/jquery/jquery.min.js', 'public/vendor/select2/select2.min.js', 'public/js/search-selects.js']) {
-        await evaluate(await readFile(file, 'utf8'));
+    for (const file of ['public/vendor/jquery/jquery.min.js', 'public/vendor/select2/select2.min.js', 'resources/js/search-selects.js']) {
+        const source = await readFile(file, 'utf8');
+        await evaluate(file.endsWith('search-selects.js') ? source.replace('export function', 'function') + ';initSearchSelects();' : source);
     }
     const results = await evaluate(`(async () => {
         const $ = window.jQuery, checks = {};

@@ -7,12 +7,15 @@ use App\Models\Batch;
 use App\Models\BatchExam;
 use App\Models\Course;
 use App\Models\Enrollment;
+use App\Models\RolePermission;
 use App\Models\StudentCertificate;
 use App\Models\StudentExamResult;
 use App\Models\StudentExamSectionMark;
 use App\Models\User;
 use App\Services\ExamGradingService;
+use App\Services\NotificationService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 use Tests\TestCase;
 
@@ -82,7 +85,7 @@ class BatchExamTest extends TestCase
             ->assertDontSee('My Results')->assertDontSee('<span class="badge bg-success">Passed</span>', false)
             ->assertDontSee('<span class="badge bg-danger">Failed</span>', false);
         $this->get('/exams/'.$exam->id)->assertForbidden();
-        $this->assertSame(route('exams.show', $exam), app(\App\Services\NotificationService::class)
+        $this->assertSame(route('exams.show', $exam), app(NotificationService::class)
             ->destinationFor($admin, ['type' => 'exam', 'url' => route('exams.show', $exam)]));
     }
 
@@ -356,13 +359,96 @@ class BatchExamTest extends TestCase
         $this->assertSame('30.00', $exam->sections()->where('name', 'Schreiben')->value('max_marks'));
     }
 
-    public function test_teacher_cannot_create_an_exam(): void
+    private function creationPayload(Batch $batch): array
+    {
+        return ['batch_id' => $batch->id, 'name' => 'Teacher A1 Final', 'type' => 'final',
+            'exam_date' => '2026-12-20',
+            'sections' => collect(BatchExam::SECTIONS)->map(fn ($name) => [
+                'name' => $name, 'max_marks' => 25, 'passing_marks' => 15,
+            ])->all()];
+    }
+
+    public function test_teacher_creates_exam_for_assigned_batch_and_only_its_students_are_notified(): void
+    {
+        $teacher = User::factory()->create(['role' => 'teacher']);
+        $admin = User::factory()->create(['role' => 'admin']);
+        $batch = $this->batch($teacher);
+        $batch->update(['name' => 'Assigned batch']);
+        $foreign = $this->batch();
+        $foreign->update(['name' => 'Private foreign batch']);
+        $student = User::factory()->create(['role' => 'student']);
+        $outsider = User::factory()->create(['role' => 'student']);
+        $this->enroll($batch, $student);
+        $this->enroll($foreign, $outsider);
+
+        $this->actingAs($teacher)->get('/exams')->assertOk()->assertSee('href="'.route('exams.create').'"', false);
+        $this->get('/exams/create')->assertOk()->assertSee('Assigned batch')->assertDontSee('Private foreign batch')
+            ->assertViewHas('batches', fn ($rows) => $rows->modelKeys() === [$batch->id]);
+        $this->post('/exams', $this->creationPayload($batch))->assertSessionHasNoErrors()->assertRedirect();
+        $exam = BatchExam::sole();
+        $this->assertSame($batch->id, $exam->batch_id);
+        $this->assertSame(BatchExam::SECTIONS, $exam->sections->pluck('name')->all());
+        $this->assertSame('scheduled', $exam->status);
+        $this->assertSame('25.00', $exam->sections->first()->max_marks);
+        $this->assertSame('15.00', $exam->sections->first()->passing_marks);
+        $this->assertSame(route('student.results'), $student->notifications()->sole()->data['url']);
+        $this->assertSame(0, $outsider->notifications()->count());
+        $this->assertSame('Exam created', $admin->notifications()->sole()->data['title']);
+        $this->get(route('exams.show', $exam))->assertOk()->assertDontSee('Edit exam');
+        $this->get(route('exams.edit', $exam))->assertForbidden();
+        $this->put(route('exams.update', $exam), $this->creationPayload($batch))->assertForbidden();
+    }
+
+    public function test_teacher_cannot_create_exam_in_another_teachers_batch_or_spoof_assignment(): void
+    {
+        $teacher = User::factory()->create(['role' => 'teacher']);
+        $foreign = $this->batch();
+        $payload = $this->creationPayload($foreign) + ['teacher_id' => $teacher->id];
+        $this->actingAs($teacher)->post('/exams', $payload)->assertSessionHasErrors('batch_id');
+        $this->assertSame(0, BatchExam::count());
+        $this->assertSame(0, DB::table('exam_sections')->count());
+        $this->assertSame(0, DB::table('notifications')->count());
+    }
+
+    public function test_teacher_creation_rechecks_assignment_after_validation(): void
+    {
+        $teacher = User::factory()->create(['role' => 'teacher']);
+        $other = User::factory()->create(['role' => 'teacher']);
+        $batch = $this->batch($teacher);
+        $reassigned = false;
+        DB::listen(function ($query) use (&$reassigned, $batch, $other) {
+            if (! $reassigned && str_contains($query->sql, 'count(*) as aggregate') && str_contains($query->sql, 'batches')) {
+                $reassigned = true;
+                $batch->update(['teacher_id' => $other->id]);
+            }
+        });
+        $this->actingAs($teacher)->post('/exams', $this->creationPayload($batch))->assertForbidden();
+        $this->assertTrue($reassigned);
+        $this->assertSame(0, BatchExam::count());
+    }
+
+    public function test_teacher_without_assigned_batches_gets_an_empty_create_form(): void
+    {
+        $teacher = User::factory()->create(['role' => 'teacher']);
+        $foreign = $this->batch();
+        $foreign->update(['name' => 'Private other batch']);
+        $this->actingAs($teacher)->get('/exams/create')->assertOk()
+            ->assertSee('No assigned batches available')->assertDontSee('Private other batch')
+            ->assertViewHas('batches', fn ($rows) => $rows->isEmpty());
+    }
+
+    public function test_teacher_exam_creation_still_requires_the_exams_module_and_students_are_denied(): void
     {
         $teacher = User::factory()->create(['role' => 'teacher']);
         $batch = $this->batch($teacher);
-
-        $this->actingAs($teacher)->post('/exams', ['batch_id' => $batch->id, 'name' => 'X',
-            'type' => 'final', 'exam_date' => '2026-12-20', 'sections' => []])->assertForbidden();
+        RolePermission::create(['role' => 'teacher', 'module' => 'exams', 'action' => 'view', 'allowed' => false]);
+        $this->actingAs($teacher)->get('/exams/create')->assertForbidden();
+        $this->post('/exams', $this->creationPayload($batch))->assertForbidden();
+        foreach (['student', 'staff'] as $role) {
+            $this->actingAs(User::factory()->create(['role' => $role]))->get('/exams/create')->assertForbidden();
+            $this->post('/exams', $this->creationPayload($batch))->assertForbidden();
+        }
+        $this->assertSame(0, BatchExam::count());
     }
 
     public function test_teacher_grades_own_batch_but_not_another(): void

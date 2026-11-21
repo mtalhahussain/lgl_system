@@ -26,7 +26,8 @@
                     @endforeach
                 </select>
                 @error('batch_id')<div class="invalid-feedback">{{ $message }}</div>@enderror
-                @if($batches->isEmpty())<p class="form-text mb-0">No batches available. @if(can_route('batches.create'))<a href="{{ route('batches.create') }}">Create a batch</a>@endif before scheduling an exam.</p>@endif
+                @if($batches->isEmpty() && auth()->user()->isTeacher())<p class="form-text mb-0">No assigned batches available. Ask Admin to assign a batch before scheduling an exam.</p>
+                @elseif($batches->isEmpty())<p class="form-text mb-0">No batches available. @if(can_route('batches.create'))<a href="{{ route('batches.create') }}">Create a batch</a>@endif before scheduling an exam.</p>@endif
             </div>
             <div class="mb-3">
                 <label class="form-label required" for="name">Exam name</label>

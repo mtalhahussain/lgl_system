@@ -7,6 +7,8 @@ use App\Models\BatchExam;
 use App\Models\StudentExamResult;
 use App\Models\User;
 use App\Services\ExamGradingService;
+use App\Services\NotificationService;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
@@ -18,7 +20,7 @@ class ExamController extends Controller
     {
         $this->middleware('auth');
         $this->middleware('role:admin,teacher')->except(['studentResults']);
-        $this->middleware('role:admin')->only(['create', 'store', 'edit', 'update']);
+        $this->middleware('role:admin')->only(['edit', 'update']);
     }
 
     public function studentResults(Request $request)
@@ -86,7 +88,9 @@ class ExamController extends Controller
 
     public function create()
     {
-        $batches = Batch::with('course:id,name,level')->orderBy('name')->get();
+        $batches = Batch::with('course:id,name,level')
+            ->when(auth()->user()->isTeacher(), fn ($query) => $query->where('teacher_id', auth()->id()))
+            ->orderBy('name')->get();
 
         return view('exams.form', ['exam' => null, 'batches' => $batches, 'sectionNames' => BatchExam::SECTIONS]);
     }
@@ -95,7 +99,10 @@ class ExamController extends Controller
     {
         $data = $this->validateExam($request);
 
-        $exam = DB::transaction(function () use ($data) {
+        $exam = DB::transaction(function () use ($data, $request) {
+            $batch = Batch::whereKey($data['batch_id'])->lockForUpdate()->firstOrFail();
+            abort_if($request->user()->isTeacher() && (int) $batch->teacher_id !== (int) $request->user()->id, 403);
+
             $exam = BatchExam::create([
                 'batch_id' => $data['batch_id'], 'name' => $data['name'],
                 'type' => $data['type'], 'exam_date' => $data['exam_date'], 'status' => 'scheduled',
@@ -108,8 +115,8 @@ class ExamController extends Controller
             return $exam;
         });
 
-        $notifier = app(\App\Services\NotificationService::class);
-        $examDate = $exam->exam_date instanceof \Carbon\Carbon ? $exam->exam_date->format('d.m.Y') : (string) $exam->exam_date;
+        $notifier = app(NotificationService::class);
+        $examDate = $exam->exam_date instanceof Carbon ? $exam->exam_date->format('d.m.Y') : (string) $exam->exam_date;
         $notifier->toBatchStudents($exam->batch_id, [
             'type' => 'exam', 'icon' => 'fa-file-pen', 'level' => 'info',
             'title' => 'Exam scheduled',
@@ -197,7 +204,7 @@ class ExamController extends Controller
         $marks = collect($validated['marks'])->mapWithKeys(fn ($v, $k) => [(int) $k => $v])->all();
         $service->saveStudentResult($exam, (int) $validated['student_id'], $marks, $request->user());
 
-        $notifier = app(\App\Services\NotificationService::class);
+        $notifier = app(NotificationService::class);
         $notifier->toUser((int) $validated['student_id'], [
             'type' => 'exam_result', 'icon' => 'fa-file-circle-check', 'level' => 'success',
             'title' => 'Exam result published',
@@ -217,7 +224,11 @@ class ExamController extends Controller
     private function validateExam(Request $request): array
     {
         $data = $request->validate([
-            'batch_id' => ['required', Rule::exists('batches', 'id')],
+            'batch_id' => ['required', Rule::exists('batches', 'id')->where(function ($query) use ($request) {
+                if ($request->user()->isTeacher()) {
+                    $query->where('teacher_id', $request->user()->id);
+                }
+            })],
             'name' => ['required', 'string', 'max:255'],
             'type' => ['required', Rule::in(['final', 'mid', 'retake', 'other'])],
             'exam_date' => ['required', 'date'],

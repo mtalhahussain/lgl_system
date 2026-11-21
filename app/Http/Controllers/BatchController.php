@@ -39,7 +39,8 @@ class BatchController extends Controller
 
             return view('academic.batches', compact('batches', 'filters'));
         }
-        $courses = Course::orderBy('name')->pluck('name', 'id');
+        $courses = Course::orderBy('name')->get(['id', 'name', 'level'])
+            ->mapWithKeys(fn ($course) => [$course->id => ($course->level ? $course->level.' — ' : '').$course->name]);
         $teachers = User::where('role', 'teacher')->orderBy('name')->pluck('name', 'id');
         $platforms = ['zoom' => 'Zoom', 'google_meet' => 'Google Meet', 'in_person' => 'In person'];
         $list = ListQuery::for(Batch::with(['course:id,name,level', 'teacher:id,name'])->withCount('activeEnrollments'), $request)
@@ -62,7 +63,7 @@ class BatchController extends Controller
             ['label' => 'Upcoming', 'value' => $counts['upcoming'], 'icon' => 'fa-clock'],
             ['label' => 'Completed', 'value' => $counts['completed'], 'icon' => 'fa-check'],
             ['label' => 'Seats left', 'value' => $open->sum(fn ($batch) => max(0, $batch->max_students - $batch->active_enrollments_count)), 'icon' => 'fa-chair', 'note' => 'In upcoming and ongoing batches']];
-        $filters = [['name' => 'course_id', 'label' => 'Course', 'options' => $courses], ['name' => 'teacher_id', 'label' => 'Teacher', 'options' => $teachers],
+        $filters = [['name' => 'course_id', 'label' => 'Level', 'options' => $courses], ['name' => 'teacher_id', 'label' => 'Teacher', 'options' => $teachers],
             ['name' => 'status', 'label' => 'Status', 'options' => $statuses], ['name' => 'platform', 'label' => 'Platform', 'options' => $platforms]];
 
         return view('admin.batches.index', ['batches' => $list->paginate(), 'kpis' => $kpis, 'filters' => $filters, 'platforms' => $platforms]);

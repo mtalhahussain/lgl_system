@@ -4,7 +4,7 @@
 <div class="panel-heading d-flex justify-content-between align-items-center">
     <h1>Exams</h1>
     @if(can_route('exams.create'))
-        @if(can_route('exams.create'))<a class="btn btn-primary" href="{{ route('exams.create') }}"><i class="fas fa-plus me-1" aria-hidden="true"></i>New exam</a>@endif
+        <a class="btn btn-primary" href="{{ route('exams.create') }}"><i class="fas fa-plus me-1" aria-hidden="true"></i>New exam</a>
     @endif
 </div>
 

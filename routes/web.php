@@ -322,9 +322,9 @@ Route::middleware(['auth', EnsureActiveAccount::class, EnsureModuleAccess::class
     Route::get('/exams', [ExamController::class, 'index'])
         ->name('exams.index')->middleware('role:admin,teacher');
     Route::get('/exams/create', [ExamController::class, 'create'])
-        ->name('exams.create')->middleware('role:admin');
+        ->name('exams.create')->middleware('role:admin,teacher');
     Route::post('/exams', [ExamController::class, 'store'])
-        ->name('exams.store')->middleware('role:admin');
+        ->name('exams.store')->middleware('role:admin,teacher');
     Route::get('/exams/{exam}/edit', [ExamController::class, 'edit'])
         ->name('exams.edit')->middleware('role:admin');
     Route::put('/exams/{exam}', [ExamController::class, 'update'])

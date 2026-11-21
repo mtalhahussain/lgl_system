@@ -301,6 +301,11 @@ Route::middleware(['auth', EnsureActiveAccount::class, EnsureModuleAccess::class
     Route::post('/people/{user}/resync-machine', [BiometricController::class, 'resyncUser'])
         ->name('biometric.resync-user')->middleware('role:admin');
 
+    Route::get('/settings/certificate-paragraphs', [\App\Http\Controllers\CertificateParagraphController::class, 'edit'])
+        ->name('settings.certificate-paragraphs.edit')->middleware('role:admin');
+    Route::put('/settings/certificate-paragraphs', [\App\Http\Controllers\CertificateParagraphController::class, 'update'])
+        ->name('settings.certificate-paragraphs.update')->middleware('role:admin');
+
     // Certificate Routes
     Route::get('/certificates', [CertificateController::class, 'create'])
         ->name('certificates.index')->middleware('role:admin');

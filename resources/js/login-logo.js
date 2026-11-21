@@ -1,6 +1,6 @@
 // Fit padded branding uploads without changing the stored image.
 export function initLoginLogo() {
-    document.querySelectorAll('img.login-uploaded-logo, .sidebar-brand .portal-brand-expanded img.portal-brand-logo, img.apply-brand-logo').forEach(fitLogo);
+    document.querySelectorAll('img.login-uploaded-logo, .sidebar-brand .portal-brand-expanded img.portal-brand-logo, img.apply-brand-logo, .receipt-brand img.document-brand-logo').forEach(fitLogo);
 }
 
 function fitLogo(image) {

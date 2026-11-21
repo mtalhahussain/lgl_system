@@ -264,6 +264,13 @@ h1 { font-size:25px; letter-spacing:-.7px; font-weight:700; margin-bottom:20px; 
 @media(min-width:768px) { .sidebar-collapsed .portal-brand-expanded { display:none; } .sidebar-collapsed .portal-brand-collapsed { display:flex; align-items:center; justify-content:center; } .sidebar-collapsed .portal-brand-logo { width:40px; height:40px; } }
 .settings-logo-preview { display:block; width:220px; max-width:100%; height:100px; object-fit:contain; object-position:left center; }
 .document-brand-logo { max-width:150px; max-height:70px; object-fit:contain; }
+.receipt-doc-head { display:grid; grid-template-columns:minmax(0,1fr) auto; align-items:center; gap:8px 20px; }
+.receipt-heading-group { display:contents; }
+.receipt-brand { grid-column:1; grid-row:1; display:flex; align-items:center; justify-content:flex-start; margin:0 0 6px; }
+.receipt-brand .document-brand-logo { display:block; width:auto; height:auto; max-width:min(240px,100%); max-height:110px; }
+.receipt-doc-head h1 { grid-column:1 / -1; grid-row:2; margin:0; }
+.receipt-doc-head .doc-number { grid-column:1 / -1; grid-row:3; }
+.receipt-doc-head .doc-amount { grid-column:2; grid-row:1; text-align:right; }
 .login-story-content { position:relative; z-index:1; margin-top:60px; }
 .login-kicker { display:flex; align-items:center; gap:10px; font-size:9px; letter-spacing:1.7px; color:#e7e5e4; font-weight:600; }
 .login-flag { display:inline-block; flex-shrink:0; width:23px; height:15px; border-radius:3px; background:linear-gradient(to bottom,#171717 0 33.33%,#dd0000 33.33% 66.66%,#ffce00 66.66%); }

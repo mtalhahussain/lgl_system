@@ -53,7 +53,9 @@ class CertificateController extends Controller
         $certificates = StudentCertificate::with('student:id,name')
             ->orderByDesc('issued_at')->limit(50)->get();
 
-        return view('certificates.index', compact('students', 'studentMeta', 'preselect', 'preselectId', 'preselectResultId', 'certificates'));
+        $paragraphs = \App\Support\CertificateParagraphs::all();
+
+        return view('certificates.index', compact('students', 'studentMeta', 'preselect', 'preselectId', 'preselectResultId', 'certificates', 'paragraphs'));
     }
 
     public function store(Request $request)
@@ -109,6 +111,7 @@ class CertificateController extends Controller
                         'student_name' => $data['student_name'],
                         'father_name' => $data['father_name'] ?? null,
                         'level' => $data['level'],
+                        'paragraph_text' => \App\Support\CertificateParagraphs::forLevel($data['level']),
                         'completion_date' => $data['completion_date'],
                         'certificate_number' => StudentCertificate::nextNumber($data['level']),
                         'issued_by' => $request->user()->id,
@@ -161,6 +164,7 @@ class CertificateController extends Controller
         $user = auth()->user();
         abort_if($user->isStudent() && (int) $certificate->student_id !== (int) $user->id, 403);
 
+        \Illuminate\Support\Facades\File::ensureDirectoryExists(storage_path('fonts'));
         $pdf = Pdf::loadView('certificates.pdf', ['cert' => $certificate])->setPaper('a4', 'landscape');
         $name = 'certificate-'.$certificate->certificate_number.'.pdf';
 

@@ -119,6 +119,28 @@ class PaymentIntegrityTest extends TestCase
         $this->actingAs($this->student)->post('/payments/'.$payment->id.'/reverse', ['reason' => 'Not allowed'])->assertForbidden();
     }
 
+    public function test_receipt_uses_existing_uploaded_logo_with_document_priority_and_missing_file_fallback(): void
+    {
+        \Illuminate\Support\Facades\Storage::fake('public');
+        $disk = \Illuminate\Support\Facades\Storage::disk('public');
+        $payment = $this->payment('10.00');
+        $uri = '/payments/'.$payment->id;
+        $this->get($uri)->assertOk()->assertDontSee('class="document-brand-logo"', false);
+
+        foreach (['sidebar_logo', 'institute_logo', 'document_logo'] as $key) {
+            $disk->put('settings/'.$key.'.png', $key);
+            \App\Models\Setting::create(['key' => $key, 'value' => 'settings/'.$key.'.png', 'label' => $key]);
+            $this->get($uri)->assertOk()->assertSee('class="document-brand-logo"', false)
+                ->assertSee('data:image/png;base64,'.base64_encode($key), false);
+        }
+        $disk->delete('settings/document_logo.png');
+        $this->get($uri)->assertOk()->assertSee('data:image/png;base64,'.base64_encode('institute_logo'), false);
+        $disk->delete('settings/institute_logo.png');
+        $this->get($uri)->assertOk()->assertSee('data:image/png;base64,'.base64_encode('sidebar_logo'), false);
+        $disk->delete('settings/sidebar_logo.png');
+        $this->get($uri)->assertOk()->assertDontSee('class="document-brand-logo"', false);
+    }
+
     public function test_old_installment_endpoint_uses_ledger_and_requires_submission_key(): void
     {
         $installment = $this->enrollment->feeInstallments()->first();

@@ -10,7 +10,7 @@ class SettingController extends Controller
     public const LOGOS = [
         'institute_logo' => 'Login logo',
         'sidebar_logo' => 'Sidebar logo',
-        'document_logo' => 'Certificate / Payslip logo',
+        'document_logo' => 'Payslip / Receipt logo',
     ];
 
     public function index()

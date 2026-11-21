@@ -180,7 +180,7 @@ class CertificateTest extends TestCase
             ->assertSee('Syed Saad')
             ->assertSee('Syed Mehboob')
             ->assertSee('Niveau A1')
-            ->assertSee('27.10.2026');
+            ->assertSee('27. Oktober 2026');
     }
 
     private function passingResult(User $admin, User $student, string $level = 'A1'): StudentExamResult
@@ -405,5 +405,6 @@ class CertificateTest extends TestCase
             'completion_date' => '2026-12-20'])->assertRedirect();
 
         $this->assertSame('B1', StudentCertificate::sole()->level);
+        $this->assertSame(\App\Support\CertificateParagraphs::forLevel('B1'), StudentCertificate::sole()->paragraph_text);
     }
 }

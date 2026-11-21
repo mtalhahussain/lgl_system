@@ -4,6 +4,7 @@
 @section('content')
 <a class="back-link" href="{{ route('exams.index') }}"><i class="fas fa-arrow-left" aria-hidden="true"></i>Back to Exams</a>
 <x-list.header title="Certificates" eyebrow="Academics" subtitle="Issue completion certificates and manage previously issued records.">
+    @if(auth()->user()->isAdmin())<a class="btn btn-outline-primary" href="{{ route('settings.certificate-paragraphs.edit') }}">Level paragraphs</a>@endif
     <a class="btn btn-outline-secondary" href="#issued-heading"><i class="fas fa-list me-1" aria-hidden="true"></i>Issued certificates</a>
 </x-list.header>
 
@@ -76,6 +77,7 @@
             <p class="small text-muted" id="preview-father">{{ old('father_name') ? 'S/O '.old('father_name') : '' }}</p>
             <div class="certificate-preview-level">Level <span id="preview-level">{{ old('level', $preselect['level'] ?? 'A1') }}</span></div>
             <p class="small text-muted mt-3 mb-0">Completion date: <span id="preview-date">{{ old('completion_date', now()->toDateString()) }}</span></p>
+            <p class="small mt-3 mb-0" id="preview-paragraph">{{ $paragraphs[old('level', $preselect['level'] ?? 'A1')] ?? '' }}</p>
         </div>
         <p class="form-section-note mt-3 mb-0"><i class="fas fa-circle-info me-1" aria-hidden="true"></i>Only one active certificate per student and level. Revoke an existing certificate before reissuing.</p>
     </aside>
@@ -124,5 +126,5 @@
     </table></div>
 </section>
 
-<template data-page-module="certificates-index" data-students="{{ json_encode($studentMeta) }}"></template>
+<template data-page-module="certificates-index" data-students="{{ json_encode($studentMeta) }}" data-paragraphs="{{ json_encode($paragraphs) }}"></template>
 @endsection

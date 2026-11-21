@@ -84,6 +84,37 @@ class PdfDocumentsTest extends TestCase
         return TeacherPayout::sole();
     }
 
+    public function test_certificate_paragraph_clears_signature_with_longer_reference_copy_and_names(): void
+    {
+        $copy = 'Ihr Einsatz beim Erlernen der deutschen Sprache war weiterhin sehr lobenswert. '
+            .'Auf dem A2-Niveau haben Sie Ihre bereits erworbenen Kenntnisse vertieft und Ihre Fähigkeiten '
+            .'in Alltagskommunikation, Lesen, Schreiben, Hören und Sprechen deutlich verbessert. '
+            .'Sie sind nun in der Lage, sich sicherer und selbstständiger auf Deutsch auszudrücken.';
+        $student = User::factory()->create(['role' => 'student', 'is_active' => true]);
+        $cert = $this->certificate($student, ['level' => 'A2']);
+        \Illuminate\Support\Facades\File::ensureDirectoryExists(storage_path('fonts'));
+
+        foreach (['Waqar Azeem', 'Muhammad Abdullah Ahmed Muhammad Hassan'] as $name) {
+            $cert->student_name = $name;
+            $cert->father_name = 'Muhammad Shaheen Shah';
+            $html = view('certificates.pdf', ['cert' => $cert])->render();
+            $html = preg_replace('/(<p class="cert-text">).*?(<\/p>)/s', '$1'.e($copy).'$2', $html);
+            $pdf = app('dompdf.wrapper')->loadHTML($html)->setPaper('a4', 'landscape');
+            $bottom = null;
+            $pdf->getDomPDF()->setCallbacks([['event' => 'end_frame', 'f' => function ($frame) use (&$bottom) {
+                $node = $frame->get_node();
+                if ($node instanceof \DOMElement && $node->getAttribute('class') === 'cert-text') {
+                    $bottom = $frame->get_position('y') + $frame->get_margin_height();
+                }
+            }]]);
+            $pdf->output();
+            $this->assertNotNull($bottom);
+            // The original template signature begins around 157mm; preserve a 5mm gap.
+            $this->assertLessThan(152 * 72 / 25.4, $bottom);
+            $this->assertSame(1, $pdf->getDomPDF()->getCanvas()->get_page_count());
+        }
+    }
+
     private function teacherAndAdmin(): array
     {
         return [
@@ -125,8 +156,8 @@ class PdfDocumentsTest extends TestCase
         $cert = $this->certificate($student);
         foreach (['certificates.pdf', 'certificates.print'] as $view) {
             $certificateHtml = view($view, ['cert' => $cert])->render();
-            $this->assertStringContainsString('class="certificate-logo"', $certificateHtml);
-            $this->assertStringContainsString(\App\Support\PdfImage::instituteLogo(), $certificateHtml);
+            $this->assertStringNotContainsString('class="certificate-logo"', $certificateHtml);
+            $this->assertStringNotContainsString(\App\Support\PdfImage::instituteLogo(), $certificateHtml);
         }
         $this->actingAs($admin)->get(route('certificates.pdf', $cert))->assertOk();
         $this->actingAs($admin)->get(route('payroll.slip.pdf', $payout))->assertOk();

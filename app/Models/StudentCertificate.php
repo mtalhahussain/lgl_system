@@ -10,13 +10,18 @@ class StudentCertificate extends Model
     protected $fillable = [
         'student_id', 'student_name', 'father_name', 'level',
         'completion_date', 'certificate_number', 'issued_by', 'issued_at',
-        'student_exam_result_id', 'revoked_at', 'revoked_by', 'revoke_reason',
+        'paragraph_text', 'student_exam_result_id', 'revoked_at', 'revoked_by', 'revoke_reason',
     ];
 
     protected function casts(): array
     {
         return ['completion_date' => 'date', 'issued_at' => 'datetime',
             'revoked_at' => 'datetime'];
+    }
+
+    public function paragraphText(): string
+    {
+        return $this->paragraph_text ?? \App\Support\CertificateParagraphs::legacy($this->level);
     }
 
     public function student()

@@ -1,6 +1,8 @@
 export function init(config) {
     (function () {
         var meta = JSON.parse(config.dataset.students);
+        var paragraphs = JSON.parse(config.dataset.paragraphs || '{}');
+        var paragraph = document.getElementById('preview-paragraph');
         var sel = document.getElementById('student_id');
         var name = document.getElementById('student_name');
         var level = document.getElementById('level');
@@ -12,6 +14,7 @@ export function init(config) {
             document.getElementById('preview-father').textContent = father.value.trim() ? 'S/O ' + father.value.trim() : '';
             document.getElementById('preview-level').textContent = level.value;
             document.getElementById('preview-date').textContent = date.value || 'Not selected';
+            if (paragraph) paragraph.textContent = paragraphs[level.value] || '';
         }
         [name, father, level, date].forEach(function (input) { input.addEventListener('input', updatePreview); input.addEventListener('change', updatePreview); });
         updatePreview();

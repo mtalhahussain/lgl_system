@@ -17,11 +17,26 @@ class PdfImage
         return $mime ? 'data:'.$mime.';base64,'.base64_encode(file_get_contents($absolutePath)) : null;
     }
 
-    /** Shared certificate/payslip logo from Settings (public disk), or null. */
+    /** Shared payslip/receipt logo from Settings (public disk), or null. */
     public static function instituteLogo(): ?string
     {
         $path = setting('document_logo');
 
         return $path ? self::dataUri(\Illuminate\Support\Facades\Storage::disk('public')->path($path)) : null;
     }
+
+    /** Receipt branding prefers the document upload, then other existing institute logos. */
+    public static function receiptLogo(): ?string
+    {
+        foreach (['document_logo', 'institute_logo', 'sidebar_logo'] as $key) {
+            $path = setting($key);
+            $image = $path ? self::dataUri(\Illuminate\Support\Facades\Storage::disk('public')->path($path)) : null;
+            if ($image !== null) {
+                return $image;
+            }
+        }
+
+        return null;
+    }
+
 }

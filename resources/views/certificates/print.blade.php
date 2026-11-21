@@ -1,5 +1,4 @@
 @php
-    $documentLogo = \App\Support\PdfImage::instituteLogo();
     $templatePath = public_path('template.png');
     $templateSrc = null;
     if (is_file($templatePath)) {
@@ -8,7 +7,7 @@
         \Illuminate\Support\Facades\Log::warning('Certificate template image missing; rendering on a plain background.', ['path' => $templatePath]);
     }
     $soLine = trim($cert->student_name.($cert->father_name ? ' S/O '.$cert->father_name : ''));
-    $dateDe = $cert->completion_date->format('d.m.Y');
+    $dateDe = $cert->completion_date->copy()->locale('de')->translatedFormat('j. F Y');
 @endphp
 <!doctype html>
 <html lang="de">
@@ -25,18 +24,13 @@
     </div>
     <div class="sheet">
         @if($templateSrc)<img class="certificate-background" src="{{ $templateSrc }}" alt="">@endif
-        @if($documentLogo)<div class="certificate-logo"><img src="{{ $documentLogo }}" alt="Institute logo"></div>@endif
         <div class="cert-body">
             <h1 class="cert-title">Teilnahmebescheinigung</h1>
             <p class="cert-grats">Herzlichen Glückwunsch, <span class="cert-name">{{ $soLine }}</span></p>
             <p class="cert-line">zum erfolgreichen Abschluss des</p>
             <p class="cert-course">Deutsch-Sprachkurses &ndash; Niveau {{ $cert->level }}</p>
             <p class="cert-date">Kurs abgeschlossen am <strong>{{ $dateDe }}</strong></p>
-            <p class="cert-text">
-                Ihr Einsatz beim Erlernen der deutschen Sprache war lobenswert. Auf dem
-                {{ $cert->level }}-Niveau haben Sie grundlegende sprachliche Fähigkeiten erworben
-                und erste einfache Kommunikationssituationen sicher gemeistert.
-            </p>
+            <p class="cert-text">{{ $cert->paragraphText() }}</p>
         </div>
         <div class="cert-number">{{ $cert->certificate_number }}</div>
         @if($cert->isRevoked())

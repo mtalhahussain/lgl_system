@@ -187,20 +187,31 @@ class PeopleAndCourseTest extends TestCase
 
     public function test_course_forms_work_and_price_change_preserves_agreed_fee(): void
     {
-        $this->get('/courses/create')->assertOk();
+        $this->get('/courses/create')->assertOk()
+            ->assertDontSee('name="sessions_per_week"', false)
+            ->assertDontSee('name="session_duration_minutes"', false);
         $data = ['name' => 'German A1', 'level' => 'A1', 'description' => 'Beginner German', 'total_fee' => '10000.00',
-            'duration_weeks' => 12, 'sessions_per_week' => 2, 'session_duration_minutes' => 90];
+            'duration_weeks' => 12];
         $this->post('/courses', $data)->assertRedirect('/courses');
         $course = Course::where('name', 'German A1')->sole();
+        $course->update(['sessions_per_week' => 4, 'session_duration_minutes' => 120]);
         $teacher = User::factory()->create(['role' => 'teacher']);
         $student = User::factory()->create(['role' => 'student']);
         $batch = Batch::create(['teacher_id' => $teacher->id, 'course_id' => $course->id, 'name' => 'Morning',
             'start_date' => today(), 'status' => 'ongoing', 'max_students' => 10]);
         $enrollment = Enrollment::create(['student_id' => $student->id, 'batch_id' => $batch->id,
             'enrollment_date' => today(), 'total_fee' => 10000, 'discount_amount' => 500]);
-        $this->get('/courses/'.$course->id.'/edit')->assertOk();
+        $this->get('/courses/'.$course->id.'/edit')->assertOk()
+            ->assertDontSee('name="sessions_per_week"', false)
+            ->assertDontSee('name="session_duration_minutes"', false);
         $this->put('/courses/'.$course->id, array_merge($data, ['total_fee' => '15000.00']))->assertRedirect('/courses/'.$course->id);
         $this->assertSame('10000.00', $enrollment->fresh()->total_fee);
         $this->assertSame('500.00', $enrollment->fresh()->discount_amount);
+        $this->assertSame(4, $course->fresh()->sessions_per_week);
+        $this->assertSame(120, $course->fresh()->session_duration_minutes);
+        $this->put('/courses/'.$course->id, array_merge($data, ['sessions_per_week' => 1, 'session_duration_minutes' => 30]))
+            ->assertRedirect('/courses/'.$course->id);
+        $this->assertSame(4, $course->fresh()->sessions_per_week);
+        $this->assertSame(120, $course->fresh()->session_duration_minutes);
     }
 }

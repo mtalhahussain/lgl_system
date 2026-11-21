@@ -27,10 +27,10 @@
         </div>
     </div>
     <div class="form-section">
-        <h2 class="form-section-title">Fee and schedule</h2>
+        <h2 class="form-section-title">Fee and duration</h2>
         <p class="form-section-note">Fee changes apply to future enrollments. Existing agreements remain unchanged.</p>
         <div class="row g-3">
-            @foreach(['total_fee' => ['Default fee', 0, '0.01'], 'duration_weeks' => ['Duration in weeks', 12, '1'], 'sessions_per_week' => ['Sessions per week', 2, '1'], 'session_duration_minutes' => ['Session duration in minutes', 90, '1']] as $field => [$label, $default, $step])
+            @foreach(['total_fee' => ['Default fee', 0, '0.01'], 'duration_weeks' => ['Duration in weeks', 12, '1']] as $field => [$label, $default, $step])
                 <div class="col-md-6">
                     <label for="{{ $field }}" class="form-label required">{{ $label }}</label>
                     <input class="form-control" id="{{ $field }}" name="{{ $field }}" type="number" min="0" step="{{ $step }}" value="{{ old($field, $course?->$field ?? $default) }}" required>

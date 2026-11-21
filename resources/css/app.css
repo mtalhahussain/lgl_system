@@ -254,7 +254,7 @@ h1 { font-size:25px; letter-spacing:-.7px; font-weight:700; margin-bottom:20px; 
 .login-wordmark small { display:block; font-size:9px; letter-spacing:2.5px; color:#d6d3d1; margin-top:6px; font-weight:500; }
 .login-logo { flex-shrink:0; display:grid; place-items:center; width:68px; height:68px; padding:8px; background:#fff; border-radius:16px; color:#171717; font-size:20px; font-weight:800; letter-spacing:-1px; }
 .login-logo img { width:100%; height:100%; object-fit:contain; }
-.login-uploaded-logo { display:block; width:400px; max-width:100%; height:auto; max-height:160px; object-fit:contain; object-position:left center; overflow:hidden; }
+.login-uploaded-logo { display:block; width:340px; max-width:100%; height:auto; max-height:136px; object-fit:contain; object-position:left center; overflow:hidden; }
 .portal-brand-logo { display:block; width:170px; max-width:100%; height:56px; object-fit:contain; }
 .portal-brand-expanded { display:flex; align-items:center; gap:12px; min-width:0; }
 .sidebar-brand .portal-brand-expanded { width:100%; }

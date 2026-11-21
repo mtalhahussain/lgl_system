@@ -4,7 +4,6 @@
 <x-show.hero icon="fa-book" :eyebrow="'Level · Code '.$course->level" :title="$course->name" :status="$course->is_active ? 'active' : 'inactive'">
     <x-slot:meta>
         <span><i class="fas fa-hourglass-half" aria-hidden="true"></i>{{ $course->duration_weeks }} weeks</span>
-        @if($course->sessions_per_week)<span><i class="fas fa-calendar-week" aria-hidden="true"></i>{{ $course->sessions_per_week }} sessions/week{{ $course->session_duration_minutes ? ' · '.$course->session_duration_minutes.' min' : '' }}</span>@endif
     </x-slot:meta>
     @if(can_route('batches.create'))<a class="btn btn-primary" href="{{ route('batches.create', ['course_id' => $course->id]) }}"><i class="fas fa-plus me-1" aria-hidden="true"></i>New batch</a>@endif
     @if(can_route('courses.edit'))<a class="btn btn-outline-primary" href="{{ route('courses.edit', $course) }}"><i class="fas fa-pen me-1" aria-hidden="true"></i>Edit</a>@endif

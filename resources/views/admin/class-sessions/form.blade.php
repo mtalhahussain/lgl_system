@@ -1,7 +1,7 @@
 @extends('layouts.admin')
 @section('title', $classSession ? 'Edit Session' : 'Extra / makeup class')
 @section('content')
-<x-list.header :title="$classSession ? 'Edit Session' : 'Extra / makeup class'" eyebrow="Timetable" subtitle="Regular classes are created from the batch schedule. Use this form for an extra class or a makeup date." />
+<x-list.header icon="fa-calendar-alt" :title="$classSession ? 'Edit Session' : 'Extra / makeup class'" eyebrow="Timetable" subtitle="Regular classes are created from the batch schedule. Use this form for an extra class or a makeup date." />
 <form method="post" class="panel form-panel" action="{{ $formAction ?? ($classSession ? route('class-sessions.update', $classSession) : route('class-sessions.store')) }}">
     @csrf
     @if(!empty($makeupFor))

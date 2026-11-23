@@ -1,7 +1,7 @@
 @extends('layouts.admin')
 @section('title', 'Assigned Levels')
 @section('content')
-<x-list.header title="Assigned Levels" eyebrow="My classes" subtitle="Levels that include one of your batches" />
+<x-list.header icon="fa-book" title="Assigned Levels" eyebrow="My classes" subtitle="Levels that include one of your batches" />
 <div class="panel list-panel">
     <div class="table-responsive">
         <table class="table list-table">

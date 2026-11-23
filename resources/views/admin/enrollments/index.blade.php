@@ -1,7 +1,7 @@
 @extends('layouts.admin')
 @section('title', 'Enrollments')
 @section('content')
-<x-list.header title="Enrollments" eyebrow="Admissions" subtitle="Student admissions, fee agreements and status">
+<x-list.header icon="fa-user-plus" title="Enrollments" eyebrow="Admissions" subtitle="Student admissions, fee agreements and status">
     @if(can_route('enrollment-packages.create'))<a class="btn btn-outline-primary" href="{{ route('enrollment-packages.create') }}">Multi-level package</a>@endif
     @if(can_route('students.create'))<a class="btn btn-primary" href="{{ route('students.create') }}">Student admission</a>@endif
 </x-list.header>

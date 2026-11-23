@@ -1,7 +1,7 @@
 @extends('layouts.admin')
 @section('title', $lead ? 'Edit Lead' : 'Add Lead')
 @section('content')
-<x-list.header :title="$lead ? 'Edit lead' : 'Add lead'" eyebrow="Leads" subtitle="Walk-in, phone call or referral enquiries entered by hand. Qualify, reject and convert from the lead page as usual." />
+<x-list.header icon="fa-user-tag" :title="$lead ? 'Edit lead' : 'Add lead'" eyebrow="Leads" subtitle="Walk-in, phone call or referral enquiries entered by hand. Qualify, reject and convert from the lead page as usual." />
 <form method="post" action="{{ $lead ? route('leads.update', $lead) : route('leads.store') }}" class="panel form-panel">
     @csrf
     @if($lead) @method('PUT') @endif

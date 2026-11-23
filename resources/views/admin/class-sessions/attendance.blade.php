@@ -1,7 +1,7 @@
 @extends('layouts.admin')
 @section('title', 'Mark Attendance')
 @section('content')
-<h1>Attendance: {{ $classSession->batch->name }}</h1>
+<h1><i class="fas fa-clipboard-check me-2 text-primary" aria-hidden="true"></i>Attendance: {{ $classSession->batch->name }}</h1>
 <p>{{ $classSession->session_date->format('d M Y') }}</p>
 @if(can_route('class-sessions.attendance.store'))<form method="post" action="{{ route('class-sessions.attendance.store', $classSession) }}">
     @csrf

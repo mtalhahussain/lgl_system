@@ -2,7 +2,7 @@
 @section('title', 'Exams')
 @section('content')
 <div class="panel-heading d-flex justify-content-between align-items-center">
-    <h1>Exams</h1>
+    <h1><i class="fas fa-clipboard-list me-2 text-primary" aria-hidden="true"></i>Exams</h1>
     @if(can_route('exams.create'))
         <a class="btn btn-primary" href="{{ route('exams.create') }}"><i class="fas fa-plus me-1" aria-hidden="true"></i>New exam</a>
     @endif

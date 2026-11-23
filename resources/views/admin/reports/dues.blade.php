@@ -1,7 +1,7 @@
 @extends('layouts.admin')
 @section('title', 'Outstanding Dues')
 @section('content')
-<x-list.header title="Outstanding Dues" eyebrow="Reports" subtitle="Scheduled installments that still have a balance">
+<x-list.header icon="fa-wallet" title="Outstanding Dues" eyebrow="Reports" subtitle="Scheduled installments that still have a balance">
     <button type="button" class="btn btn-outline-primary" data-print><i class="fas fa-print me-1" aria-hidden="true"></i>Print</button>
 </x-list.header>
 <x-list.kpis :items="$kpis" />

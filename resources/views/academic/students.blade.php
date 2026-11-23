@@ -1,7 +1,7 @@
 @extends('layouts.admin')
 @section('title', 'Assigned Students')
 @section('content')
-<x-list.header title="Assigned Students" eyebrow="My classes" subtitle="Students enrolled in your batches" />
+<x-list.header icon="fa-users" title="Assigned Students" eyebrow="My classes" subtitle="Students enrolled in your batches" />
 <div class="panel list-panel">
     <x-list.toolbar :filters="[['name' => 'batch_id', 'label' => 'Batch', 'options' => $batches]]" search="Search student name…" />
     <div class="table-responsive">

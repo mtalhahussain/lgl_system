@@ -100,7 +100,7 @@ return [
     'student' => [
         'timetable' => ['label' => 'My Timetable', 'icon' => 'fa-calendar-week', 'routes' => ['student.timetable']],
         'attendance' => ['label' => 'My Attendance', 'icon' => 'fa-clipboard-check', 'routes' => ['student.attendance', 'student.session.join', 'attendance.student']],
-        'results' => ['label' => 'My Result', 'icon' => 'fa-clipboard-check', 'routes' => ['student.results', 'certificates.print']],
+        'results' => ['label' => 'My Result', 'icon' => 'fa-square-poll-vertical', 'routes' => ['student.results', 'certificates.print']],
         'profile' => ['label' => 'My Profile', 'icon' => 'fa-user', 'routes' => ['students.show']],
         'fees' => ['label' => 'My Fees', 'icon' => 'fa-money-bill-wave', 'routes' => ['fees.student', 'payments.show', 'refunds.show', 'enrollment-packages.show']],
         'materials' => ['label' => 'Books & Materials', 'icon' => 'fa-file-pdf', 'routes' => ['materials.*']],

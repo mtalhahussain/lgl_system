@@ -1,7 +1,7 @@
 @extends('layouts.admin')
 @section('title', 'Enrollment Report')
 @section('content')
-<x-list.header title="Enrollment Report" eyebrow="Reports" subtitle="Student, level and batch roster by admission date">
+<x-list.header icon="fa-user-graduate" title="Enrollment Report" eyebrow="Reports" subtitle="Student, level and batch roster by admission date">
     <button type="button" class="btn btn-outline-primary" data-print><i class="fas fa-print me-1" aria-hidden="true"></i>Print</button>
 </x-list.header>
 <x-list.kpis :items="$kpis" />

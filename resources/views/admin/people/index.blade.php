@@ -2,7 +2,7 @@
 @section('title', ucfirst($kind))
 @section('content')
 @php $students = $kind === 'students'; @endphp
-<x-list.header :title="ucfirst($kind)" eyebrow="People" :subtitle="$students ? 'Admitted learners and their batches' : 'Teaching staff and assignments'">
+<x-list.header :icon="$kind === 'students' ? 'fa-users' : 'fa-chalkboard-teacher'" :title="ucfirst($kind)" eyebrow="People" :subtitle="$students ? 'Admitted learners and their batches' : 'Teaching staff and assignments'">
     <a class="btn btn-primary" href="{{ route($kind.'.create') }}"><i class="fas fa-plus me-1" aria-hidden="true"></i>{{ $students ? 'Student admission' : 'Add teacher' }}</a>
     @if($students) @if(can_route('enrollment-packages.create'))<a class="btn btn-outline-primary" href="{{ route('enrollment-packages.create') }}">Multi-level package</a>@endif @endif
 </x-list.header>

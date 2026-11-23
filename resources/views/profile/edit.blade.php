@@ -1,7 +1,7 @@
 @extends('layouts.admin')
 @section('title', 'My Profile')
 @section('content')
-<h1>My Profile</h1>
+<h1><i class="fas fa-user me-2 text-primary" aria-hidden="true"></i>My Profile</h1>
 <p>{{ $person->email }}</p>
 <form method="post" action="{{ route('profile.update') }}" class="card card-body">
     @csrf @method('PUT')

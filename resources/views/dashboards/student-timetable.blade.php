@@ -1,7 +1,7 @@
 @extends('layouts.admin')
 @section('title', 'My Timetable')
 @section('content')
-<div class="page-heading"><div><div class="eyebrow">YOUR WORKSPACE</div><h1>My Timetable</h1><p class="page-subtitle">Your weekly class days, times and join links.</p></div><span class="status-pill">{{ now()->format('d M Y') }}</span></div>
+<div class="page-heading"><div><div class="eyebrow">YOUR WORKSPACE</div><h1><i class="fas fa-calendar-week me-2 text-primary" aria-hidden="true"></i>My Timetable</h1><p class="page-subtitle">Your weekly class days, times and join links.</p></div><span class="status-pill">{{ now()->format('d M Y') }}</span></div>
 
 <section class="panel tw:mb-6" aria-labelledby="weekly-heading">
     <div class="panel-heading"><h2 id="weekly-heading">Weekly classes</h2></div>

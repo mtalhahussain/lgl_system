@@ -2,7 +2,7 @@
 @section('title', 'Admin Dashboard')
 @section('content')
 <div class="page-heading">
-    <div><div class="eyebrow">OVERVIEW</div><h1>Admin Dashboard</h1><p class="page-subtitle">Welcome back, {{ explode(' ', auth()->user()->name)[0] }}. Here’s your institute at a glance.</p></div>
+    <div><div class="eyebrow">OVERVIEW</div><h1><i class="fas fa-tachometer-alt me-2 text-primary" aria-hidden="true"></i>Admin Dashboard</h1><p class="page-subtitle">Welcome back, {{ explode(' ', auth()->user()->name)[0] }}. Here’s your institute at a glance.</p></div>
     @if(can_route('enrollments.create'))<a class="btn btn-primary" href="{{ route('enrollments.create') }}"><i class="fas fa-plus me-2" aria-hidden="true"></i>New admission</a>@endif
 </div>
 <div class="tw:grid tw:grid-cols-1 tw:gap-4 tw:sm:grid-cols-2 tw:xl:grid-cols-4 tw:mb-6">

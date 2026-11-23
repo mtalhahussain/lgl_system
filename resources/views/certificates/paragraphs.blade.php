@@ -1,7 +1,7 @@
 @extends('layouts.admin')
 @section('title', 'Certificate paragraphs')
 @section('content')
-<x-list.header title="Certificate paragraphs" eyebrow="Settings" subtitle="Set the German paragraph once for each level. New certificates use the selected level automatically.">
+<x-list.header icon="fa-align-left" title="Certificate paragraphs" eyebrow="Settings" subtitle="Set the German paragraph once for each level. New certificates use the selected level automatically.">
     <a class="btn btn-outline-secondary" href="{{ route('certificates.index') }}">Back to Certificates</a>
 </x-list.header>
 <form method="post" action="{{ route('settings.certificate-paragraphs.update') }}" class="panel form-panel">

@@ -1,7 +1,7 @@
 @extends('layouts.admin')
 @section('title', $batch ? 'Edit Batch' : 'Add Batch')
 @section('content')
-<x-list.header :title="$batch ? 'Edit Batch' : 'Add Batch'" eyebrow="Academics" :subtitle="$batch ? $batch->name : 'Level, teacher, dates and class delivery'" />
+<x-list.header icon="fa-layer-group" :title="$batch ? 'Edit Batch' : 'Add Batch'" eyebrow="Academics" :subtitle="$batch ? $batch->name : 'Level, teacher, dates and class delivery'" />
 <form method="post" class="panel form-panel" action="{{ $batch ? route('batches.update', $batch) : route('batches.store') }}">
     @csrf
     @if($batch) @method('PUT') @endif

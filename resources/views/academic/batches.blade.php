@@ -1,7 +1,7 @@
 @extends('layouts.admin')
 @section('title', isset($course) ? $course->name : 'Assigned Batches')
 @section('content')
-<x-list.header :title="isset($course) ? $course->name : 'Assigned Batches'" eyebrow="My classes" :subtitle="isset($course) ? 'Your batches in this level' : 'Batches you teach'" />
+<x-list.header icon="fa-layer-group" :title="isset($course) ? $course->name : 'Assigned Batches'" eyebrow="My classes" :subtitle="isset($course) ? 'Your batches in this level' : 'Batches you teach'" />
 <div class="panel list-panel">
     @isset($filters)<x-list.toolbar :filters="$filters" search="Search batch name…" />@endisset
     <div class="table-responsive">

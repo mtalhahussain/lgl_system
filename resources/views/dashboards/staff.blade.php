@@ -2,7 +2,7 @@
 @section('title', 'Staff Dashboard')
 @section('content')
 <div class="page-heading">
-    <div><div class="eyebrow">OVERVIEW</div><h1>Staff Dashboard</h1><p class="page-subtitle">Welcome, {{ explode(' ', auth()->user()->name)[0] }}. These are the sections Admin has given you.</p></div>
+    <div><div class="eyebrow">OVERVIEW</div><h1><i class="fas fa-tachometer-alt me-2 text-primary" aria-hidden="true"></i>Staff Dashboard</h1><p class="page-subtitle">Welcome, {{ explode(' ', auth()->user()->name)[0] }}. These are the sections Admin has given you.</p></div>
 </div>
 <section class="panel" aria-labelledby="staff-modules-heading">
     <div class="panel-heading"><h2 id="staff-modules-heading"><i class="fas fa-th-large me-2 text-navy" aria-hidden="true"></i>Your sections</h2></div>

@@ -1,7 +1,7 @@
 @extends('layouts.admin')
 @section('title', 'My Result')
 @section('content')
-<x-list.header title="My Result" eyebrow="Academics" subtitle="Track your scheduled exams and view recorded marks. Scheduled exams have no result until marks are recorded." />
+<x-list.header icon="fa-square-poll-vertical" title="My Result" eyebrow="Academics" subtitle="Track your scheduled exams and view recorded marks. Scheduled exams have no result until marks are recorded." />
 <x-list.kpis :items="$kpis" />
 <div class="panel mb-3">
     <x-list.toolbar :filters="$filters" search="Search exam name…" :per-page="false" />

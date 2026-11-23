@@ -1,7 +1,7 @@
 @extends('layouts.admin')
 @section('title', $isAdmin ? 'Payroll' : 'My Earnings')
 @section('content')
-<x-list.header :title="$isAdmin ? 'Payroll' : 'My Earnings'" eyebrow="Finance"
+<x-list.header icon="fa-hand-holding-usd" :title="$isAdmin ? 'Payroll' : 'My Earnings'" eyebrow="Finance"
     :subtitle="$isAdmin ? 'Teacher and staff salaries, per-student batch earnings and payouts' : 'Your salary and completed-batch earnings with payment slips'" />
 <x-list.kpis :items="$kpis" />
 @if($isAdmin)

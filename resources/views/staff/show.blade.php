@@ -10,7 +10,7 @@
         ['Sign-in email', 'fa-envelope', $signsIn ? $person->email : 'No sign-in', $signsIn ? 'mailto:'.$person->email : null],
     ];
 @endphp
-<x-list.header :title="$person->name" eyebrow="Staff" :subtitle="($person->designation ?: 'Staff').($person->employee_id ? ' · '.$person->employee_id : '')">
+<x-list.header icon="fa-id-badge" :title="$person->name" eyebrow="Staff" :subtitle="($person->designation ?: 'Staff').($person->employee_id ? ' · '.$person->employee_id : '')">
     <a class="btn btn-outline-secondary" href="{{ route('accounts.index', ['role' => 'staff']) }}"><i class="fas fa-arrow-left me-1" aria-hidden="true"></i>Back to Users</a>
     <a class="btn btn-primary" href="{{ route('staff.edit', $person) }}"><i class="fas fa-pen me-1" aria-hidden="true"></i>Edit</a>
 </x-list.header>

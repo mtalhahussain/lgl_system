@@ -1,7 +1,7 @@
 @extends('layouts.admin')
 @section('title', 'Users')
 @section('content')
-<x-list.header title="Users" eyebrow="Administration" actions-class="ms-auto justify-content-end" subtitle="Manage user roles and account access. Changes save automatically.">
+<x-list.header icon="fa-users-cog" title="Users" eyebrow="Administration" actions-class="ms-auto justify-content-end" subtitle="Manage user roles and account access. Changes save automatically.">
     <a class="btn btn-outline-primary" href="{{ route('accounts.permissions.edit') }}"><i class="fas fa-user-lock me-1" aria-hidden="true"></i>Role permissions</a>
     <a class="btn btn-primary" href="{{ route('accounts.create') }}"><i class="fas fa-plus me-1" aria-hidden="true"></i>Add user</a>
 </x-list.header>

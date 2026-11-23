@@ -1,7 +1,7 @@
 @extends('layouts.admin')
 @section('title', 'Institute Settings')
 @section('content')
-<h1>Institute Settings</h1>
+<h1><i class="fas fa-cog me-2 text-primary" aria-hidden="true"></i>Institute Settings</h1>
 <p><a class="btn btn-outline-primary" href="{{ route('settings.certificate-paragraphs.edit') }}">Certificate paragraphs by level</a></p>
 @if(request()->query('show') === 'true')
 <section class="mb-4" aria-labelledby="integrations-heading">

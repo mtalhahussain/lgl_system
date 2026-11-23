@@ -8,7 +8,7 @@
     $skills = ['Hören' => 'Listening', 'Lesen' => 'Reading', 'Schreiben' => 'Writing', 'Sprechen' => 'Speaking'];
 @endphp
 <a class="back-link" href="{{ route('exams.index') }}"><i class="fas fa-arrow-left" aria-hidden="true"></i>Back to Exams</a>
-<x-list.header :title="$exam ? 'Edit exam' : 'New exam'" eyebrow="Academics" subtitle="Choose a batch, set the exam date and define marks for each language skill." />
+<x-list.header icon="fa-clipboard-list" :title="$exam ? 'Edit exam' : 'New exam'" eyebrow="Academics" subtitle="Choose a batch, set the exam date and define marks for each language skill." />
 
 <form class="panel form-panel" method="post" action="{{ $action }}">
     @csrf

@@ -1,7 +1,7 @@
 @extends('layouts.admin')
 @section('title', 'Create Fee Schedule')
 @section('content')
-<x-list.header title="Create Fee Schedule" eyebrow="Finance" subtitle="New admissions already create a schedule. This form is only for an enrollment that has none." />
+<x-list.header icon="fa-calendar-check" title="Create Fee Schedule" eyebrow="Finance" subtitle="New admissions already create a schedule. This form is only for an enrollment that has none." />
 @if(can_route('installments.store'))<form class="panel form-panel" method="post" action="{{ route('installments.store') }}">
     @csrf
     <div class="form-section">

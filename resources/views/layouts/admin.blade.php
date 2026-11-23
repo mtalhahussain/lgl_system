@@ -110,7 +110,7 @@
                             </li>
                             @endif
                             @if(module_visible('results'))
-                            <li class="nav-item"><a class="nav-link {{ request()->is('student/results*') ? 'active' : '' }}" href="{{ route('student.results') }}"><i class="fas fa-clipboard-check me-2" aria-hidden="true"></i>My Result</a></li>
+                            <li class="nav-item"><a class="nav-link {{ request()->is('student/results*') ? 'active' : '' }}" href="{{ route('student.results') }}"><i class="fas fa-square-poll-vertical me-2" aria-hidden="true"></i>My Result</a></li>
                             @endif
                             @if(module_visible('profile'))
                             <li class="nav-item">

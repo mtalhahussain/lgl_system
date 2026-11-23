@@ -1,7 +1,7 @@
 @extends('layouts.admin')
 @section('title', 'Role Permissions')
 @section('content')
-<x-list.header title="Role permissions" eyebrow="Administration" subtitle="Choose what each role can use. Every user of a role gets that role's permissions; Admin always has everything.">
+<x-list.header icon="fa-user-lock" title="Role permissions" eyebrow="Administration" subtitle="Choose what each role can use. Every user of a role gets that role's permissions; Admin always has everything.">
     <a class="btn btn-outline-secondary" href="{{ route('accounts.index') }}"><i class="fas fa-arrow-left me-1" aria-hidden="true"></i>Back to Users</a>
 </x-list.header>
 <section class="panel" id="role-permissions" aria-labelledby="role-permissions-heading">

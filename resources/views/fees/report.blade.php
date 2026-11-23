@@ -1,7 +1,7 @@
 @extends('layouts.admin')
 @section('title', 'Fee Collection Report')
 @section('content')
-<x-list.header title="Fee Collection Report" eyebrow="Reports" subtitle="Payments use their payment date; reversals and refunds subtract on their own date.">
+<x-list.header icon="fa-coins" title="Fee Collection Report" eyebrow="Reports" subtitle="Payments use their payment date; reversals and refunds subtract on their own date.">
     <button type="button" class="btn btn-outline-primary" data-print><i class="fas fa-print me-1" aria-hidden="true"></i>Print this page</button>
 </x-list.header>
 <x-list.kpis :items="$kpis" />

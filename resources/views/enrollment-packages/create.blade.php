@@ -1,7 +1,7 @@
 @extends('layouts.admin')
 @section('title', 'Multi-level Package')
 @section('content')
-<x-list.header title="Multi-level package" eyebrow="Admissions" subtitle="Two to four levels in a row (A1 + A2, A1 to B1, A1 to B2) at one agreed price." />
+<x-list.header icon="fa-boxes-stacked" title="Multi-level package" eyebrow="Admissions" subtitle="Two to four levels in a row (A1 + A2, A1 to B1, A1 to B2) at one agreed price." />
 @if(can_route('enrollment-packages.store'))<form method="post" action="{{ route('enrollment-packages.store') }}" data-confirm="Enroll this student in every selected batch with this package price?">
     @csrf
     <input type="hidden" name="submission_key" value="{{ old('submission_key', (string) \Illuminate\Support\Str::uuid()) }}">

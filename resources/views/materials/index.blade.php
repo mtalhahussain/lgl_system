@@ -1,7 +1,7 @@
 @extends('layouts.admin')
 @section('title', 'Books & Materials')
 @section('content')
-<x-list.header title="Books & Materials" eyebrow="Levels"
+<x-list.header icon="fa-file-pdf" title="Books & Materials" eyebrow="Levels"
     :subtitle="auth()->user()->isStudent() ? 'Books and files for the levels you are enrolled in' : (auth()->user()->isTeacher() ? 'Books and files for the levels of your batches' : 'Books and files uploaded for every level')" />
 
 @forelse($levels as $group)

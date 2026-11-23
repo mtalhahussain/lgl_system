@@ -2,7 +2,7 @@
 @section('title', 'Add User')
 @section('content')
 @php $role = old('role', request('role', 'teacher')); @endphp
-<x-list.header title="Add user" eyebrow="Administration" subtitle="Create an account of any role by hand. Admin, Teacher and Student can sign in; Staff are paid and use the attendance machine but never sign in." />
+<x-list.header icon="fa-user-plus" title="Add user" eyebrow="Administration" subtitle="Create an account of any role by hand. Admin, Teacher and Student can sign in; Staff are paid and use the attendance machine but never sign in." />
 <form method="post" action="{{ route('accounts.store') }}" class="panel form-panel" id="accountCreateForm">
     @csrf
     <div class="form-section">

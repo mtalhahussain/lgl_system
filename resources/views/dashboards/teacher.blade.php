@@ -2,7 +2,7 @@
 @section('title', 'Teacher Dashboard')
 @section('content')
 @php $weeklyHours = $batches->sum(fn ($b) => $b->weeklyHours()); @endphp
-<div class="page-heading"><div><div class="eyebrow">YOUR WORKSPACE</div><h1>Teacher Dashboard</h1><p class="page-subtitle">Your classes, students and teaching day, organized.</p></div><span class="status-pill">{{ now()->format('d M Y') }}</span></div>
+<div class="page-heading"><div><div class="eyebrow">YOUR WORKSPACE</div><h1><i class="fas fa-tachometer-alt me-2 text-primary" aria-hidden="true"></i>Teacher Dashboard</h1><p class="page-subtitle">Your classes, students and teaching day, organized.</p></div><span class="status-pill">{{ now()->format('d M Y') }}</span></div>
 <x-list.kpis :items="[
     ['label' => 'Active batches', 'value' => $batches->count(), 'icon' => 'fa-layer-group'],
     ['label' => 'Teaching load', 'value' => rtrim(rtrim(number_format($weeklyHours, 1), '0'), '.').' h / week', 'icon' => 'fa-clock', 'note' => 'Planned from batch schedules'],

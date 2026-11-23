@@ -1,7 +1,7 @@
 @extends('layouts.admin')
 @section('title', 'Class Sessions')
 @section('content')
-<x-list.header title="Class Sessions" eyebrow="Timetable" subtitle="Scheduled classes, topics and attendance">
+<x-list.header icon="fa-calendar-alt" title="Class Sessions" eyebrow="Timetable" subtitle="Scheduled classes, topics and attendance">
     @if(can_route('class-sessions.create'))<a class="btn btn-primary" href="{{ route('class-sessions.create') }}"><i class="fas fa-plus me-1" aria-hidden="true"></i>Extra / makeup class</a>@endif
     <a class="btn btn-outline-primary" href="{{ route('class-sessions.index', ['from' => today()->startOfWeek()->toDateString(), 'to' => today()->endOfWeek()->toDateString()]) }}">This week's teaching</a>
 </x-list.header>

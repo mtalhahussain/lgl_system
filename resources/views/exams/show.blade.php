@@ -2,7 +2,7 @@
 @section('title', $exam->name)
 @section('content')
 <div class="panel-heading d-flex justify-content-between align-items-center">
-    <h1>{{ $exam->name }}</h1>
+    <h1><i class="fas fa-clipboard-list me-2 text-primary" aria-hidden="true"></i>{{ $exam->name }}</h1>
     @if(can_route('exams.edit'))
         @if(can_route('exams.edit'))<a class="btn btn-outline-secondary" href="{{ route('exams.edit', $exam) }}">Edit exam</a>@endif
     @endif

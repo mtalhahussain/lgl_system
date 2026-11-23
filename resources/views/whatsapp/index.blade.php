@@ -1,7 +1,7 @@
 @extends('layouts.admin')
 @section('title', 'WhatsApp Reminders')
 @section('content')
-<x-list.header title="WhatsApp Reminders" eyebrow="Finance" subtitle="Fee reminders to students through the WhatsApp Cloud API" />
+<x-list.header icon="fab fa-whatsapp" title="WhatsApp Reminders" eyebrow="Finance" subtitle="Fee reminders to students through the WhatsApp Cloud API" />
 <x-list.kpis :items="$kpis" />
 @unless($configured)
     <div class="alert alert-warning">WhatsApp is not connected yet. Follow the setup steps below; nothing is sent until the server has <code>WHATSAPP_TOKEN</code> and <code>WHATSAPP_PHONE_NUMBER_ID</code>.</div>

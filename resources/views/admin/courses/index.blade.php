@@ -1,7 +1,7 @@
 @extends('layouts.admin')
 @section('title', 'Levels')
 @section('content')
-<x-list.header title="Levels" eyebrow="Academics" subtitle="Level catalogue, default fees and batch activity">
+<x-list.header icon="fa-book" title="Levels" eyebrow="Academics" subtitle="Level catalogue, default fees and batch activity">
     @if(can_route('courses.create'))<a class="btn btn-primary" href="{{ route('courses.create') }}"><i class="fas fa-plus me-1" aria-hidden="true"></i>Add course</a>@endif
 </x-list.header>
 <x-list.kpis :items="$kpis" />

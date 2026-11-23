@@ -11,7 +11,7 @@
 
 <div class="d-flex flex-wrap justify-content-between align-items-start mb-3 gap-2">
     <div>
-        <h1 class="h4 mb-1">{{ $lead->name }}</h1>
+        <h1 class="h4 mb-1"><i class="fas fa-user-tag me-2 text-primary" aria-hidden="true"></i>{{ $lead->name }}</h1>
         <span class="badge bg-{{ $badges[$lead->status] ?? 'secondary' }}">{{ ucfirst($lead->status) }}</span>
         <span class="badge bg-light text-dark border">{{ ucfirst($lead->source) }}</span>
     </div>

@@ -3,7 +3,7 @@
 
 @section('content')
 <a class="back-link" href="{{ route('exams.index') }}"><i class="fas fa-arrow-left" aria-hidden="true"></i>Back to Exams</a>
-<x-list.header title="Certificates" eyebrow="Academics" subtitle="Issue completion certificates and manage previously issued records.">
+<x-list.header icon="fa-award" title="Certificates" eyebrow="Academics" subtitle="Issue completion certificates and manage previously issued records.">
     @if(auth()->user()->isAdmin())<a class="btn btn-outline-primary" href="{{ route('settings.certificate-paragraphs.edit') }}">Level paragraphs</a>@endif
     <a class="btn btn-outline-secondary" href="#issued-heading"><i class="fas fa-list me-1" aria-hidden="true"></i>Issued certificates</a>
 </x-list.header>

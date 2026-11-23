@@ -1,7 +1,7 @@
 @extends('layouts.admin')
 @section('title', 'Batches')
 @section('content')
-<x-list.header title="Batches" eyebrow="Academics" subtitle="Schedules, teachers, capacity and class platform">
+<x-list.header icon="fa-layer-group" title="Batches" eyebrow="Academics" subtitle="Schedules, teachers, capacity and class platform">
     @if(can_route('batches.create'))<a class="btn btn-primary" href="{{ route('batches.create') }}"><i class="fas fa-plus me-1" aria-hidden="true"></i>Add batch</a>@endif
 </x-list.header>
 <x-list.kpis :items="$kpis" />

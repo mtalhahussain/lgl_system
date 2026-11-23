@@ -2,7 +2,7 @@
 @section('title', $kind === 'students' && !$person ? 'Student admission' : ($person ? 'Edit ' : 'Add ').($kind === 'students' ? 'Student' : 'Teacher'))
 @section('content')
 @php $noun = $kind === 'students' ? 'Student' : 'Teacher'; @endphp
-<x-list.header :title="$kind === 'students' && !$person ? 'Student admission' : ($person ? 'Edit' : 'Add').' '.$noun" eyebrow="People" :subtitle="$person ? $person->email : ($kind === 'students' ? 'Enter student details, choose a batch and set the fee plan in one form' : 'Create the account and contact profile')" />
+<x-list.header :icon="$kind === 'students' ? 'fa-users' : 'fa-chalkboard-teacher'" :title="$kind === 'students' && !$person ? 'Student admission' : ($person ? 'Edit' : 'Add').' '.$noun" eyebrow="People" :subtitle="$person ? $person->email : ($kind === 'students' ? 'Enter student details, choose a batch and set the fee plan in one form' : 'Create the account and contact profile')" />
 @if(isset($lead))
     <p class="alert alert-info">Registering from lead: {{ $lead->name }}. Review the prefilled details before saving.</p>
     @if($duplicates['students']->isNotEmpty())

@@ -1,7 +1,7 @@
 @extends('layouts.admin')
 @section('title', $person ? 'Edit Staff' : 'Add Staff')
 @section('content')
-<x-list.header :title="$person ? 'Edit staff member' : 'Add staff member'" eyebrow="People" subtitle="Receptionist, cleaner, security guard and other non-teaching staff. Staff are paid monthly; give an email and password only to staff who should sign in." />
+<x-list.header icon="fa-id-badge" :title="$person ? 'Edit staff member' : 'Add staff member'" eyebrow="People" subtitle="Receptionist, cleaner, security guard and other non-teaching staff. Staff are paid monthly; give an email and password only to staff who should sign in." />
 <form method="post" action="{{ $person ? route('staff.update', $person) : route('staff.store') }}" class="panel form-panel">
     @csrf
     @if($person) @method('PUT') @endif

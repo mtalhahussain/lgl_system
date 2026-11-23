@@ -2,7 +2,7 @@
 @section('title', 'Attendance Machine')
 @section('content')
 
-<x-list.header title="Attendance Machine" eyebrow="Attendance" subtitle="Hikvision face and fingerprint punches mark students present or late in their running class" />
+<x-list.header icon="fa-fingerprint" title="Attendance Machine" eyebrow="Attendance" subtitle="Hikvision face and fingerprint punches mark students present or late in their running class" />
 <x-list.kpis :items="$kpis" />
 <div class="tw:grid tw:grid-cols-1 tw:gap-5 tw:lg:grid-cols-2 tw:mb-6">
     @foreach($devices as $device)

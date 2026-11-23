@@ -2,7 +2,7 @@
 @section('title', 'Fee Ledger')
 @section('content')
 @php $isAdmin = auth()->user()->actsAsAdmin(); @endphp
-<x-list.header :title="$student ? $student->name.' — Fees' : ($batch ? $batch->name.' — Fees' : 'Fee Ledger')" eyebrow="Finance"
+<x-list.header icon="fa-money-bill" :title="$student ? $student->name.' — Fees' : ($batch ? $batch->name.' — Fees' : 'Fee Ledger')" eyebrow="Finance"
     subtitle="Fee agreements, installment balances and recorded payments">
     @if(can_route('fees.reports') && ! $student && ! $batch)<a class="btn btn-outline-primary" href="{{ route('fees.reports') }}"><i class="fas fa-chart-line me-1" aria-hidden="true"></i>Collection report</a>@endif
 </x-list.header>

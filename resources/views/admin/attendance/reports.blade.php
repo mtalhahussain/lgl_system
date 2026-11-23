@@ -1,7 +1,7 @@
 @extends('layouts.admin')
 @section('title', 'Attendance Report')
 @section('content')
-<h1>Attendance Report</h1>
+<h1><i class="fas fa-clipboard-check me-2 text-primary" aria-hidden="true"></i>Attendance Report</h1>
 <form method="get" class="mb-3">
     <label for="start_date">From</label><input id="start_date" name="start_date" type="date" value="{{ \Carbon\Carbon::parse($startDate)->format('Y-m-d') }}">
     <label for="end_date">To</label><input id="end_date" name="end_date" type="date" value="{{ \Carbon\Carbon::parse($endDate)->format('Y-m-d') }}">

@@ -1,7 +1,7 @@
 @extends('layouts.admin')
 @section('title', 'Attendance')
 @section('content')
-<x-list.header title="Attendance" :eyebrow="$tab === 'team' ? 'Teachers & Staff' : ucfirst($tab)" subtitle="Daily machine punches for the selected dates. No punch does not automatically mean absent; payroll is not affected." />
+<x-list.header icon="fa-clipboard-check" title="Attendance" :eyebrow="$tab === 'team' ? 'Teachers & Staff' : ucfirst($tab)" subtitle="Daily machine punches for the selected dates. No punch does not automatically mean absent; payroll is not affected." />
 @include('partials.attendance-tabs')
 <x-list.kpis :items="$kpis" />
 <form method="get" class="panel row g-2 align-items-end mb-4 pad-panel">

@@ -1,7 +1,7 @@
 @extends('layouts.admin')
 @section('title', $course ? 'Edit Level' : 'Add Level')
 @section('content')
-<x-list.header :title="$course ? 'Edit Level' : 'Add Level'" eyebrow="Academics" :subtitle="$course ? $course->name.' · '.$course->level : 'Catalogue entry and default fee'" />
+<x-list.header icon="fa-book" :title="$course ? 'Edit Level' : 'Add Level'" eyebrow="Academics" :subtitle="$course ? $course->name.' · '.$course->level : 'Catalogue entry and default fee'" />
 <form class="panel form-panel" method="post" action="{{ $course ? route('courses.update', $course) : route('courses.store') }}">
     @csrf
     @if($course) @method('PUT') @endif

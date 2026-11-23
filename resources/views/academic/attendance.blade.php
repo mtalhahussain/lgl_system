@@ -1,7 +1,7 @@
 @extends('layouts.admin')
 @section('title', auth()->user()->isStudent() ? 'My Attendance' : 'Attendance Report')
 @section('content')
-<x-list.header :title="auth()->user()->isStudent() ? 'My Attendance' : ($student ? $student->name.' — Attendance' : 'Attendance Report')" eyebrow="Attendance"
+<x-list.header icon="fa-clipboard-check" :title="auth()->user()->isStudent() ? 'My Attendance' : ($student ? $student->name.' — Attendance' : 'Attendance Report')" eyebrow="Attendance"
     subtitle="Rate = (present + late) ÷ (present + late + absent). Excused records and classes that did not run are not counted.">
     <button type="button" class="btn btn-outline-primary" data-print><i class="fas fa-print me-1" aria-hidden="true"></i>Print</button>
 </x-list.header>

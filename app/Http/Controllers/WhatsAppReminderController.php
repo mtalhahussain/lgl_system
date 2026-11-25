@@ -32,7 +32,7 @@ class WhatsAppReminderController extends Controller
         $today = WhatsappMessage::whereDate('created_at', today())->selectRaw('status, COUNT(*) as total')->groupBy('status')->pluck('total', 'status');
         $kpis = [['label' => 'Sent today', 'value' => $today['sent'] ?? 0, 'icon' => 'fa-paper-plane'],
             ['label' => 'Failed today', 'value' => $today['failed'] ?? 0, 'icon' => 'fa-triangle-exclamation'],
-            ['label' => 'Automatic', 'value' => $reminders->settings()['enabled'] ? 'On' : 'Off', 'icon' => 'fa-clock', 'note' => 'Daily at 10:00'],
+            ['label' => 'Automatic', 'value' => $reminders->settings()['enabled'] ? 'On' : 'Off', 'icon' => 'fa-clock', 'note' => 'Daily at 10:00 · set in Settings'],
             ['label' => 'API', 'value' => $whatsApp->configured() ? 'Connected' : 'Not set', 'icon' => 'fa-plug', 'note' => 'WHATSAPP_* in .env']];
         $filters = [['name' => 'status', 'label' => 'Status', 'options' => $statuses], ['name' => 'kind', 'label' => 'Type', 'options' => WhatsappMessage::KINDS],
             ['name' => 'from', 'label' => 'From', 'type' => 'date'], ['name' => 'to', 'label' => 'To', 'type' => 'date']];
@@ -43,11 +43,12 @@ class WhatsAppReminderController extends Controller
 
     public function updateSettings(Request $request, FeeReminderService $reminders)
     {
-        $data = $request->validate(['enabled' => 'sometimes|boolean', 'days_before' => 'required|integer|min:0|max:30',
+        // On/off and the institute number are set on Settings (SettingController); this form keeps the rest.
+        $data = $request->validate(['days_before' => 'required|integer|min:0|max:30',
             'on_due_date' => 'sometimes|boolean', 'template' => ['required', 'regex:/^[a-z0-9_]{1,100}$/D'],
             'language' => ['required', 'regex:/^[a-z]{2,3}(_[A-Z]{2})?$/D']], ['template.regex' => 'Use the exact template name from Meta (lowercase letters, digits, underscores).']);
         $before = $reminders->settings();
-        $values = ['whatsapp_reminders_enabled' => $request->boolean('enabled') ? '1' : '0', 'whatsapp_days_before' => (string) $data['days_before'],
+        $values = ['whatsapp_days_before' => (string) $data['days_before'],
             'whatsapp_send_on_due_date' => $request->boolean('on_due_date') ? '1' : '0', 'whatsapp_template_name' => $data['template'],
             'whatsapp_template_language' => $data['language']];
         foreach ($values as $key => $value) {

@@ -139,9 +139,10 @@ class WhatsAppReminderTest extends TestCase
     {
         $this->get('/whatsapp')->assertOk()->assertSee('WhatsApp is not connected yet')->assertSee('Assalam o Alaikum {{1}}', false);
         $this->put('/whatsapp/settings', ['days_before' => 2, 'template' => 'Bad Name', 'language' => 'en'])->assertSessionHasErrors('template');
+        // The hidden config form no longer switches reminders; that lives on Settings.
         $this->put('/whatsapp/settings', ['enabled' => 1, 'days_before' => 2, 'template' => 'lgl_fee_due', 'language' => 'en_US'])->assertRedirect('/whatsapp');
         $settings = app(FeeReminderService::class)->settings();
-        $this->assertSame([true, 2, false, 'lgl_fee_due', 'en_US'], array_values($settings));
+        $this->assertSame([false, 2, false, 'lgl_fee_due', 'en_US', ''], array_values($settings));
         $this->assertDatabaseHas('audit_logs', ['action' => 'whatsapp.settings_updated']);
 
         config(['whatsapp.token' => 'test-token', 'whatsapp.phone_number_id' => '1234567890']);
@@ -156,13 +157,39 @@ class WhatsAppReminderTest extends TestCase
 
     public function test_integrations_live_under_settings_not_the_sidebar(): void
     {
-        $this->get('/settings')->assertOk()->assertSee('Integrations')
+        $this->get('/settings')->assertOk()->assertDontSee('Integrations');
+        $this->get('/settings?show=true')->assertOk()->assertSee('Integrations')
             ->assertSee(route('whatsapp.index'), false)->assertSee(route('biometric.index'), false)
             ->assertSee('Automatic reminders off')->assertSee('0 active machines');
-        $this->get('/students')->assertOk()->assertDontSee('WhatsApp Reminders</a>', false)->assertDontSee('Attendance Machine</a>', false)
-            ->assertSee('Staff Attendance');
+        $this->get('/students')->assertOk()->assertDontSee('WhatsApp Reminders</a>', false)->assertDontSee('Attendance Machine</a>', false);
         $this->get('/whatsapp')->assertOk()->assertSee('Back to Settings');
         $this->get('/biometric')->assertOk()->assertSee('Back to Settings');
+    }
+
+    public function test_admin_switches_reminders_and_sets_number_on_settings(): void
+    {
+        $this->get('/settings')->assertOk()->assertSee('Send fee reminders to students')->assertSee('Institute WhatsApp number');
+        $this->put('/settings', ['whatsapp_section' => 1, 'whatsapp_enabled' => 1, 'whatsapp_number' => ''])->assertSessionHasErrors('whatsapp_number');
+        $this->put('/settings', ['whatsapp_section' => 1, 'whatsapp_number' => '12'])->assertSessionHasErrors('whatsapp_number');
+        $this->assertFalse(app(FeeReminderService::class)->settings()['enabled']);
+
+        $this->put('/settings', ['whatsapp_section' => 1, 'whatsapp_enabled' => 1, 'whatsapp_number' => '0300 7654321'])->assertSessionHasNoErrors();
+        $settings = app(FeeReminderService::class)->settings();
+        $this->assertSame([true, '923007654321'], [$settings['enabled'], $settings['number']]);
+        $this->assertDatabaseHas('audit_logs', ['action' => 'whatsapp.settings_updated']);
+        // The number shows in the hidden integrations area and prefills the test number.
+        $this->get('/settings?show=true')->assertSee('Automatic reminders on')->assertSee('+923007654321');
+        $this->get('/whatsapp')->assertOk()->assertSee('value="+923007654321"', false);
+
+        // Other settings saves leave reminders alone; the card posted without the switch turns them off.
+        $this->put('/settings', ['institute_name' => 'LGL'])->assertSessionHasNoErrors();
+        $this->assertTrue(app(FeeReminderService::class)->settings()['enabled']);
+        $this->put('/settings', ['whatsapp_section' => 1, 'whatsapp_number' => '+923007654321'])->assertSessionHasNoErrors();
+        $this->assertFalse(app(FeeReminderService::class)->settings()['enabled']);
+        $this->artisan('fees:whatsapp-reminders')->assertFailed();
+        $this->assertSame(0, WhatsappMessage::count());
+
+        $this->actingAs($this->student)->put('/settings', ['whatsapp_section' => 1, 'whatsapp_enabled' => 1, 'whatsapp_number' => '03001234567'])->assertForbidden();
     }
 
     public function test_phone_numbers_are_normalised_to_international_form(): void

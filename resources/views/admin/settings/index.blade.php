@@ -10,7 +10,7 @@
         <div class="col-md-6">
             <a class="card card-body h-100 text-decoration-none" href="{{ route('whatsapp.index') }}">
                 <span class="h5 mb-1 text-body"><i class="fab fa-whatsapp me-2 text-success" aria-hidden="true"></i>WhatsApp fee reminders</span>
-                <span class="text-muted">Automatic reminders {{ $integrations['whatsapp']['enabled'] ? 'on' : 'off' }} · API {{ $integrations['whatsapp']['configured'] ? 'connected' : 'not set' }}</span>
+                <span class="text-muted">Automatic reminders {{ $integrations['whatsapp']['enabled'] ? 'on' : 'off' }} · API {{ $integrations['whatsapp']['configured'] ? 'connected' : 'not set' }} · Number {{ $integrations['whatsapp']['number'] !== '' ? '+'.$integrations['whatsapp']['number'] : 'not set' }}</span>
                 <span class="small mt-2">Settings, template, test message and message log →</span>
             </a>
         </div>
@@ -46,6 +46,18 @@
             @endforeach
         </section>
     @endforeach
+    <section class="card card-body mb-3" aria-labelledby="whatsapp-settings-heading">
+        <h2 class="h4" id="whatsapp-settings-heading"><i class="fab fa-whatsapp me-2 text-success" aria-hidden="true"></i>WhatsApp</h2>
+        <input type="hidden" name="whatsapp_section" value="1">
+        <div class="form-check form-switch mb-3">
+            <input class="form-check-input" type="checkbox" role="switch" id="whatsapp_enabled" name="whatsapp_enabled" value="1" @checked(old('whatsapp_enabled', $whatsapp['enabled']))>
+            <label class="form-check-label" for="whatsapp_enabled"><strong>Send fee reminders to students</strong> (daily at 10:00)</label>
+        </div>
+        <label class="form-label" for="whatsapp_number">Institute WhatsApp number</label>
+        <input class="form-control" id="whatsapp_number" name="whatsapp_number" type="tel" inputmode="tel" pattern="\+?[0-9 ]+" maxlength="20" placeholder="03001234567" title="Digits only, with an optional leading +" value="{{ old('whatsapp_number', $whatsapp['number'] !== '' ? '+'.$whatsapp['number'] : '') }}">
+        @error('whatsapp_number')<p class="text-danger mb-0">{{ $message }}</p>@enderror
+        <p class="form-text mb-0">Required to switch reminders on. When off, the daily scheduler sends nothing.</p>
+    </section>
     @if(request()->query('show') === 'true')
         <section class="card card-body mb-3">
             <h2 class="h4">Logos</h2>

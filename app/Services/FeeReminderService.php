@@ -23,6 +23,7 @@ class FeeReminderService
             'on_due_date' => Setting::get('whatsapp_send_on_due_date', '1') === '1',
             'template' => (string) Setting::get('whatsapp_template_name', 'fee_reminder'),
             'language' => (string) Setting::get('whatsapp_template_language', 'en'),
+            'number' => (string) Setting::get('whatsapp_number', ''),
         ];
     }
 

@@ -11,9 +11,10 @@
         <div class="panel-heading"><h2 id="wa-settings">Reminder settings</h2></div>
         <form method="post" action="{{ route('whatsapp.settings') }}" class="row g-3 pad-panel">
             @csrf @method('PUT')
-            <div class="col-12 form-check form-switch ms-2">
-                <input class="form-check-input" type="checkbox" id="enabled" name="enabled" value="1" @checked(old('enabled', $settings['enabled']))>
-                <label class="form-check-label" for="enabled"><strong>Send automatic reminders</strong> (daily at 10:00)</label>
+            <div class="col-12">
+                <p class="mb-1">Automatic reminders: <strong>{{ $settings['enabled'] ? 'On' : 'Off' }}</strong> (daily at 10:00)</p>
+                <p class="mb-1">Institute WhatsApp number: <strong>{{ $settings['number'] !== '' ? '+'.$settings['number'] : 'Not set' }}</strong></p>
+                <p class="form-text mb-0">Switch reminders on/off and change the number on <a href="{{ route('settings.index') }}#whatsapp-settings-heading">Settings</a>.</p>
             </div>
             <div class="col-sm-6">
                 <label class="form-label" for="days_before">Days before due date</label>
@@ -49,11 +50,11 @@
                     1 student name · 2 amount · 3 due date · 4 level · batch · 5 institute name. Wait until Meta approves it.</li>
                 <li>Create a System User with a permanent access token (whatsapp_business_messaging permission) and note the Phone number ID.</li>
                 <li>On the server set <code>WHATSAPP_TOKEN</code> and <code>WHATSAPP_PHONE_NUMBER_ID</code> in <code>.env</code>, then run <code>php artisan config:cache</code>. The token is never stored in the database.</li>
-                <li>Send a test message below, then switch automatic reminders on. The server cron <code>php artisan schedule:run</code> must be running.</li>
+                <li>Send a test message below, then switch automatic reminders on in Settings. The server cron <code>php artisan schedule:run</code> must be running.</li>
             </ol>
             <form method="post" action="{{ route('whatsapp.test') }}" class="row g-2 align-items-end">
                 @csrf
-                <div class="col-sm-8"><label class="form-label" for="phone">Test number</label><input class="form-control" id="phone" name="phone" type="tel" inputmode="tel" pattern="\+?[0-9]+" title="Digits only, with an optional leading +" placeholder="03001234567" maxlength="20" required></div>
+                <div class="col-sm-8"><label class="form-label" for="phone">Test number</label><input class="form-control" id="phone" name="phone" type="tel" inputmode="tel" pattern="\+?[0-9]+" title="Digits only, with an optional leading +" placeholder="03001234567" maxlength="20" value="{{ old('phone', $settings['number'] !== '' ? '+'.$settings['number'] : '') }}" required></div>
                 <div class="col-sm-4"><button class="btn btn-outline-success w-100" @disabled(! $configured)>Send test</button></div>
             </form>
         </div>

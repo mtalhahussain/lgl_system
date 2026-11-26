@@ -1,5 +1,7 @@
 # LGL institute management
 
+Class attendance shows an explanation when no students are eligible on the class date, without a Save form. Correction reason appears only when saved attendance exists and is required only when changing saved status or notes.
+
 Teachers can use Exams > New exam with the same name, type, date and four-section marks form as Admin, limited to their currently assigned batches. Server validation and a batch-row lock recheck enforce assignment at creation; notifications go to that batch’s active students and Admin. Existing result grading remains scoped; exam editing retains its prior Admin/authorized Staff permissions. Admin can still turn off the Teacher Exams module.
 
 Admin opens Certificates > Level paragraphs (also linked from Settings) to save one German paragraph for each A1–C2 level. Draft defaults are provided; selected level updates the issue preview. Issue & print automatically selects the server-side level paragraph and saves its wording on the certificate. Later edits affect new issues only; earlier certificates without a snapshot retain the previous original wording. Plain text is limited to 350 characters and checked against the actual PDF signature area before all six settings save atomically. Template editing remains Admin-only, including when Staff may issue certificates. Deploy the additive paragraph_text migration before using the new issue flow.

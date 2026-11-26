@@ -445,6 +445,10 @@ class ClassSessionController extends Controller
             abort(403, 'You can only mark attendance for your assigned batches.');
         }
 
+        if (! $classSession->eligibleEnrollments()->exists()) {
+            return back()->with('error', 'No eligible students for this class date. Ask Admin to check the batch enrollments and admission dates.');
+        }
+
         if (is_array($request->input('attendance'))) {
             $request->merge(['attendance' => array_filter($request->input('attendance'), fn ($status) => $status !== null && $status !== '')]);
         }
@@ -454,6 +458,8 @@ class ClassSessionController extends Controller
             'notes' => 'nullable|array',
             'reason' => 'nullable|string|min:5|max:1000',
             'notes.*' => 'nullable|string|max:255',
+        ], [
+            'attendance.required' => 'Select an attendance status for at least one student before saving.',
         ]);
 
         $rows = [];

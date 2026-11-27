@@ -116,12 +116,27 @@ class LeadFlowTest extends TestCase
     public function test_admin_can_generate_and_copy_temporary_or_permanent_inquiry_links(): void
     {
         $this->actingAs($this->admin)->get(route('leads.index'))->assertOk()->assertSee('Copy link')
+            ->assertSee('Public link')->assertSee('data-inquiry-link-form', false)
             ->assertSee('class="accordion-button collapsed"', false)
             ->assertSee('aria-expanded="false"', false)
             ->assertSee('id="inquiry-link-panel" class="accordion-collapse collapse"', false)
             ->assertSee('data-copy-target="inquiry_link"', false)->assertSee(route('apply.form'), false);
         $this->get(route('leads.index', ['link_expiry' => '24h']))->assertOk()
             ->assertSee('/inquiry?expires=', false)->assertSee('signature=', false);
+    }
+
+    public function test_ajax_link_generation_returns_signed_links_and_preserves_access_control(): void
+    {
+        $this->freezeTime();
+        foreach (['permanent' => null, '24h' => now()->addDay(), '7d' => now()->addDays(7)] as $expiry => $expiresAt) {
+            $url = $expiresAt ? URL::temporarySignedRoute('inquiry.form', $expiresAt) : route('apply.form');
+            $this->actingAs($this->admin)->getJson(route('leads.index', ['link_expiry' => $expiry]))
+                ->assertOk()->assertExactJson(['linkExpiry' => $expiry, 'inquiryUrl' => $url])
+                ->assertHeader('Cache-Control', 'no-store, private');
+        }
+        foreach ([$this->teacher, $this->student] as $user) {
+            $this->actingAs($user)->getJson(route('leads.index', ['link_expiry' => '24h']))->assertForbidden();
+        }
     }
 
     public function test_public_submission_creates_a_new_lead(): void

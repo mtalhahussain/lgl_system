@@ -114,6 +114,14 @@ class LeadController extends Controller
 
     public function index(Request $request)
     {
+        $linkExpiry = in_array($request->query('link_expiry'), ['24h', '7d'], true) ? $request->query('link_expiry') : 'permanent';
+        $inquiryUrl = $linkExpiry === 'permanent' ? route('apply.form')
+            : \Illuminate\Support\Facades\URL::temporarySignedRoute('inquiry.form', $linkExpiry === '24h' ? now()->addDay() : now()->addDays(7));
+
+        if ($request->expectsJson()) {
+            return response()->json(compact('linkExpiry', 'inquiryUrl'))->header('Cache-Control', 'no-store');
+        }
+
         $query = Lead::query()->with(['verifiedBy:id,name', 'student:id,name'])->latest();
 
         if ($status = $request->input('status')) {
@@ -131,10 +139,6 @@ class LeadController extends Controller
         }
 
         $leads = $query->paginate(25)->withQueryString();
-
-        $linkExpiry = in_array($request->query('link_expiry'), ['24h', '7d'], true) ? $request->query('link_expiry') : 'permanent';
-        $inquiryUrl = $linkExpiry === 'permanent' ? route('apply.form')
-            : \Illuminate\Support\Facades\URL::temporarySignedRoute('inquiry.form', $linkExpiry === '24h' ? now()->addDay() : now()->addDays(7));
 
         return view('admin.leads.index', compact('leads', 'linkExpiry', 'inquiryUrl'));
     }

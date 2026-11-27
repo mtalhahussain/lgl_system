@@ -16,11 +16,11 @@
 <section class="accordion mb-3" id="inquiry-link-tools">
     <div class="accordion-item">
         <h2 class="accordion-header">
-            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#inquiry-link-panel" aria-expanded="false" aria-controls="inquiry-link-panel">Link validity</button>
+            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#inquiry-link-panel" aria-expanded="false" aria-controls="inquiry-link-panel">Public link</button>
         </h2>
         <div id="inquiry-link-panel" class="accordion-collapse collapse">
             <div class="accordion-body">
-    <form method="get" action="{{ route('leads.index') }}" class="mb-3">
+    <form method="get" action="{{ route('leads.index') }}" class="mb-3" data-inquiry-link-form>
         @foreach(request()->only(['search', 'status', 'source']) as $name => $value)<input type="hidden" name="{{ $name }}" value="{{ $value }}">@endforeach
         <label class="form-label" for="link_expiry">Link validity</label>
         <div class="admission-student-picker-row">
@@ -36,7 +36,7 @@
     <div class="lead-inquiry-link-controls">
         <input class="form-control" id="inquiry_link" value="{{ $inquiryUrl }}" readonly>
         <button class="btn btn-primary" type="button" data-copy-target="inquiry_link">Copy link</button>
-        <a class="btn btn-outline-primary" href="{{ $inquiryUrl }}" target="_blank" rel="noopener">Open inquiry form</a>
+        <a class="btn btn-outline-primary" href="{{ $inquiryUrl }}" target="_blank" rel="noopener" data-inquiry-open>Open inquiry form</a>
     </div>
     <p class="form-text mb-0" data-copy-status role="status" aria-live="polite"></p>
     <p class="form-text mb-0">Submissions arrive as New leads. Contact, qualify and convert them, or reject with a reason.</p>
